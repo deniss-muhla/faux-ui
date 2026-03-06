@@ -1,8 +1,11 @@
 import {
   buildRenderTree,
   dispatchBindingAtPoint,
+  resolveDispatchResult,
+  type BindingHandlerResolver,
   resolveFocusTargetAtPoint,
   type BindingName,
+  type DispatchExecution,
   type DispatchResult,
   type Point,
   type RenderTreeNode,
@@ -22,6 +25,20 @@ export function dispatchDomBinding(
 ): DispatchResult {
   const tree = buildDomInputTree(root, options);
   return dispatchBindingAtPoint(tree, point, binding);
+}
+
+export function resolveDomBinding<THandler>(
+  root: UINode,
+  options: DomInputOptions,
+  point: DomPoint,
+  binding: BindingName,
+  resolveHandler: BindingHandlerResolver<THandler>,
+): DispatchExecution<THandler> {
+  return resolveDispatchResult(
+    binding,
+    dispatchDomBinding(root, options, point, binding),
+    resolveHandler,
+  );
 }
 
 export function resolveDomFocusTarget(

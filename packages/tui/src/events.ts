@@ -1,8 +1,11 @@
 import {
   buildRenderTree,
   dispatchBindingAtPoint,
+  resolveDispatchResult,
+  type BindingHandlerResolver,
   resolveFocusTargetAtPoint,
   type BindingName,
+  type DispatchExecution,
   type DispatchResult,
   type Point,
   type RenderTreeNode,
@@ -24,6 +27,20 @@ export function dispatchTuiBinding(
 ): DispatchResult {
   const tree = buildTuiInputTree(root, options);
   return dispatchBindingAtPoint(tree, point, binding);
+}
+
+export function resolveTuiBinding<THandler>(
+  root: UINode,
+  options: TuiInputOptions,
+  point: TuiPoint,
+  binding: BindingName,
+  resolveHandler: BindingHandlerResolver<THandler>,
+): DispatchExecution<THandler> {
+  return resolveDispatchResult(
+    binding,
+    dispatchTuiBinding(root, options, point, binding),
+    resolveHandler,
+  );
 }
 
 export function resolveTuiFocusTarget(

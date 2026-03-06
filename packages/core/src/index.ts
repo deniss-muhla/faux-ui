@@ -40,10 +40,18 @@ export {
 export { resolveTracks } from "./resolveTracks.js";
 export type { LayoutContext, TextLayoutRequest } from "./layout.js";
 export { layoutNode } from "./layout.js";
-export type { BindingName, DispatchAction, DispatchResult } from "./events.js";
+export type {
+  BindingHandlerResolver,
+  BindingName,
+  DispatchAction,
+  DispatchExecution,
+  DispatchResult,
+  ResolvedDispatchAction,
+} from "./events.js";
 export {
   collectDispatchActions,
   dispatchBindingAtPoint,
+  resolveDispatchResult,
   resolveFocusTarget,
   resolveFocusTargetAtPoint,
 } from "./events.js";

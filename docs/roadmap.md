@@ -21,7 +21,7 @@ The remaining work is mostly at the integration and productization layer rather 
 
 ### 1. Finalize the application action contract
 
-Status: not implemented
+Status: implemented
 
 Goal:
 
@@ -32,6 +32,12 @@ Goal:
 Why this matters:
 
 Core dispatch already returns binding tokens, but the application-facing execution contract is still implicit. That makes the runtime usable for tests, yet incomplete for real apps.
+
+Delivered:
+
+- binding tokens now consistently support stable string or numeric identifiers across core, schema, and reconciler authoring
+- `@faux-ui/core` exposes a renderer-neutral dispatch execution helper that maps tokens into application-owned handlers
+- DOM and TUI dispatch entry points expose the same execution-plan shape, and the DOM runtime can include resolved handlers in `onDispatch`
 
 ### 2. Complete a TUI interaction runtime
 

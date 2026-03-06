@@ -1,7 +1,7 @@
 import type { Constraints, Size, TrackShorthand } from "./types.js";
 
 export type NodeId = number;
-export type BindingToken = number;
+export type BindingToken = string | number;
 export type ScrollAxis = "x" | "y" | "both";
 export type SemanticColor =
   | "fg"

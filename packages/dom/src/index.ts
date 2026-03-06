@@ -1,6 +1,10 @@
 export { renderToDomModel } from "./model.js";
 export type { DomRenderNode, DomRenderOptions } from "./model.js";
-export { dispatchDomBinding, resolveDomFocusTarget } from "./events.js";
+export {
+  dispatchDomBinding,
+  resolveDomBinding,
+  resolveDomFocusTarget,
+} from "./events.js";
 export type { DomInputOptions, DomPoint } from "./events.js";
 export { mountDomRoot } from "./runtime.js";
 export type {

@@ -281,7 +281,7 @@ Current binding surface includes:
 - mouse down, mouse up, mouse enter, mouse leave, mouse move
 - scroll
 
-Binding values in core are numeric tokens. The application owns what those tokens mean and how actions are executed after dispatch resolution.
+Binding values in core are stable string or numeric tokens. The application owns what those tokens mean and can resolve dispatch results into its own handler objects through a renderer-neutral core helper.
 
 ## Renderer-Specific Notes
 
@@ -335,7 +335,6 @@ The architecture is established, but several edges are intentionally unfinished:
 
 - no full TUI event loop yet
 - no browser visual regression layer yet
-- no finalized application-side action execution contract for binding tokens
 - no completed scaffold or execution CLI flow
 - no hydration or persistence story in the reconciler
 

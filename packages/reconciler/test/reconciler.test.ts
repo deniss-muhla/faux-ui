@@ -1,13 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 
-import {
-  createReconciler,
-  Text,
-  TEXT_TYPE,
-  View,
-  VIEW_TYPE,
-} from "../src/index.js";
+import { createReconciler, TEXT_TYPE, VIEW_TYPE } from "../src/index.js";
 
 describe("reconciler skeleton", () => {
   it("renders a single text root", () => {
@@ -125,20 +119,20 @@ describe("reconciler skeleton", () => {
 
     root.render(
       createElement(
-        View,
-        { columns: [4], onClick: 21, focusable: true },
-        createElement(Text, { onPress: 11, wrap: true }, "AB"),
+        VIEW_TYPE,
+        { columns: [4], onClick: "open-root", focusable: true },
+        createElement(TEXT_TYPE, { onPress: "submit-child", wrap: true }, "AB"),
       ),
     );
 
     const mounted = root.getMountedNode();
     expect(mounted?.kind).toBe("view");
     if (mounted?.kind === "view") {
-      expect(mounted.bindings).toEqual({ click: 21 });
+      expect(mounted.bindings).toEqual({ click: "open-root" });
       expect(mounted.children[0]?.kind).toBe("text");
       const child = mounted.children[0];
       if (child?.kind === "text") {
-        expect(child.bindings).toEqual({ press: 11 });
+        expect(child.bindings).toEqual({ press: "submit-child" });
         expect(child.spec.wrap).toBe(true);
       }
     }

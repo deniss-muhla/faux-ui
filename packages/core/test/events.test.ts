@@ -7,6 +7,7 @@ import {
   createTextNode,
   createViewNode,
   dispatchBindingAtPoint,
+  resolveDispatchResult,
   hitTestRenderTree,
   resolveFocusTarget,
   resolveFocusTargetAtPoint,
@@ -15,13 +16,13 @@ import {
 
 describe("render-tree events", () => {
   it("collects bubbling actions from the hit path", () => {
-    const root = createViewNode({ bindings: { click: 30 } });
+    const root = createViewNode({ bindings: { click: "root-click" } });
     const focusable = createViewNode({
-      bindings: { click: 20 },
+      bindings: { click: "child-click" },
       spec: { focusable: true },
     });
     const leaf = createTextNode({
-      bindings: { click: 10 },
+      bindings: { click: "leaf-click" },
       spec: { text: "A", wrap: false, style: null },
     });
     appendChild(focusable, leaf);
@@ -37,7 +38,11 @@ describe("render-tree events", () => {
     const hit = hitTestRenderTree(tree, { x: 0, y: 0 });
     const actions = collectDispatchActions(hit, "click");
 
-    expect(actions.map((action) => action.token)).toEqual([10, 20, 30]);
+    expect(actions.map((action) => action.token)).toEqual([
+      "leaf-click",
+      "child-click",
+      "root-click",
+    ]);
     expect(actions.map((action) => action.nodeId)).toEqual([
       leaf.id,
       focusable.id,
@@ -70,9 +75,9 @@ describe("render-tree events", () => {
   });
 
   it("dispatches from a point in one step", () => {
-    const root = createViewNode({ bindings: { click: 2 } });
+    const root = createViewNode({ bindings: { click: "root" } });
     const leaf = createTextNode({
-      bindings: { click: 1 },
+      bindings: { click: "leaf" },
       spec: { text: "A", wrap: false, style: null },
     });
     appendChild(root, leaf);
@@ -87,6 +92,43 @@ describe("render-tree events", () => {
     const result = dispatchBindingAtPoint(tree, { x: 0, y: 0 }, "click");
 
     expect(result.hit?.node.nodeId).toBe(leaf.id);
-    expect(result.actions.map((action) => action.token)).toEqual([1, 2]);
+    expect(result.actions.map((action) => action.token)).toEqual([
+      "leaf",
+      "root",
+    ]);
+  });
+
+  it("resolves dispatch results into application handlers", () => {
+    const root = createViewNode({ bindings: { click: "root" } });
+    const leaf = createTextNode({
+      bindings: { click: "leaf" },
+      spec: { text: "A", wrap: false, style: null },
+    });
+    appendChild(root, leaf);
+
+    const tree = buildRenderTree(root, {
+      constraints: {},
+      measureText: ({ text }: TextLayoutRequest) => ({
+        width: text.length,
+        height: 1,
+      }),
+    });
+    const result = dispatchBindingAtPoint(tree, { x: 0, y: 0 }, "click");
+    const execution = resolveDispatchResult("click", result, (token) => {
+      if (token === "leaf") {
+        return "open-leaf";
+      }
+
+      return undefined;
+    });
+
+    expect(execution.binding).toBe("click");
+    expect(execution.target?.nodeId).toBe(leaf.id);
+    expect(execution.resolvedActions).toEqual([
+      expect.objectContaining({
+        token: "leaf",
+        handler: "open-leaf",
+      }),
+    ]);
   });
 });

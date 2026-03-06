@@ -1,6 +1,10 @@
 export { FrameBuffer } from "./frame-buffer.js";
 export type { Cell } from "./frame-buffer.js";
-export { dispatchTuiBinding, resolveTuiFocusTarget } from "./events.js";
+export {
+  dispatchTuiBinding,
+  resolveTuiBinding,
+  resolveTuiFocusTarget,
+} from "./events.js";
 export type { TuiInputOptions, TuiPoint } from "./events.js";
 export { renderToFrameBuffer } from "./render.js";
 export type { RenderOptions } from "./render.js";

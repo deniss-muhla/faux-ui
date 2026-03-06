@@ -795,7 +795,7 @@ function readBindings(props: Props): BoundActions | null {
 
     if (!isBindingToken(token)) {
       throw new Error(
-        `${String(propName)} must be a non-negative integer binding token.`,
+        `${String(propName)} must be a non-empty string or non-negative integer binding token.`,
       );
     }
 
@@ -865,5 +865,8 @@ function readExplicitBindings(value: unknown): BoundActions | null {
 }
 
 function isBindingToken(value: unknown): value is BindingToken {
-  return typeof value === "number" && Number.isInteger(value) && value >= 0;
+  return (
+    (typeof value === "number" && Number.isInteger(value) && value >= 0) ||
+    (typeof value === "string" && value.length > 0)
+  );
 }

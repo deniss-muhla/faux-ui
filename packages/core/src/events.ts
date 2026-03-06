@@ -9,6 +9,12 @@ import type { BindingToken, BoundActions } from "./ui-node.js";
 
 export type BindingName = keyof BoundActions;
 
+export type BindingHandlerResolver<THandler> = (
+  token: BindingToken,
+  action: DispatchAction,
+  result: DispatchResult,
+) => THandler | undefined;
+
 export interface DispatchAction {
   binding: BindingName;
   token: BindingToken;
@@ -20,6 +26,16 @@ export interface DispatchAction {
 export interface DispatchResult {
   hit: RenderHit | null;
   actions: DispatchAction[];
+}
+
+export interface ResolvedDispatchAction<THandler> extends DispatchAction {
+  handler: THandler;
+}
+
+export interface DispatchExecution<THandler> extends DispatchResult {
+  binding: BindingName;
+  target: RenderTreeNode | null;
+  resolvedActions: ResolvedDispatchAction<THandler>[];
 }
 
 export function collectDispatchActions(
@@ -64,6 +80,33 @@ export function dispatchBindingAtPoint(
   return {
     hit,
     actions: collectDispatchActions(hit, binding),
+  };
+}
+
+export function resolveDispatchResult<THandler>(
+  binding: BindingName,
+  result: DispatchResult,
+  resolveHandler: BindingHandlerResolver<THandler>,
+): DispatchExecution<THandler> {
+  const resolvedActions: ResolvedDispatchAction<THandler>[] = [];
+
+  for (const action of result.actions) {
+    const handler = resolveHandler(action.token, action, result);
+    if (handler === undefined) {
+      continue;
+    }
+
+    resolvedActions.push({
+      ...action,
+      handler,
+    });
+  }
+
+  return {
+    ...result,
+    binding,
+    target: result.hit?.node ?? null,
+    resolvedActions,
   };
 }
 

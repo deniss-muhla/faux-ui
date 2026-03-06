@@ -6,7 +6,11 @@ import {
   createViewNode,
   setNodeBindings,
 } from "../../core/src/index.js";
-import { dispatchTuiBinding, resolveTuiFocusTarget } from "../src/events.js";
+import {
+  dispatchTuiBinding,
+  resolveTuiBinding,
+  resolveTuiFocusTarget,
+} from "../src/events.js";
 import { FrameBuffer } from "../src/frame-buffer.js";
 import { renderToFrameBuffer } from "../src/render.js";
 import { createTuiTextMeasurer } from "../src/text-measurer.js";
@@ -72,15 +76,15 @@ describe("tui renderer", () => {
   });
 
   it("dispatches TUI bindings and resolves focus from cell coordinates", () => {
-    const root = createViewNode({ bindings: { press: 9 } });
+    const root = createViewNode({ bindings: { press: "root-press" } });
     const child = createViewNode({ spec: { focusable: true } });
     const leaf = createTextNode({
       spec: { text: "A", wrap: false, style: null },
-      bindings: { press: 7 },
+      bindings: { press: "leaf-press" },
     });
     appendChild(child, leaf);
     appendChild(root, child);
-    setNodeBindings(child, { press: 8 });
+    setNodeBindings(child, { press: "child-press" });
 
     const result = dispatchTuiBinding(
       root,
@@ -89,10 +93,35 @@ describe("tui renderer", () => {
       "press",
     );
 
-    expect(result.actions.map((action) => action.token)).toEqual([7, 8, 9]);
+    expect(result.actions.map((action) => action.token)).toEqual([
+      "leaf-press",
+      "child-press",
+      "root-press",
+    ]);
     expect(
       resolveTuiFocusTarget(root, { constraints: {} }, { x: 0, y: 0 })?.nodeId,
     ).toBe(child.id);
+  });
+
+  it("builds resolved TUI dispatch executions for application handlers", () => {
+    const root = createViewNode({ bindings: { press: "root-press" } });
+    const leaf = createTextNode({
+      spec: { text: "A", wrap: false, style: null },
+      bindings: { press: "leaf-press" },
+    });
+    appendChild(root, leaf);
+
+    const execution = resolveTuiBinding(
+      root,
+      { constraints: {} },
+      { x: 0, y: 0 },
+      "press",
+      (token) => (token === "leaf-press" ? "submit" : undefined),
+    );
+
+    expect(execution.resolvedActions).toEqual([
+      expect.objectContaining({ token: "leaf-press", handler: "submit" }),
+    ]);
   });
 
   it("captures a stable TUI framebuffer snapshot", () => {

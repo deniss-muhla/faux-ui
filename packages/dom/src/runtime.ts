@@ -2,7 +2,10 @@ import {
   buildRenderTree,
   collectDispatchActions,
   dispatchBindingAtPoint,
+  resolveDispatchResult,
+  type BindingHandlerResolver,
   type BindingName,
+  type DispatchExecution,
   type DispatchResult,
   type NodeId,
   type RenderHit,
@@ -59,9 +62,10 @@ export interface DomKeyboardEventLike {
   preventDefault?(): void;
 }
 
-export interface DomDispatchEvent {
+export interface DomDispatchEvent<THandler = unknown> {
   binding: BindingName;
   result: DispatchResult;
+  execution: DispatchExecution<THandler> | null;
   nativeEvent: unknown;
 }
 
@@ -70,17 +74,18 @@ export interface DomFocusChangeEvent {
   nodeId: number | null;
 }
 
-export interface DomMountOptions extends DomRenderOptions {
+export interface DomMountOptions<THandler = unknown> extends DomRenderOptions {
   container: DomElementLike;
   document?: DomDocumentLike;
-  onDispatch?: (event: DomDispatchEvent) => void;
+  resolveAction?: BindingHandlerResolver<THandler>;
+  onDispatch?: (event: DomDispatchEvent<THandler>) => void;
   onFocusChange?: (event: DomFocusChangeEvent) => void;
 }
 
-export interface MountedDomRoot {
+export interface MountedDomRoot<THandler = unknown> {
   update(
     root?: UINode,
-    options?: Partial<Omit<DomMountOptions, "container">>,
+    options?: Partial<Omit<DomMountOptions<THandler>, "container">>,
   ): void;
   rerender(): void;
   unmount(): void;
@@ -99,7 +104,15 @@ export interface MountedDomRoot {
 export function mountDomRoot(
   root: UINode,
   options: DomMountOptions,
-): MountedDomRoot {
+): MountedDomRoot;
+export function mountDomRoot<THandler>(
+  root: UINode,
+  options: DomMountOptions<THandler>,
+): MountedDomRoot<THandler>;
+export function mountDomRoot<THandler>(
+  root: UINode,
+  options: DomMountOptions<THandler>,
+): MountedDomRoot<THandler> {
   let currentRoot = root;
   let currentOptions = cloneMountOptions(options);
   let currentScrollOffsets = cloneScrollOffsets(options.scrollOffsets);
@@ -315,7 +328,7 @@ export function mountDomRoot(
     nativeEvent: unknown,
   ): DispatchResult {
     const result = dispatchBindingAtPoint(buildInputTree(), point, binding);
-    currentOptions.onDispatch?.({ binding, result, nativeEvent });
+    notifyDispatch(binding, result, nativeEvent);
     return result;
   }
 
@@ -363,7 +376,7 @@ export function mountDomRoot(
   ): DispatchResult {
     if (focusedNodeId === null) {
       const result = { hit: null, actions: [] } satisfies DispatchResult;
-      currentOptions.onDispatch?.({ binding, result, nativeEvent });
+      notifyDispatch(binding, result, nativeEvent);
       return result;
     }
 
@@ -381,8 +394,26 @@ export function mountDomRoot(
       hit,
       actions: collectDispatchActions(hit, binding),
     } satisfies DispatchResult;
-    currentOptions.onDispatch?.({ binding, result, nativeEvent });
+    notifyDispatch(binding, result, nativeEvent);
     return result;
+  }
+
+  function notifyDispatch(
+    binding: BindingName,
+    result: DispatchResult,
+    nativeEvent: unknown,
+  ): void {
+    const execution =
+      currentOptions.resolveAction === undefined
+        ? null
+        : resolveDispatchResult(binding, result, currentOptions.resolveAction);
+
+    currentOptions.onDispatch?.({
+      binding,
+      result,
+      execution,
+      nativeEvent,
+    });
   }
 
   function hitPathAtPoint(point: DomPoint): RenderTreeNode[] | null {
@@ -409,17 +440,19 @@ export function mountDomRoot(
   }
 }
 
-function cloneMountOptions(options: DomMountOptions): DomMountOptions {
+function cloneMountOptions<THandler>(
+  options: DomMountOptions<THandler>,
+): DomMountOptions<THandler> {
   return {
     ...options,
     scrollOffsets: cloneScrollOffsets(options.scrollOffsets),
   };
 }
 
-function mergeMountOptions(
-  current: DomMountOptions,
-  patch: Partial<Omit<DomMountOptions, "container">>,
-): DomMountOptions {
+function mergeMountOptions<THandler>(
+  current: DomMountOptions<THandler>,
+  patch: Partial<Omit<DomMountOptions<THandler>, "container">>,
+): DomMountOptions<THandler> {
   return {
     ...current,
     ...patch,
@@ -441,7 +474,9 @@ function cloneScrollOffsets(
   return next;
 }
 
-function resolveDocument(options: DomMountOptions): DomDocumentLike {
+function resolveDocument<THandler>(
+  options: DomMountOptions<THandler>,
+): DomDocumentLike {
   if (options.document !== undefined) {
     return options.document;
   }

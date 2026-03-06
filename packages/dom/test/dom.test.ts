@@ -2,11 +2,16 @@ import { describe, expect, it } from "vitest";
 
 import {
   appendChild,
+  type BindingToken,
   createTextNode,
   createViewNode,
   setNodeBindings,
-} from "@faux-ui/core";
-import { dispatchDomBinding, resolveDomFocusTarget } from "../src/events.js";
+} from "../../core/src/index.js";
+import {
+  dispatchDomBinding,
+  resolveDomBinding,
+  resolveDomFocusTarget,
+} from "../src/events.js";
 import { createDomTextMeasurer } from "../src/text-measurer.js";
 import { renderToDomModel } from "../src/model.js";
 import { mountDomRoot } from "../src/runtime.js";
@@ -85,15 +90,15 @@ describe("dom renderer", () => {
   });
 
   it("dispatches DOM bindings and resolves focus from the shared render tree", () => {
-    const root = createViewNode({ bindings: { click: 3 } });
+    const root = createViewNode({ bindings: { click: "root" } });
     const child = createViewNode({ spec: { focusable: true } });
     const leaf = createTextNode({
       spec: { text: "A", wrap: false, style: null },
-      bindings: { click: 1 },
+      bindings: { click: "leaf" },
     });
     appendChild(child, leaf);
     appendChild(root, child);
-    setNodeBindings(child, { click: 2 });
+    setNodeBindings(child, { click: "child" });
 
     const options = {
       constraints: {},
@@ -105,10 +110,38 @@ describe("dom renderer", () => {
 
     const result = dispatchDomBinding(root, options, { x: 0, y: 0 }, "click");
 
-    expect(result.actions.map((action) => action.token)).toEqual([1, 2, 3]);
+    expect(result.actions.map((action) => action.token)).toEqual([
+      "leaf",
+      "child",
+      "root",
+    ]);
     expect(resolveDomFocusTarget(root, options, { x: 0, y: 0 })?.nodeId).toBe(
       child.id,
     );
+  });
+
+  it("builds resolved DOM dispatch executions for application handlers", () => {
+    const root = createViewNode({ bindings: { click: "root" } });
+    const leaf = createTextNode({
+      spec: { text: "A", wrap: false, style: null },
+      bindings: { click: "leaf" },
+    });
+    appendChild(root, leaf);
+
+    const execution = resolveDomBinding(
+      root,
+      {
+        constraints: {},
+        measureText: ({ text }) => ({ width: text.length, height: 1 }),
+      },
+      { x: 0, y: 0 },
+      "click",
+      (token: BindingToken) => (token === "leaf" ? "open-leaf" : undefined),
+    );
+
+    expect(execution.resolvedActions).toEqual([
+      expect.objectContaining({ token: "leaf", handler: "open-leaf" }),
+    ]);
   });
 
   it("captures a stable DOM render snapshot", () => {
@@ -210,34 +243,48 @@ describe("dom renderer", () => {
   });
 
   it("routes browser-style input through DOM dispatch and focus state", () => {
-    const dispatched: Array<{ binding: string; tokens: number[] }> = [];
+    const dispatched: Array<{
+      binding: string;
+      tokens: Array<string | number>;
+      handlers: string[];
+    }> = [];
     const focusChanges: Array<{
       previousNodeId: number | null;
       nodeId: number | null;
     }> = [];
-    const root = createViewNode({ bindings: { click: 4 } });
+    const root = createViewNode({ bindings: { click: "root-click" } });
     const child = createViewNode({
       spec: { focusable: true },
-      bindings: { focus: 5, blur: 6, click: 2, keyDown: 7, press: 8 },
+      bindings: {
+        focus: "focus-child",
+        blur: "blur-child",
+        click: "click-child",
+        keyDown: "keydown-child",
+        press: "press-child",
+      },
     });
     const leaf = createTextNode({
       spec: { text: "A", wrap: false, style: null },
-      bindings: { click: 1 },
+      bindings: { click: "click-leaf" },
     });
     appendChild(child, leaf);
     appendChild(root, child);
 
     const document = new FakeDocument();
     const container = document.createElement("div");
-    const mounted = mountDomRoot(root, {
+    const mounted = mountDomRoot<string>(root, {
       container,
       document,
       constraints: {},
       measureText: ({ text }) => ({ width: text.length, height: 1 }),
-      onDispatch: ({ binding, result }) => {
+      resolveAction: (token: BindingToken) =>
+        typeof token === "string" ? `handler:${token}` : undefined,
+      onDispatch: ({ binding, result, execution }) => {
         dispatched.push({
           binding,
           tokens: result.actions.map((action) => action.token),
+          handlers:
+            execution?.resolvedActions.map((action) => action.handler) ?? [],
         });
       },
       onFocusChange: (event) => {
@@ -256,12 +303,36 @@ describe("dom renderer", () => {
       { previousNodeId: child.id, nodeId: null },
     ]);
     expect(dispatched).toEqual([
-      { binding: "focus", tokens: [5] },
-      { binding: "mouseDown", tokens: [] },
-      { binding: "click", tokens: [1, 2, 4] },
-      { binding: "keyDown", tokens: [7] },
-      { binding: "press", tokens: [8] },
-      { binding: "blur", tokens: [6] },
+      {
+        binding: "focus",
+        tokens: ["focus-child"],
+        handlers: ["handler:focus-child"],
+      },
+      { binding: "mouseDown", tokens: [], handlers: [] },
+      {
+        binding: "click",
+        tokens: ["click-leaf", "click-child", "root-click"],
+        handlers: [
+          "handler:click-leaf",
+          "handler:click-child",
+          "handler:root-click",
+        ],
+      },
+      {
+        binding: "keyDown",
+        tokens: ["keydown-child"],
+        handlers: ["handler:keydown-child"],
+      },
+      {
+        binding: "press",
+        tokens: ["press-child"],
+        handlers: ["handler:press-child"],
+      },
+      {
+        binding: "blur",
+        tokens: ["blur-child"],
+        handlers: ["handler:blur-child"],
+      },
     ]);
   });
 });
