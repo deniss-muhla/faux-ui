@@ -62,6 +62,10 @@ export interface DomKeyboardEventLike {
   preventDefault?(): void;
 }
 
+export interface DomFocusEventLike {
+  relatedTarget?: DomElementLike | null;
+}
+
 export interface DomDispatchEvent<THandler = unknown> {
   binding: BindingName;
   result: DispatchResult;
@@ -117,6 +121,8 @@ export function mountDomRoot<THandler>(
   let currentOptions = cloneMountOptions(options);
   let currentScrollOffsets = cloneScrollOffsets(options.scrollOffsets);
   let focusedNodeId: number | null = null;
+  let hoveredPathNodeIds: NodeId[] = [];
+  let elementNodeIds = new WeakMap<DomElementLike, NodeId>();
   let nodeElements = new Map<NodeId, DomElementLike>();
   let focusableNodeIds = collectFocusableNodeIds(currentRoot);
 
@@ -162,11 +168,16 @@ export function mountDomRoot<THandler>(
       return;
     }
 
-    dispatchAtPointInternal(
-      "mouseMove",
-      pointFromPointerEvent(container, event),
-      event,
-    );
+    const point = pointFromPointerEvent(container, event);
+    syncHoveredPathAtPoint(point, event);
+
+    dispatchAtPointInternal("mouseMove", point, event);
+  };
+
+  const mouseLeaveListener: EventListener = (event) => {
+    if (syncHoveredPath(null, event)) {
+      rerenderInternal();
+    }
   };
 
   const wheelListener: EventListener = (event) => {
@@ -174,8 +185,7 @@ export function mountDomRoot<THandler>(
       return;
     }
 
-    dispatchAtPointInternal(
-      "scroll",
+    dispatchWheelAtPointInternal(
       pointFromPointerEvent(container, event),
       event,
     );
@@ -205,6 +215,7 @@ export function mountDomRoot<THandler>(
   container.addEventListener("mousedown", mouseDownListener);
   container.addEventListener("mouseup", mouseUpListener);
   container.addEventListener("mousemove", mouseMoveListener);
+  container.addEventListener("mouseleave", mouseLeaveListener);
   container.addEventListener("wheel", wheelListener);
   container.addEventListener("keydown", keyDownListener);
   container.addEventListener("keyup", keyUpListener);
@@ -212,6 +223,11 @@ export function mountDomRoot<THandler>(
 
   return {
     update(nextRoot, nextOptions) {
+      const previousRoot = currentRoot;
+      const previousOptions = renderOptions();
+      const previousFocusedNodeId = focusedNodeId;
+      const previousHoveredPathNodeIds = [...hoveredPathNodeIds];
+
       if (nextRoot !== undefined) {
         currentRoot = nextRoot;
       }
@@ -224,24 +240,31 @@ export function mountDomRoot<THandler>(
       }
 
       focusableNodeIds = collectFocusableNodeIds(currentRoot);
-      if (focusedNodeId !== null && !focusableNodeIds.has(focusedNodeId)) {
-        focusedNodeId = null;
-      }
+      reconcileDetachedInteractionState(
+        previousRoot,
+        previousOptions,
+        previousFocusedNodeId,
+        previousHoveredPathNodeIds,
+      );
       rerenderInternal();
     },
     rerender() {
       rerenderInternal();
     },
     unmount() {
+      flushInteractionState(currentRoot, renderOptions(), { type: "unmount" });
       container.removeEventListener("click", clickListener);
       container.removeEventListener("mousedown", mouseDownListener);
       container.removeEventListener("mouseup", mouseUpListener);
       container.removeEventListener("mousemove", mouseMoveListener);
+      container.removeEventListener("mouseleave", mouseLeaveListener);
       container.removeEventListener("wheel", wheelListener);
       container.removeEventListener("keydown", keyDownListener);
       container.removeEventListener("keyup", keyUpListener);
       container.replaceChildren();
       nodeElements = new Map<NodeId, DomElementLike>();
+      elementNodeIds = new WeakMap<DomElementLike, NodeId>();
+      hoveredPathNodeIds = [];
       focusedNodeId = null;
     },
     dispatchAtPoint(binding, point, nativeEvent) {
@@ -282,6 +305,10 @@ export function mountDomRoot<THandler>(
     const base = {
       constraints: currentOptions.constraints,
       measureText: currentOptions.measureText,
+      ...(hoveredPathNodeIds.length > 0
+        ? { hoveredNodeIds: new Set(hoveredPathNodeIds) }
+        : {}),
+      ...(focusedNodeId !== null ? { focusedNodeId } : {}),
     } satisfies DomRenderOptions;
 
     return currentScrollOffsets.size === 0
@@ -296,6 +323,7 @@ export function mountDomRoot<THandler>(
     model: ReturnType<typeof renderToDomModel>,
   ): DomElementLike {
     nodeElements = new Map<NodeId, DomElementLike>();
+    elementNodeIds = new WeakMap<DomElementLike, NodeId>();
     return createLiveNodeRecursive(model);
   }
 
@@ -304,6 +332,7 @@ export function mountDomRoot<THandler>(
   ): DomElementLike {
     const element = document.createElement(model.tag);
     nodeElements.set(model.nodeId, element);
+    elementNodeIds.set(element, model.nodeId);
 
     for (const [name, value] of Object.entries(model.styles)) {
       element.style.setProperty(name, value);
@@ -313,7 +342,19 @@ export function mountDomRoot<THandler>(
       element.textContent = model.textContent ?? "";
     } else {
       element.textContent = null;
-      element.tabIndex = focusableNodeIds.has(model.nodeId) ? 0 : -1;
+      const isFocusable = focusableNodeIds.has(model.nodeId);
+      element.tabIndex = isFocusable ? 0 : -1;
+      if (isFocusable) {
+        element.addEventListener("focus", () => {
+          focusNodeInternal(model.nodeId, { type: "native-focus" });
+        });
+        element.addEventListener("blur", (event) => {
+          const relatedNodeId = resolveNodeIdFromElement(
+            (event as DomFocusEventLike).relatedTarget,
+          );
+          focusNodeInternal(relatedNodeId, event);
+        });
+      }
       for (const child of model.children) {
         element.appendChild(createLiveNodeRecursive(child));
       }
@@ -329,6 +370,25 @@ export function mountDomRoot<THandler>(
   ): DispatchResult {
     const result = dispatchBindingAtPoint(buildInputTree(), point, binding);
     notifyDispatch(binding, result, nativeEvent);
+    return result;
+  }
+
+  function dispatchWheelAtPointInternal(
+    point: DomPoint,
+    event: DomWheelEventLike,
+  ): DispatchResult {
+    const result = dispatchBindingAtPoint(buildInputTree(), point, "scroll");
+    const didScroll = applyScrollDelta(result.hit, {
+      x: event.deltaX,
+      y: event.deltaY,
+    });
+
+    if (didScroll) {
+      event.preventDefault?.();
+      rerenderInternal();
+    }
+
+    notifyDispatch("scroll", result, event);
     return result;
   }
 
@@ -416,6 +476,57 @@ export function mountDomRoot<THandler>(
     });
   }
 
+  function syncHoveredPathAtPoint(point: DomPoint, nativeEvent: unknown): void {
+    if (syncHoveredPath(hitPathAtPoint(point), nativeEvent)) {
+      rerenderInternal();
+    }
+  }
+
+  function syncHoveredPath(
+    nextPath: RenderTreeNode[] | null,
+    nativeEvent: unknown,
+  ): boolean {
+    const nextNodeIds = nextPath?.map((node) => node.nodeId) ?? [];
+    let sharedPrefixLength = 0;
+
+    while (
+      sharedPrefixLength < hoveredPathNodeIds.length &&
+      sharedPrefixLength < nextNodeIds.length &&
+      hoveredPathNodeIds[sharedPrefixLength] === nextNodeIds[sharedPrefixLength]
+    ) {
+      sharedPrefixLength += 1;
+    }
+
+    for (
+      let index = hoveredPathNodeIds.length - 1;
+      index >= sharedPrefixLength;
+      index -= 1
+    ) {
+      const nodeId = hoveredPathNodeIds[index];
+      if (nodeId !== undefined) {
+        dispatchOwnBindingForNodeInternal(nodeId, "mouseLeave", nativeEvent);
+      }
+    }
+
+    for (
+      let index = sharedPrefixLength;
+      index < nextNodeIds.length;
+      index += 1
+    ) {
+      const nodeId = nextNodeIds[index];
+      if (nodeId !== undefined) {
+        dispatchOwnBindingForNodeInternal(nodeId, "mouseEnter", nativeEvent);
+      }
+    }
+
+    const changed =
+      sharedPrefixLength !== hoveredPathNodeIds.length ||
+      sharedPrefixLength !== nextNodeIds.length;
+
+    hoveredPathNodeIds = nextNodeIds;
+    return changed;
+  }
+
   function hitPathAtPoint(point: DomPoint): RenderTreeNode[] | null {
     return (
       dispatchBindingAtPoint(buildInputTree(), point, "click").hit?.path ?? null
@@ -437,6 +548,252 @@ export function mountDomRoot<THandler>(
             scrollOffsets: options.scrollOffsets,
           },
     );
+  }
+
+  function dispatchOwnBindingForNodeInternal(
+    nodeId: number,
+    binding: BindingName,
+    nativeEvent: unknown,
+  ): void {
+    const tree = buildInputTree();
+    const hit = findHitByNodeId(tree, nodeId);
+    const token = hit?.node.node.bindings?.[binding];
+
+    if (hit === null || token === undefined) {
+      return;
+    }
+
+    notifyDispatch(
+      binding,
+      {
+        hit,
+        actions: [
+          {
+            binding,
+            token,
+            nodeId,
+            currentTarget: hit.node,
+            target: hit.node,
+          },
+        ],
+      },
+      nativeEvent,
+    );
+  }
+
+  function resolveNodeIdFromElement(
+    element: DomElementLike | null | undefined,
+  ): number | null {
+    if (element === undefined || element === null) {
+      return null;
+    }
+
+    return elementNodeIds.get(element) ?? null;
+  }
+
+  function applyScrollDelta(
+    hit: RenderHit | null,
+    delta: ScrollOffset,
+  ): boolean {
+    if (hit === null) {
+      return false;
+    }
+
+    const scrollable = resolveScrollableNode(hit.path);
+    if (scrollable === null) {
+      return false;
+    }
+
+    const previousOffset = currentScrollOffsets.get(scrollable.nodeId) ?? {
+      x: 0,
+      y: 0,
+    };
+    const nextOffset = clampScrollOffset(scrollable, previousOffset, delta);
+
+    if (
+      nextOffset.x === previousOffset.x &&
+      nextOffset.y === previousOffset.y
+    ) {
+      return false;
+    }
+
+    currentScrollOffsets.set(scrollable.nodeId, nextOffset);
+    return true;
+  }
+
+  function reconcileDetachedInteractionState(
+    previousRoot: UINode,
+    previousOptions: DomRenderOptions,
+    previousFocusedNodeId: number | null,
+    previousHoveredNodeIds: NodeId[],
+  ): void {
+    const currentNodeIds = collectNodeIds(currentRoot);
+    const detachedHoveredNodeIds = previousHoveredNodeIds.filter(
+      (nodeId) => !currentNodeIds.has(nodeId),
+    );
+
+    if (detachedHoveredNodeIds.length > 0) {
+      const previousTree = buildRenderTree(
+        previousRoot,
+        previousOptions.scrollOffsets === undefined
+          ? {
+              constraints: previousOptions.constraints,
+              measureText: previousOptions.measureText,
+            }
+          : {
+              constraints: previousOptions.constraints,
+              measureText: previousOptions.measureText,
+              scrollOffsets: previousOptions.scrollOffsets,
+            },
+      );
+
+      for (
+        let index = detachedHoveredNodeIds.length - 1;
+        index >= 0;
+        index -= 1
+      ) {
+        const nodeId = detachedHoveredNodeIds[index];
+        if (nodeId !== undefined) {
+          dispatchOwnBindingForNodeFromTree(
+            previousTree,
+            nodeId,
+            "mouseLeave",
+            { type: "tree-update" },
+          );
+        }
+      }
+
+      hoveredPathNodeIds = hoveredPathNodeIds.filter((nodeId) =>
+        currentNodeIds.has(nodeId),
+      );
+    }
+
+    if (
+      previousFocusedNodeId !== null &&
+      !focusableNodeIds.has(previousFocusedNodeId)
+    ) {
+      const previousTree = buildRenderTree(
+        previousRoot,
+        previousOptions.scrollOffsets === undefined
+          ? {
+              constraints: previousOptions.constraints,
+              measureText: previousOptions.measureText,
+            }
+          : {
+              constraints: previousOptions.constraints,
+              measureText: previousOptions.measureText,
+              scrollOffsets: previousOptions.scrollOffsets,
+            },
+      );
+
+      dispatchBindingForNodeFromTree(
+        previousTree,
+        previousFocusedNodeId,
+        "blur",
+        { type: "tree-update" },
+      );
+      focusedNodeId = null;
+      currentOptions.onFocusChange?.({
+        previousNodeId: previousFocusedNodeId,
+        nodeId: null,
+      });
+    }
+  }
+
+  function flushInteractionState(
+    root: UINode,
+    options: DomRenderOptions,
+    nativeEvent: unknown,
+  ): void {
+    const tree = buildRenderTree(
+      root,
+      options.scrollOffsets === undefined
+        ? {
+            constraints: options.constraints,
+            measureText: options.measureText,
+          }
+        : {
+            constraints: options.constraints,
+            measureText: options.measureText,
+            scrollOffsets: options.scrollOffsets,
+          },
+    );
+
+    for (let index = hoveredPathNodeIds.length - 1; index >= 0; index -= 1) {
+      const nodeId = hoveredPathNodeIds[index];
+      if (nodeId !== undefined) {
+        dispatchOwnBindingForNodeFromTree(
+          tree,
+          nodeId,
+          "mouseLeave",
+          nativeEvent,
+        );
+      }
+    }
+
+    if (focusedNodeId !== null) {
+      dispatchBindingForNodeFromTree(tree, focusedNodeId, "blur", nativeEvent);
+      currentOptions.onFocusChange?.({
+        previousNodeId: focusedNodeId,
+        nodeId: null,
+      });
+    }
+  }
+
+  function dispatchBindingForNodeFromTree(
+    tree: RenderTree,
+    nodeId: number,
+    binding: BindingName,
+    nativeEvent: unknown,
+  ): void {
+    const hit = findHitByNodeId(tree, nodeId);
+    const result = {
+      hit,
+      actions: collectDispatchActions(hit, binding),
+    } satisfies DispatchResult;
+
+    notifyDispatch(binding, result, nativeEvent);
+  }
+
+  function dispatchOwnBindingForNodeFromTree(
+    tree: RenderTree,
+    nodeId: number,
+    binding: BindingName,
+    nativeEvent: unknown,
+  ): void {
+    const hit = findHitByNodeId(tree, nodeId);
+    const token = hit?.node.node.bindings?.[binding];
+
+    if (hit === null || token === undefined) {
+      return;
+    }
+
+    notifyDispatch(
+      binding,
+      {
+        hit,
+        actions: [
+          {
+            binding,
+            token,
+            nodeId,
+            currentTarget: hit.node,
+            target: hit.node,
+          },
+        ],
+      },
+      nativeEvent,
+    );
+  }
+
+  function collectNodeIds(root: UINode): Set<NodeId> {
+    const nodeIds = new Set<NodeId>();
+
+    visitNode(root, (node) => {
+      nodeIds.add(node.id);
+    });
+
+    return nodeIds;
   }
 }
 
@@ -538,6 +895,51 @@ function resolveFocusableNodeId(path: RenderTreeNode[] | null): number | null {
   }
 
   return null;
+}
+
+function resolveScrollableNode(path: RenderTreeNode[]): RenderTreeNode | null {
+  for (let index = path.length - 1; index >= 0; index -= 1) {
+    const node = path[index];
+    if (
+      node?.kind === "view" &&
+      node.node.spec.scroll !== null &&
+      (node.contentSize.width > node.frame.width ||
+        node.contentSize.height > node.frame.height)
+    ) {
+      return node;
+    }
+  }
+
+  return null;
+}
+
+function clampScrollOffset(
+  node: RenderTreeNode,
+  offset: ScrollOffset,
+  delta: ScrollOffset,
+): ScrollOffset {
+  if (node.kind !== "view") {
+    return offset;
+  }
+
+  const maxX = Math.max(0, node.contentSize.width - node.frame.width);
+  const maxY = Math.max(0, node.contentSize.height - node.frame.height);
+  const scroll = node.node.spec.scroll;
+
+  return {
+    x:
+      scroll === "x" || scroll === "both"
+        ? clampAxis(offset.x + Math.trunc(delta.x), maxX)
+        : offset.x,
+    y:
+      scroll === "y" || scroll === "both"
+        ? clampAxis(offset.y + Math.trunc(delta.y), maxY)
+        : offset.y,
+  };
+}
+
+function clampAxis(value: number, max: number): number {
+  return Math.max(0, Math.min(max, value));
 }
 
 function findHitByNodeId(tree: RenderTree, nodeId: number): RenderHit | null {

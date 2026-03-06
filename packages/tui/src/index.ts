@@ -8,6 +8,16 @@ export {
 export type { TuiInputOptions, TuiPoint } from "./events.js";
 export { renderToFrameBuffer } from "./render.js";
 export type { RenderOptions } from "./render.js";
+export { mountTuiRoot } from "./runtime.js";
+export type {
+  MountedTuiRoot,
+  TuiDispatchEvent,
+  TuiFocusChangeEvent,
+  TuiKeyboardEventLike,
+  TuiRuntimeEvent,
+  TuiRuntimeOptions,
+  TuiScrollDelta,
+} from "./runtime.js";
 export type { ScrollOffset } from "@faux-ui/core";
 export { createTuiTextMeasurer } from "./text-measurer.js";
 export type { TuiTextMeasurer } from "./text-measurer.js";

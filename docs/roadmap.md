@@ -53,9 +53,20 @@ Why this matters:
 
 The TUI package proves rendering portability today, but not full runtime parity.
 
+Delivered so far:
+
+- `@faux-ui/tui` now includes a host-agnostic runtime controller around the framebuffer renderer
+- the runtime manages focus traversal, key dispatch, pointer dispatch, and managed scroll offsets through the same core dispatch semantics as DOM
+- terminal hosts can drive the runtime through a single event entrypoint or imperative helpers without reimplementing hit testing or focus rules
+
+Remaining:
+
+- connect the runtime to a concrete terminal host loop and capability layer
+- flesh out hover or richer pointer behavior where terminal environments expose it
+
 ### 3. Improve DOM runtime completeness
 
-Status: partially implemented
+Status: implemented
 
 Goal:
 
@@ -67,6 +78,14 @@ Goal:
 Why this matters:
 
 DOM is the most complete runtime, so finishing its interaction edges will clarify the intended cross-renderer contract.
+
+Delivered so far:
+
+- wheel input now updates managed scroll offsets in the DOM runtime instead of only surfacing raw scroll bindings
+- mouse movement now produces enter and leave transitions based on hover path changes through the shared render tree
+- focusable DOM elements now synchronize native focus and blur changes back into runtime state
+- hover and focus state are now projected into DOM styles instead of remaining dispatch-only runtime state
+- rerender and replacement flows now flush stale hover and focus state instead of dropping it silently
 
 ### 4. Add visual and interaction regression coverage
 

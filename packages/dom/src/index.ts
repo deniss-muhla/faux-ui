@@ -11,6 +11,7 @@ export type {
   DomDispatchEvent,
   DomDocumentLike,
   DomElementLike,
+  DomFocusEventLike,
   DomFocusChangeEvent,
   DomKeyboardEventLike,
   DomMountOptions,

@@ -7,13 +7,14 @@ import {
   setNodeBindings,
 } from "../../core/src/index.js";
 import {
+  FrameBuffer,
+  createTuiTextMeasurer,
   dispatchTuiBinding,
+  mountTuiRoot,
+  renderToFrameBuffer,
   resolveTuiBinding,
   resolveTuiFocusTarget,
-} from "../src/events.js";
-import { FrameBuffer } from "../src/frame-buffer.js";
-import { renderToFrameBuffer } from "../src/render.js";
-import { createTuiTextMeasurer } from "../src/text-measurer.js";
+} from "../src/index.js";
 
 describe("tui renderer", () => {
   it("measures wrapped text in character cells", () => {
@@ -138,5 +139,142 @@ describe("tui renderer", () => {
     const buffer = renderToFrameBuffer(root, { constraints: {} });
 
     expect(buffer.toString()).toMatchInlineSnapshot(`"leftR   "`);
+  });
+
+  it("routes pointer and keyboard input through the TUI runtime", () => {
+    const dispatched: Array<{
+      binding: string;
+      tokens: Array<string | number>;
+      handlers: string[];
+    }> = [];
+    const focusChanges: Array<{
+      previousNodeId: number | null;
+      nodeId: number | null;
+    }> = [];
+    const root = createViewNode({ bindings: { click: "root-click" } });
+    const child = createViewNode({
+      spec: { focusable: true },
+      bindings: {
+        focus: "focus-child",
+        click: "click-child",
+        keyDown: "keydown-child",
+        mouseDown: "mousedown-child",
+        press: "press-child",
+      },
+    });
+    const leaf = createTextNode({
+      spec: { text: "A", wrap: false, style: null },
+      bindings: { click: "click-leaf" },
+    });
+    appendChild(child, leaf);
+    appendChild(root, child);
+
+    const runtime = mountTuiRoot<string>(root, {
+      constraints: {},
+      resolveAction: (token) =>
+        typeof token === "string" ? `handler:${token}` : undefined,
+      onDispatch: ({ binding, result, execution }) => {
+        dispatched.push({
+          binding,
+          tokens: result.actions.map((action) => action.token),
+          handlers:
+            execution?.resolvedActions.map((action) => action.handler) ?? [],
+        });
+      },
+      onFocusChange: (event) => {
+        focusChanges.push(event);
+      },
+    });
+
+    runtime.dispatchEvent({ type: "pointerDown", point: { x: 0, y: 0 } });
+    runtime.dispatchEvent({ type: "click", point: { x: 0, y: 0 } });
+    runtime.dispatchEvent({ type: "keyDown", key: "Enter" });
+
+    expect(runtime.getFocusedNodeId()).toBe(child.id);
+    expect(focusChanges).toEqual([{ previousNodeId: null, nodeId: child.id }]);
+    expect(dispatched).toEqual([
+      {
+        binding: "focus",
+        tokens: ["focus-child"],
+        handlers: ["handler:focus-child"],
+      },
+      {
+        binding: "mouseDown",
+        tokens: ["mousedown-child"],
+        handlers: ["handler:mousedown-child"],
+      },
+      {
+        binding: "click",
+        tokens: ["click-leaf", "click-child", "root-click"],
+        handlers: [
+          "handler:click-leaf",
+          "handler:click-child",
+          "handler:root-click",
+        ],
+      },
+      {
+        binding: "keyDown",
+        tokens: ["keydown-child"],
+        handlers: ["handler:keydown-child"],
+      },
+      {
+        binding: "press",
+        tokens: ["press-child"],
+        handlers: ["handler:press-child"],
+      },
+    ]);
+  });
+
+  it("cycles focus in tree order through the TUI runtime", () => {
+    const root = createViewNode({ spec: { rows: ["auto", "auto"] } });
+    const first = createViewNode({ spec: { focusable: true } });
+    const second = createViewNode({ spec: { focusable: true } });
+    appendChild(
+      first,
+      createTextNode({ spec: { text: "A", wrap: false, style: null } }),
+    );
+    appendChild(
+      second,
+      createTextNode({ spec: { text: "B", wrap: false, style: null } }),
+    );
+    appendChild(root, first);
+    appendChild(root, second);
+
+    const runtime = mountTuiRoot(root, { constraints: {} });
+
+    expect(runtime.focusNext()).toBe(first.id);
+    expect(runtime.focusNext()).toBe(second.id);
+    expect(runtime.focusPrevious()).toBe(first.id);
+  });
+
+  it("updates managed scroll offsets and rerenders through the TUI runtime", () => {
+    const dispatched: Array<Array<string | number>> = [];
+    const root = createViewNode({
+      spec: { rows: ["auto", "auto"], scroll: "y" },
+      bindings: { scroll: "scroll-root" },
+    });
+    appendChild(
+      root,
+      createTextNode({ spec: { text: "one", wrap: false, style: null } }),
+    );
+    appendChild(
+      root,
+      createTextNode({ spec: { text: "two", wrap: false, style: null } }),
+    );
+
+    const runtime = mountTuiRoot(root, {
+      constraints: { maxHeight: 1 },
+      onDispatch: ({ result }) => {
+        dispatched.push(result.actions.map((action) => action.token));
+      },
+    });
+
+    expect(runtime.render().toString()).toBe("one");
+
+    runtime.scrollAtPoint({ x: 0, y: 0 }, { x: 0, y: 1 });
+
+    expect(runtime.getScrollOffset(root.id)).toEqual({ x: 0, y: 1 });
+    expect(runtime.render().toString()).toBe("two");
+    expect(dispatched).toEqual([["scroll-root"]]);
   });
 });

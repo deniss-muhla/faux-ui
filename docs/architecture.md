@@ -294,15 +294,22 @@ It keeps responsibility boundaries relatively clean:
 - browser measurement stays in DOM-specific adapters
 - layout and clipping stay in core
 - native events are translated into core binding dispatch
-- focus state is tracked by node id rather than by DOM structure alone
+- focus state is tracked by node id while native focus and blur events are synchronized back into that runtime state
 
-The DOM runtime also keeps a map of focusable nodes and supports scroll offset updates as rerender operations over the shared render tree.
+The DOM runtime also keeps a map of focusable nodes, supports managed scroll offset updates from wheel input, tracks hover transitions over the shared render tree, projects hover and focus state into DOM styles, and flushes stale interaction state during rerender and unmount transitions.
 
 ### TUI
 
-The TUI renderer is simpler and currently stops at framebuffer output plus coordinate dispatch helpers.
+The TUI package now includes a runtime controller around the framebuffer renderer.
 
-That still validates an important architectural claim: the same layout and render tree can drive a browser-shaped runtime and a character-cell runtime with only measurement and painting swapped out.
+It provides:
+
+- character-cell text measurement
+- framebuffer painting
+- coordinate-based input dispatch helpers for cell positions
+- focus traversal, key dispatch, pointer dispatch, and managed scroll offset updates for host-driven terminal loops
+
+This keeps the architectural claim intact: the same layout and render tree can drive a browser-shaped runtime and a character-cell runtime with only measurement, painting, and host event plumbing swapped out.
 
 ## Schema and Portability
 
