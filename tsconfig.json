@@ -1,0 +1,14 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/core" },
+    { "path": "./packages/reconciler" },
+    { "path": "./packages/dom" },
+    { "path": "./packages/tui" },
+    { "path": "./packages/schema" },
+    { "path": "./packages/devtools" },
+    { "path": "./packages/mcp" },
+    { "path": "./packages/create-faux-ui" },
+    { "path": "./packages/exec-faux-ui" }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "name": "exec-faux-ui",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "exec-faux-ui": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --pretty false"
+  }
+}
