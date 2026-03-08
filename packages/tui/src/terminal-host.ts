@@ -135,6 +135,7 @@ export function mountTerminalTuiHost<THandler>(
   let running = false;
   let pendingInput = "";
   let lastPointerDown: { x: number; y: number } | null = null;
+  let pointerMovedWhilePressed = false;
   let mouseSupport = resolveTerminalMouseSupport(currentOptions, io.stdout);
 
   const runtime = mountTuiRoot(
@@ -244,6 +245,7 @@ export function mountTerminalTuiHost<THandler>(
       case "quit":
         if (currentOptions.exitOnCtrlC !== false) {
           lastPointerDown = null;
+          pointerMovedWhilePressed = false;
           stopInternal();
           return false;
         }
@@ -261,21 +263,31 @@ export function mountTerminalTuiHost<THandler>(
         return true;
       case "pointerDown":
         lastPointerDown = control.point;
+        pointerMovedWhilePressed = false;
         runtime.dispatchEvent({ type: "pointerDown", point: control.point });
         return true;
       case "pointerMove":
+        if (
+          lastPointerDown !== null &&
+          (lastPointerDown.x !== control.point.x ||
+            lastPointerDown.y !== control.point.y)
+        ) {
+          pointerMovedWhilePressed = true;
+        }
         runtime.dispatchEvent({ type: "pointerMove", point: control.point });
         return true;
       case "pointerUp":
         runtime.dispatchEvent({ type: "pointerUp", point: control.point });
         if (
           lastPointerDown !== null &&
+          !pointerMovedWhilePressed &&
           lastPointerDown.x === control.point.x &&
           lastPointerDown.y === control.point.y
         ) {
           runtime.dispatchEvent({ type: "click", point: control.point });
         }
         lastPointerDown = null;
+        pointerMovedWhilePressed = false;
         return true;
       case "scroll":
         runtime.dispatchEvent({
@@ -433,7 +445,9 @@ export function resolveTerminalMouseSupport(
 
   const mode =
     options.mouseMode === undefined || options.mouseMode === "auto"
-      ? "drag"
+      ? platform === "win32"
+        ? "drag"
+        : "move"
       : options.mouseMode;
   const sequences = MOUSE_PROTOCOL_SEQUENCES[mode];
 

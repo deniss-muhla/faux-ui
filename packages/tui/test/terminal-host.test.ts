@@ -117,7 +117,7 @@ describe("terminal tui host", () => {
   it("resolves mouse tracking sequences for supported terminals", () => {
     expect(
       resolveTerminalMouseSupport(
-        { mouseMode: "move", environment: { TERM: "xterm-256color" } },
+        { environment: { TERM: "xterm-256color" } },
         { isTTY: true },
         "linux",
       ),
@@ -158,6 +158,7 @@ describe("terminal tui host", () => {
     const host = mountTerminalTuiHost(root, {
       constraints: { maxHeight: 1 },
       io: { stdin, stdout },
+      environment: { TERM: "xterm-256color" },
     });
 
     host.start();
@@ -188,5 +189,31 @@ describe("terminal tui host", () => {
 
     expect(stdout.writes.join("")).not.toContain("?1000h");
     expect(stdout.writes.join("")).not.toContain("?1000l");
+  });
+
+  it("does not synthesize a click after pointer drag motion", () => {
+    const dispatched: string[] = [];
+    const stdin = new MockInput();
+    const stdout = new MockOutput();
+    const root = createViewNode({ bindings: { click: "root-click" } });
+    appendChild(
+      root,
+      createTextNode({ spec: { text: "drag", wrap: false, style: null } }),
+    );
+
+    const host = mountTerminalTuiHost(root, {
+      io: { stdin, stdout },
+      environment: { TERM: "xterm-256color" },
+      onDispatch: ({ binding }) => {
+        dispatched.push(binding);
+      },
+    });
+
+    host.start();
+    stdin.emit("data", "\u001b[<0;1;1M");
+    stdin.emit("data", "\u001b[<32;2;1M");
+    stdin.emit("data", "\u001b[<0;2;1m");
+
+    expect(dispatched).toEqual(["mouseDown", "mouseMove", "mouseUp"]);
   });
 });
