@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
@@ -45,6 +45,7 @@ export interface ExecutionOptions {
   format: ExecutionFormat;
   inspect: InspectMode | null;
   mode: ExecutionMode;
+  snapshotPath: string | null;
   constraints: Constraints;
 }
 
@@ -75,6 +76,7 @@ export function executeDocumentText(
     ...options,
     entry: options.entry ?? "<memory>",
     mode: DEFAULT_MODE,
+    snapshotPath: null,
   });
 }
 
@@ -111,11 +113,19 @@ export function mainWithIO(args: string[], io: ExecutionIO): number {
         throw new Error("Interactive TUI mode requires TTY stdin and stdout.");
       }
 
+      if (parsed.options.snapshotPath !== null) {
+        throw new Error(
+          "Interactive TUI mode does not support --snapshot. Use --static instead.",
+        );
+      }
+
       startInteractiveTui(document, parsed.options, io);
       return 0;
     }
 
-    io.stdout.write(`${executeDocument(document, parsed.options)}\n`);
+    const output = executeDocument(document, parsed.options);
+    writeSnapshot(output, parsed.options.snapshotPath);
+    io.stdout.write(`${output}\n`);
     return 0;
   } catch (error) {
     console.error(formatExecutionError(error));
@@ -144,6 +154,7 @@ function parseExecutionOptions(args: string[]):
   let format: ExecutionFormat = DEFAULT_FORMAT;
   let inspect: InspectMode | null = null;
   let mode: ExecutionMode = DEFAULT_MODE;
+  let snapshotPath: string | null = null;
   let maxWidth: number | undefined;
   let maxHeight: number | undefined;
 
@@ -187,6 +198,11 @@ function parseExecutionOptions(args: string[]):
       continue;
     }
 
+    if (arg === "--snapshot") {
+      snapshotPath = requireOptionValue(args, ++index, arg);
+      continue;
+    }
+
     if (arg === "--max-width") {
       maxWidth = parseConstraintValue(
         requireOptionValue(args, ++index, arg),
@@ -226,6 +242,7 @@ function parseExecutionOptions(args: string[]):
       format,
       inspect,
       mode,
+      snapshotPath,
       constraints: {
         ...(maxWidth !== undefined ? { maxWidth } : {}),
         ...(maxHeight !== undefined ? { maxHeight } : {}),
@@ -456,12 +473,13 @@ function requireOptionValue(
 function buildUsage(...preamble: string[]): string {
   const lines = [
     ...preamble,
-    "Usage: exec-faux-ui <entry|-> [--target dom|tui] [--format auto|readable|compact] [--inspect layout|render-tree] [--mode auto|interactive|static] [--interactive] [--static] [--max-width N] [--max-height N]",
+    "Usage: exec-faux-ui <entry|-> [--target dom|tui] [--format auto|readable|compact] [--inspect layout|render-tree] [--mode auto|interactive|static] [--interactive] [--static] [--snapshot path] [--max-width N] [--max-height N]",
     "- entry can be a JSON file path or - for stdin",
     "- auto format accepts readable document objects or compact FUI arrays",
     "- target dom prints a DOM projection model as JSON",
     "- target tui uses an interactive terminal host on TTYs unless --static is set",
     "- --interactive forces the live TUI host and requires TTY stdin/stdout",
+    "- --snapshot writes the rendered or inspected output to a file as well as stdout",
     "- inspect layout prints a semantic size tree",
     "- inspect render-tree prints the visible render tree as JSON",
   ];
@@ -513,4 +531,14 @@ function startInteractiveTui(
     io,
   });
   host.start();
+}
+
+function writeSnapshot(output: string, snapshotPath: string | null): void {
+  if (snapshotPath === null) {
+    return;
+  }
+
+  const resolvedPath = resolve(snapshotPath);
+  mkdirSync(resolve(resolvedPath, ".."), { recursive: true });
+  writeFileSync(resolvedPath, output, "utf8");
 }

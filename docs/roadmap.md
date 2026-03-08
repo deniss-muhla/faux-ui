@@ -129,6 +129,7 @@ Delivered so far:
 - the CLI supports `--target dom|tui`, automatic or explicit format selection, and size constraints
 - inspect-oriented modes now expose semantic layout dumps and visible render-tree JSON for debugging workflows
 - TTY execution now automatically enters a live TUI host mode, with explicit `--interactive` and `--static` control for terminal versus scriptable workflows
+- static execution can now persist render or inspection output via `--snapshot`, which makes the current CLI modes usable in CI and artifact-oriented automation
 
 ### 6. Finish the scaffold CLI
 

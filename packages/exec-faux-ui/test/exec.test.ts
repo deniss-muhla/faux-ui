@@ -1,10 +1,31 @@
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import {
   executeDocumentText,
+  mainWithIO,
   run,
   shouldUseInteractiveTui,
 } from "../src/index.js";
+
+class MockStdout {
+  isTTY = false;
+  columns = 80;
+  rows = 24;
+  output = "";
+
+  write(chunk: string): boolean {
+    this.output += chunk;
+    return true;
+  }
+
+  on(): void {}
+
+  off(): void {}
+}
 
 describe("exec-faux-ui", () => {
   it("renders readable documents to the TUI target", () => {
@@ -122,5 +143,35 @@ describe("exec-faux-ui", () => {
         },
       ),
     ).toBe(false);
+  });
+
+  it("writes snapshots for static execution output", () => {
+    const cwd = mkdtempSync(join(tmpdir(), "exec-faux-ui-"));
+    const entryPath = join(cwd, "document.json");
+    const snapshotPath = join(cwd, "snapshots", "layout.txt");
+    writeFileSync(
+      entryPath,
+      JSON.stringify({
+        version: 1,
+        root: {
+          kind: "text",
+          text: "Hi",
+        },
+      }),
+      "utf8",
+    );
+
+    const stdout = new MockStdout();
+    const exitCode = mainWithIO(
+      [entryPath, "--snapshot", snapshotPath, "--target", "dom"],
+      {
+        stdin: { isTTY: false, on() {}, off() {} },
+        stdout,
+      },
+    );
+
+    expect(exitCode).toBe(0);
+    expect(readFileSync(snapshotPath, "utf8")).toContain('"textContent": "Hi"');
+    expect(stdout.output).toContain('"textContent": "Hi"');
   });
 });
