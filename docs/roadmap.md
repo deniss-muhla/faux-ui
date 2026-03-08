@@ -58,10 +58,10 @@ Delivered so far:
 - `@faux-ui/tui` now includes a host-agnostic runtime controller around the framebuffer renderer
 - the runtime manages focus traversal, key dispatch, pointer dispatch, and managed scroll offsets through the same core dispatch semantics as DOM
 - terminal hosts can drive the runtime through a single event entrypoint or imperative helpers without reimplementing hit testing or focus rules
+- `@faux-ui/tui` now ships a concrete terminal host that manages raw-mode input, alternate-screen rendering, resize handling, mouse reporting, and TTY-aware viewport constraints
 
 Remaining:
 
-- connect the runtime to a concrete terminal host loop and capability layer
 - flesh out hover or richer pointer behavior where terminal environments expose it
 
 ### 3. Improve DOM runtime completeness
@@ -120,17 +120,18 @@ Goal:
 
 Why this matters:
 
-`exec-faux-ui` is the natural entry point for demos, testing, and automation, but it currently stops at status output.
+`exec-faux-ui` is the natural entry point for demos, testing, and automation. The static inspection path is now useful, so the remaining value is in richer authoring inputs and more orchestration-oriented modes rather than first-use viability.
 
 Delivered so far:
 
 - `exec-faux-ui` now loads readable JSON documents or compact FUI arrays from a file path or stdin
 - the CLI supports `--target dom|tui`, automatic or explicit format selection, and size constraints
 - inspect-oriented modes now expose semantic layout dumps and visible render-tree JSON for debugging workflows
+- TTY execution now automatically enters a live TUI host mode, with explicit `--interactive` and `--static` control for terminal versus scriptable workflows
 
 ### 6. Finish the scaffold CLI
 
-Status: placeholder
+Status: partially implemented
 
 Goal:
 
@@ -141,6 +142,12 @@ Goal:
 Why this matters:
 
 The architecture is easier to evaluate if users can create runnable examples quickly.
+
+Delivered so far:
+
+- `create-faux-ui` now generates starter projects for `jsx`, `json`, and `hybrid` entry modes
+- generated projects include package-manager-aware metadata for Bun, npm, or pnpm workflows
+- JSX starters include a runnable terminal app entrypoint, while JSON starters include ready-to-inspect schema documents for `exec-faux-ui`
 
 ## Longer-Term Direction
 

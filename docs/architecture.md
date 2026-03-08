@@ -98,14 +98,14 @@ It contains:
 
 This package describes authoring data, not live runtime state.
 
-### Tooling and placeholder packages
+### Tooling packages
 
 Several packages intentionally remain thin but already define architectural seams:
 
 - `@faux-ui/devtools`: formatting helpers such as layout dumps for inspection and debugging
 - `@faux-ui/mcp`: command types for future model-context and inspection workflows
-- `create-faux-ui`: scaffold CLI placeholder
-- `exec-faux-ui`: execution CLI placeholder
+- `create-faux-ui`: starter-project generator for JSX, JSON, and hybrid entry modes
+- `exec-faux-ui`: execution and inspection CLI for schema-authored documents and TUI demos
 
 These packages matter architecturally because they show the intended integration surface without forcing runtime concerns into the core engine yet.
 

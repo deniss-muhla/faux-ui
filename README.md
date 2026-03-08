@@ -52,8 +52,10 @@ The current implementation includes:
 - executable tests for `UINode` invalidation behavior
 - readable JSON validation plus compact-codec encode/decode support in `@faux-ui/schema`
 - an initial React reconciler bridge with `View` and `Text` JSX wrappers over the custom host config
-- an initial TUI renderer with character-cell text measurement, frame-buffer output, clipping, render-phase scroll offsets, input dispatch helpers, and snapshots
-- an initial DOM renderer with absolute-positioned model projection, delegated DOM measurement adapters, live mounting, browser-style input routing, focus tracking, and snapshots
-- typed entry points for the planned packages and CLIs
+- a TUI renderer with character-cell text measurement, frame-buffer output, clipping, render-phase scroll offsets, runtime dispatch helpers, a concrete terminal host loop, and snapshots
+- a DOM renderer with absolute-positioned model projection, delegated DOM measurement adapters, live mounting, browser-style input routing, focus tracking, runtime scroll management, and snapshots
+- browser-level Playwright visual regression coverage for DOM projection output
+- an execution CLI that renders schema documents to DOM or TUI targets, exposes inspect modes, and can launch an interactive terminal session on TTYs
+- a scaffold CLI that generates starter projects for JSX, JSON, and hybrid authoring flows
 
-The project still does not include a full TUI event loop, browser visual regression infrastructure, a finalized application-side action dispatch contract, or finished CLI execution flow.
+The main remaining MVP gaps are richer terminal pointer semantics, broader exec/scaffold workflows, and deeper tooling on top of the current inspection surfaces.
