@@ -11,6 +11,8 @@ import {
   consumeTerminalInput,
   mountTerminalTuiHost,
   resolveTerminalConstraints,
+  resolveTerminalMouseSupport,
+  supportsTerminalMouse,
 } from "../src/index.js";
 
 class MockInput extends EventEmitter {
@@ -78,6 +80,64 @@ describe("terminal tui host", () => {
     });
   });
 
+  it("detects when terminal mouse tracking is supported", () => {
+    expect(
+      supportsTerminalMouse(
+        { isTTY: true },
+        { TERM: "xterm-256color" },
+        "linux",
+      ),
+    ).toBe(true);
+
+    expect(
+      supportsTerminalMouse(
+        { isTTY: true },
+        { TERM: "dumb" },
+        "linux",
+      ),
+    ).toBe(false);
+
+    expect(
+      supportsTerminalMouse(
+        { isTTY: true },
+        { TERM: "xterm-256color" },
+        "win32",
+      ),
+    ).toBe(false);
+
+    expect(
+      supportsTerminalMouse(
+        { isTTY: true },
+        { TERM: "xterm-256color", WT_SESSION: "1" },
+        "win32",
+      ),
+    ).toBe(true);
+  });
+
+  it("resolves mouse tracking sequences for supported terminals", () => {
+    expect(
+      resolveTerminalMouseSupport(
+        { mouseMode: "move", environment: { TERM: "xterm-256color" } },
+        { isTTY: true },
+        "linux",
+      ),
+    ).toEqual({
+      enabled: true,
+      mode: "move",
+      enableSequence: "\u001b[?1000h\u001b[?1002h\u001b[?1003h\u001b[?1006h",
+      disableSequence:
+        "\u001b[?1000l\u001b[?1002l\u001b[?1003l\u001b[?1006l",
+    });
+
+    expect(
+      resolveTerminalMouseSupport(
+        { environment: { TERM: "dumb" } },
+        { isTTY: true },
+        "linux",
+      ),
+    ).toBeNull();
+  });
+
   it("drives focus and scroll updates through terminal input", () => {
     const root = createViewNode({
       spec: { rows: ["auto", "auto"], scroll: "y" },
@@ -112,5 +172,21 @@ describe("terminal tui host", () => {
 
     expect(stdin.rawMode).toBe(false);
     expect(stdout.writes.join("")).toContain("\u001b[?1049l");
+  });
+
+  it("skips mouse protocol toggles when the terminal does not support them", () => {
+    const stdin = new MockInput();
+    const stdout = new MockOutput();
+    const root = createViewNode();
+    const host = mountTerminalTuiHost(root, {
+      io: { stdin, stdout },
+      environment: { TERM: "dumb" },
+    });
+
+    host.start();
+    host.stop();
+
+    expect(stdout.writes.join("")).not.toContain("?1000h");
+    expect(stdout.writes.join("")).not.toContain("?1000l");
   });
 });

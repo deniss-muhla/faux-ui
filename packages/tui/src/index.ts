@@ -22,13 +22,18 @@ export {
   consumeTerminalInput,
   mountTerminalTuiHost,
   resolveTerminalConstraints,
+  resolveTerminalMouseSupport,
+  supportsTerminalMouse,
 } from "./terminal-host.js";
 export type {
   MountedTerminalTuiHost,
   TerminalControl,
+  TerminalEnvironment,
   TerminalHostIO,
   TerminalInputParseResult,
   TerminalInputStream,
+  TerminalMouseMode,
+  TerminalMouseSupport,
   TerminalOutputStream,
   TerminalTuiHostConfig,
   TerminalTuiHostOptions,

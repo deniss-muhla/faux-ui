@@ -14,9 +14,22 @@ const ENTER_ALTERNATE_SCREEN = "\u001b[?1049h";
 const LEAVE_ALTERNATE_SCREEN = "\u001b[?1049l";
 const HIDE_CURSOR = "\u001b[?25l";
 const SHOW_CURSOR = "\u001b[?25h";
-const ENABLE_MOUSE = "\u001b[?1000h\u001b[?1002h\u001b[?1006h";
-const DISABLE_MOUSE = "\u001b[?1000l\u001b[?1002l\u001b[?1006l";
 const CLEAR_SCREEN = "\u001b[2J\u001b[H";
+
+const MOUSE_PROTOCOL_SEQUENCES = {
+  buttons: {
+    enable: "\u001b[?1000h\u001b[?1006h",
+    disable: "\u001b[?1000l\u001b[?1006l",
+  },
+  drag: {
+    enable: "\u001b[?1000h\u001b[?1002h\u001b[?1006h",
+    disable: "\u001b[?1000l\u001b[?1002l\u001b[?1006l",
+  },
+  move: {
+    enable: "\u001b[?1000h\u001b[?1002h\u001b[?1003h\u001b[?1006h",
+    disable: "\u001b[?1000l\u001b[?1002l\u001b[?1003l\u001b[?1006l",
+  },
+} as const;
 
 export interface TerminalInputStream {
   isTTY?: boolean;
@@ -29,6 +42,21 @@ export interface TerminalInputStream {
   ): unknown;
   resume?(): void;
   pause?(): void;
+}
+
+export interface TerminalEnvironment {
+  TERM?: string;
+  TERM_PROGRAM?: string;
+  WT_SESSION?: string;
+}
+
+export type TerminalMouseMode = "buttons" | "drag" | "move";
+
+export interface TerminalMouseSupport {
+  enabled: boolean;
+  mode: TerminalMouseMode;
+  enableSequence: string;
+  disableSequence: string;
 }
 
 export interface TerminalOutputStream {
@@ -51,6 +79,8 @@ export interface TerminalTuiHostConfig<THandler = unknown>
   constraints?: Constraints;
   exitOnCtrlC?: boolean;
   enableMouse?: boolean;
+  mouseMode?: TerminalMouseMode | "auto";
+  environment?: TerminalEnvironment;
 }
 
 export interface TerminalTuiHostOptions<THandler = unknown>
@@ -105,6 +135,7 @@ export function mountTerminalTuiHost<THandler>(
   let running = false;
   let pendingInput = "";
   let lastPointerDown: { x: number; y: number } | null = null;
+  let mouseSupport = resolveTerminalMouseSupport(currentOptions, io.stdout);
 
   const runtime = mountTuiRoot(
     currentRoot,
@@ -145,8 +176,8 @@ export function mountTerminalTuiHost<THandler>(
 
       io.stdout.write(ENTER_ALTERNATE_SCREEN);
       io.stdout.write(HIDE_CURSOR);
-      if (currentOptions.enableMouse !== false) {
-        io.stdout.write(ENABLE_MOUSE);
+      if (mouseSupport !== null) {
+        io.stdout.write(mouseSupport.enableSequence);
       }
 
       rerenderInternal();
@@ -161,8 +192,8 @@ export function mountTerminalTuiHost<THandler>(
       unlisten(io.stdout, "resize", handleResize);
       io.stdin.setRawMode?.(false);
       io.stdin.pause?.();
-      if (currentOptions.enableMouse !== false) {
-        io.stdout.write(DISABLE_MOUSE);
+      if (mouseSupport !== null) {
+        io.stdout.write(mouseSupport.disableSequence);
       }
       io.stdout.write(SHOW_CURSOR);
       io.stdout.write(LEAVE_ALTERNATE_SCREEN);
@@ -176,7 +207,18 @@ export function mountTerminalTuiHost<THandler>(
       }
 
       if (nextOptions !== undefined) {
+        const previousMouseSupport = mouseSupport;
         currentOptions = mergeHostConfig(currentOptions, nextOptions);
+        mouseSupport = resolveTerminalMouseSupport(currentOptions, io.stdout);
+
+        if (running) {
+          if (previousMouseSupport !== null) {
+            io.stdout.write(previousMouseSupport.disableSequence);
+          }
+          if (mouseSupport !== null) {
+            io.stdout.write(mouseSupport.enableSequence);
+          }
+        }
       }
 
       runtime.update(currentRoot, buildRuntimeOptions(currentOptions, io.stdout));
@@ -255,8 +297,8 @@ export function mountTerminalTuiHost<THandler>(
     unlisten(io.stdout, "resize", handleResize);
     io.stdin.setRawMode?.(false);
     io.stdin.pause?.();
-    if (currentOptions.enableMouse !== false) {
-      io.stdout.write(DISABLE_MOUSE);
+    if (mouseSupport !== null) {
+      io.stdout.write(mouseSupport.disableSequence);
     }
     io.stdout.write(SHOW_CURSOR);
     io.stdout.write(LEAVE_ALTERNATE_SCREEN);
@@ -370,6 +412,58 @@ export function resolveTerminalConstraints(
     ...(maxWidth !== undefined ? { maxWidth } : {}),
     ...(maxHeight !== undefined ? { maxHeight } : {}),
   };
+}
+
+export function resolveTerminalMouseSupport(
+  options: Pick<
+    TerminalTuiHostConfig,
+    "enableMouse" | "environment" | "mouseMode"
+  >,
+  output: Pick<TerminalOutputStream, "isTTY">,
+  platform = process.platform,
+): TerminalMouseSupport | null {
+  if (options.enableMouse === false) {
+    return null;
+  }
+
+  const environment = options.environment ?? process.env;
+  if (!supportsTerminalMouse(output, environment, platform)) {
+    return null;
+  }
+
+  const mode =
+    options.mouseMode === undefined || options.mouseMode === "auto"
+      ? "drag"
+      : options.mouseMode;
+  const sequences = MOUSE_PROTOCOL_SEQUENCES[mode];
+
+  return {
+    enabled: true,
+    mode,
+    enableSequence: sequences.enable,
+    disableSequence: sequences.disable,
+  };
+}
+
+export function supportsTerminalMouse(
+  output: Pick<TerminalOutputStream, "isTTY">,
+  environment: TerminalEnvironment,
+  platform = process.platform,
+): boolean {
+  if (!output.isTTY) {
+    return false;
+  }
+
+  const term = environment.TERM?.toLowerCase();
+  if (term === undefined || term === "" || term === "dumb") {
+    return false;
+  }
+
+  if (platform !== "win32") {
+    return true;
+  }
+
+  return Boolean(environment.WT_SESSION || environment.TERM_PROGRAM);
 }
 
 function resolveHostIO(io: Partial<TerminalHostIO> | undefined): TerminalHostIO {
