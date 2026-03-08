@@ -124,6 +124,7 @@ export function mountTuiRoot<THandler>(
   let currentScrollOffsets = cloneScrollOffsets(options.scrollOffsets);
   sanitizeStoredScrollOffsets();
   let focusedNodeId: number | null = null;
+  let hoveredPathNodeIds: NodeId[] = [];
   let focusableNodeIds = collectFocusableNodeIds(currentRoot);
 
   return {
@@ -140,6 +141,9 @@ export function mountTuiRoot<THandler>(
       }
 
       focusableNodeIds = collectFocusableNodeIds(currentRoot);
+      hoveredPathNodeIds = hoveredPathNodeIds.filter(
+        (nodeId) => findSemanticNodeById(currentRoot, nodeId) !== null,
+      );
       sanitizeStoredScrollOffsets();
       if (focusedNodeId !== null && !focusableNodeIds.includes(focusedNodeId)) {
         focusedNodeId = null;
@@ -201,6 +205,7 @@ export function mountTuiRoot<THandler>(
         dispatchAtPointInternal("mouseDown", event.point, event.nativeEvent);
         return;
       case "pointerMove":
+        syncHoveredPathAtPoint(event.point, event.nativeEvent);
         dispatchAtPointInternal("mouseMove", event.point, event.nativeEvent);
         return;
       case "pointerUp":
@@ -393,9 +398,84 @@ export function mountTuiRoot<THandler>(
     });
   }
 
+  function syncHoveredPathAtPoint(point: TuiPoint, nativeEvent: unknown): void {
+    syncHoveredPath(hitPathAtPoint(point), nativeEvent);
+  }
+
+  function syncHoveredPath(
+    nextPath: RenderTreeNode[] | null,
+    nativeEvent: unknown,
+  ): void {
+    const nextNodeIds = nextPath?.map((node) => node.nodeId) ?? [];
+    let sharedPrefixLength = 0;
+
+    while (
+      sharedPrefixLength < hoveredPathNodeIds.length &&
+      sharedPrefixLength < nextNodeIds.length &&
+      hoveredPathNodeIds[sharedPrefixLength] === nextNodeIds[sharedPrefixLength]
+    ) {
+      sharedPrefixLength += 1;
+    }
+
+    for (
+      let index = hoveredPathNodeIds.length - 1;
+      index >= sharedPrefixLength;
+      index -= 1
+    ) {
+      const nodeId = hoveredPathNodeIds[index];
+      if (nodeId !== undefined) {
+        dispatchOwnBindingForNodeInternal(nodeId, "mouseLeave", nativeEvent);
+      }
+    }
+
+    for (
+      let index = sharedPrefixLength;
+      index < nextNodeIds.length;
+      index += 1
+    ) {
+      const nodeId = nextNodeIds[index];
+      if (nodeId !== undefined) {
+        dispatchOwnBindingForNodeInternal(nodeId, "mouseEnter", nativeEvent);
+      }
+    }
+
+    hoveredPathNodeIds = nextNodeIds;
+  }
+
   function hitPathAtPoint(point: TuiPoint): RenderTreeNode[] | null {
     return (
       dispatchBindingAtPoint(buildInputTree(), point, "click").hit?.path ?? null
+    );
+  }
+
+  function dispatchOwnBindingForNodeInternal(
+    nodeId: number,
+    binding: BindingName,
+    nativeEvent: unknown,
+  ): void {
+    const tree = buildInputTree();
+    const hit = findHitByNodeId(tree, nodeId);
+    const token = hit?.node.node.bindings?.[binding];
+
+    if (hit === null || token === undefined) {
+      return;
+    }
+
+    notifyDispatch(
+      binding,
+      {
+        hit,
+        actions: [
+          {
+            binding,
+            token,
+            nodeId,
+            currentTarget: hit.node,
+            target: hit.node,
+          },
+        ],
+      },
+      nativeEvent,
     );
   }
 

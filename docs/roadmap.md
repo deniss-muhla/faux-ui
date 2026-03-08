@@ -59,10 +59,11 @@ Delivered so far:
 - the runtime manages focus traversal, key dispatch, pointer dispatch, and managed scroll offsets through the same core dispatch semantics as DOM
 - terminal hosts can drive the runtime through a single event entrypoint or imperative helpers without reimplementing hit testing or focus rules
 - `@faux-ui/tui` now ships a concrete terminal host that manages raw-mode input, alternate-screen rendering, resize handling, mouse reporting, and TTY-aware viewport constraints
+- pointer movement now produces shared-path `mouseEnter` and `mouseLeave` transitions in the TUI runtime instead of only raw `mouseMove` dispatches
 
 Remaining:
 
-- flesh out hover or richer pointer behavior where terminal environments expose it
+- flesh out richer pointer behavior where terminal environments expose it
 
 ### 3. Improve DOM runtime completeness
 

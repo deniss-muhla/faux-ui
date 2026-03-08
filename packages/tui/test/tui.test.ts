@@ -159,12 +159,18 @@ describe("tui renderer", () => {
         click: "click-child",
         keyDown: "keydown-child",
         mouseDown: "mousedown-child",
+        mouseEnter: "mouseenter-child",
+        mouseLeave: "mouseleave-child",
         press: "press-child",
       },
     });
     const leaf = createTextNode({
       spec: { text: "A", wrap: false, style: null },
-      bindings: { click: "click-leaf" },
+      bindings: {
+        click: "click-leaf",
+        mouseEnter: "mouseenter-leaf",
+        mouseLeave: "mouseleave-leaf",
+      },
     });
     appendChild(child, leaf);
     appendChild(root, child);
@@ -186,6 +192,8 @@ describe("tui renderer", () => {
       },
     });
 
+    runtime.dispatchEvent({ type: "pointerMove", point: { x: 0, y: 0 } });
+    runtime.dispatchEvent({ type: "pointerMove", point: { x: 10, y: 10 } });
     runtime.dispatchEvent({ type: "pointerDown", point: { x: 0, y: 0 } });
     runtime.dispatchEvent({ type: "click", point: { x: 0, y: 0 } });
     runtime.dispatchEvent({ type: "keyDown", key: "Enter" });
@@ -193,6 +201,36 @@ describe("tui renderer", () => {
     expect(runtime.getFocusedNodeId()).toBe(child.id);
     expect(focusChanges).toEqual([{ previousNodeId: null, nodeId: child.id }]);
     expect(dispatched).toEqual([
+      {
+        binding: "mouseEnter",
+        tokens: ["mouseenter-child"],
+        handlers: ["handler:mouseenter-child"],
+      },
+      {
+        binding: "mouseEnter",
+        tokens: ["mouseenter-leaf"],
+        handlers: ["handler:mouseenter-leaf"],
+      },
+      {
+        binding: "mouseMove",
+        tokens: [],
+        handlers: [],
+      },
+      {
+        binding: "mouseLeave",
+        tokens: ["mouseleave-leaf"],
+        handlers: ["handler:mouseleave-leaf"],
+      },
+      {
+        binding: "mouseLeave",
+        tokens: ["mouseleave-child"],
+        handlers: ["handler:mouseleave-child"],
+      },
+      {
+        binding: "mouseMove",
+        tokens: [],
+        handlers: [],
+      },
       {
         binding: "focus",
         tokens: ["focus-child"],
