@@ -32,6 +32,9 @@ export type ActionBindings = {
   mouseEnter?: string;
   mouseLeave?: string;
   mouseMove?: string;
+  dragStart?: string;
+  drag?: string;
+  dragEnd?: string;
   scroll?: string;
 };
 
@@ -83,6 +86,9 @@ export type CompactBindings = {
   me?: string;
   ml?: string;
   mm?: string;
+  ds?: string;
+  dg?: string;
+  de?: string;
   sc?: string;
 };
 

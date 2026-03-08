@@ -334,6 +334,9 @@ function decodeCompactBindings(
   mapBinding(bindings, next, "me", "mouseEnter");
   mapBinding(bindings, next, "ml", "mouseLeave");
   mapBinding(bindings, next, "mm", "mouseMove");
+  mapBinding(bindings, next, "ds", "dragStart");
+  mapBinding(bindings, next, "dg", "drag");
+  mapBinding(bindings, next, "de", "dragEnd");
   mapBinding(bindings, next, "sc", "scroll");
   return next;
 }
@@ -392,6 +395,9 @@ function encodeCompactBindings(bindings: ActionBindings): CompactBindings {
   reverseMapBinding(bindings, next, "mouseEnter", "me");
   reverseMapBinding(bindings, next, "mouseLeave", "ml");
   reverseMapBinding(bindings, next, "mouseMove", "mm");
+  reverseMapBinding(bindings, next, "dragStart", "ds");
+  reverseMapBinding(bindings, next, "drag", "dg");
+  reverseMapBinding(bindings, next, "dragEnd", "de");
   reverseMapBinding(bindings, next, "scroll", "sc");
   return next;
 }

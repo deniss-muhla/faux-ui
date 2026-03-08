@@ -1,6 +1,11 @@
 #!/usr/bin/env node
 
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  appendFileSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { resolve } from "node:path";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
@@ -13,6 +18,7 @@ import {
   layoutNode,
   type BoundActions,
   type Constraints,
+  type NodeId,
   type ScrollAxis,
   type StyleValue,
   type UINode,
@@ -36,8 +42,15 @@ import {
 
 export type ExecutionTarget = "dom" | "tui";
 export type ExecutionFormat = "auto" | "readable" | "compact";
-export type InspectMode = "layout" | "render-tree";
+export type InspectMode = "bindings" | "layout" | "render-tree";
 export type ExecutionMode = "auto" | "interactive" | "static";
+
+export interface BindingDumpNode {
+  id: NodeId;
+  kind: UINode["kind"];
+  bindings: Partial<Record<keyof BoundActions, string | number>>;
+  children: BindingDumpNode[];
+}
 
 export interface ExecutionOptions {
   entry: string;
@@ -45,8 +58,18 @@ export interface ExecutionOptions {
   format: ExecutionFormat;
   inspect: InspectMode | null;
   mode: ExecutionMode;
+  eventLogPath: string | null;
   snapshotPath: string | null;
   constraints: Constraints;
+}
+
+export interface ExecutionEventLogRecord {
+  binding: string;
+  pointer: unknown;
+  actions: Array<{
+    token: string | number;
+    nodeId: number;
+  }>;
 }
 
 export interface ExecutionIO {
@@ -76,6 +99,7 @@ export function executeDocumentText(
     ...options,
     entry: options.entry ?? "<memory>",
     mode: DEFAULT_MODE,
+    eventLogPath: null,
     snapshotPath: null,
   });
 }
@@ -123,6 +147,10 @@ export function mainWithIO(args: string[], io: ExecutionIO): number {
       return 0;
     }
 
+    if (parsed.options.eventLogPath !== null) {
+      throw new Error("--event-log is only supported in interactive TUI mode.");
+    }
+
     const output = executeDocument(document, parsed.options);
     writeSnapshot(output, parsed.options.snapshotPath);
     io.stdout.write(`${output}\n`);
@@ -154,6 +182,7 @@ function parseExecutionOptions(args: string[]):
   let format: ExecutionFormat = DEFAULT_FORMAT;
   let inspect: InspectMode | null = null;
   let mode: ExecutionMode = DEFAULT_MODE;
+  let eventLogPath: string | null = null;
   let snapshotPath: string | null = null;
   let maxWidth: number | undefined;
   let maxHeight: number | undefined;
@@ -195,6 +224,11 @@ function parseExecutionOptions(args: string[]):
 
     if (arg === "--static") {
       mode = "static";
+      continue;
+    }
+
+    if (arg === "--event-log") {
+      eventLogPath = requireOptionValue(args, ++index, arg);
       continue;
     }
 
@@ -242,6 +276,7 @@ function parseExecutionOptions(args: string[]):
       format,
       inspect,
       mode,
+      eventLogPath,
       snapshotPath,
       constraints: {
         ...(maxWidth !== undefined ? { maxWidth } : {}),
@@ -270,6 +305,10 @@ function executeDocument(
       measureText,
     });
     return JSON.stringify(serializeRenderNode(tree.root), null, 2);
+  }
+
+  if (options.inspect === "bindings") {
+    return JSON.stringify(buildBindingDump(root), null, 2);
   }
 
   if (options.target === "tui") {
@@ -367,6 +406,15 @@ function buildLayoutDump(node: UINode): LayoutDumpNode {
   };
 }
 
+function buildBindingDump(node: UINode): BindingDumpNode {
+  return {
+    id: node.id,
+    kind: node.kind,
+    bindings: cloneBoundActions(node.bindings),
+    children: node.children.map((child) => buildBindingDump(child)),
+  };
+}
+
 function serializeRenderNode(
   node: ReturnType<typeof buildRenderTree>["root"],
 ): unknown {
@@ -416,6 +464,23 @@ function cloneBindings(bindings: ActionBindings): BoundActions {
   return next;
 }
 
+function cloneBoundActions(
+  bindings: BoundActions | null,
+): Partial<Record<keyof BoundActions, string | number>> {
+  if (bindings === null) {
+    return {};
+  }
+
+  const next: Partial<Record<keyof BoundActions, string | number>> = {};
+  for (const [name, token] of Object.entries(bindings)) {
+    if (token !== undefined) {
+      next[name as keyof BoundActions] = token;
+    }
+  }
+
+  return next;
+}
+
 function parseTarget(value: string): ExecutionTarget {
   if (value === "dom" || value === "tui") {
     return value;
@@ -433,7 +498,7 @@ function parseFormat(value: string): ExecutionFormat {
 }
 
 function parseInspectMode(value: string): InspectMode {
-  if (value === "layout" || value === "render-tree") {
+  if (value === "bindings" || value === "layout" || value === "render-tree") {
     return value;
   }
 
@@ -473,13 +538,15 @@ function requireOptionValue(
 function buildUsage(...preamble: string[]): string {
   const lines = [
     ...preamble,
-    "Usage: exec-faux-ui <entry|-> [--target dom|tui] [--format auto|readable|compact] [--inspect layout|render-tree] [--mode auto|interactive|static] [--interactive] [--static] [--snapshot path] [--max-width N] [--max-height N]",
+    "Usage: exec-faux-ui <entry|-> [--target dom|tui] [--format auto|readable|compact] [--inspect bindings|layout|render-tree] [--mode auto|interactive|static] [--interactive] [--static] [--event-log path] [--snapshot path] [--max-width N] [--max-height N]",
     "- entry can be a JSON file path or - for stdin",
     "- auto format accepts readable document objects or compact FUI arrays",
     "- target dom prints a DOM projection model as JSON",
     "- target tui uses an interactive terminal host on TTYs unless --static is set",
     "- --interactive forces the live TUI host and requires TTY stdin/stdout",
+    "- --event-log writes interactive TUI dispatch events as JSON lines",
     "- --snapshot writes the rendered or inspected output to a file as well as stdout",
+    "- inspect bindings prints the semantic binding tree as JSON",
     "- inspect layout prints a semantic size tree",
     "- inspect render-tree prints the visible render tree as JSON",
   ];
@@ -526,11 +593,44 @@ function startInteractiveTui(
   io: ExecutionIO,
 ): void {
   const root = buildNodeTree(document.root);
+  const eventLogPath = options.eventLogPath;
+  initializeEventLog(eventLogPath);
   const host = mountTerminalTuiHost(root, {
     constraints: options.constraints,
     io,
+    ...(eventLogPath === null
+      ? {}
+      : {
+          onDispatch: (event) => {
+            appendExecutionEvent(eventLogPath, {
+              binding: event.binding,
+              pointer: event.pointer,
+              actions: event.result.actions.map((action) => ({
+                token: action.token,
+                nodeId: action.nodeId,
+              })),
+            });
+          },
+        }),
   });
   host.start();
+}
+
+function initializeEventLog(eventLogPath: string | null): void {
+  if (eventLogPath === null) {
+    return;
+  }
+
+  const resolvedPath = resolve(eventLogPath);
+  mkdirSync(resolve(resolvedPath, ".."), { recursive: true });
+  writeFileSync(resolvedPath, "", "utf8");
+}
+
+function appendExecutionEvent(
+  eventLogPath: string,
+  event: ExecutionEventLogRecord,
+): void {
+  appendFileSync(resolve(eventLogPath), `${JSON.stringify(event)}\n`, "utf8");
 }
 
 function writeSnapshot(output: string, snapshotPath: string | null): void {

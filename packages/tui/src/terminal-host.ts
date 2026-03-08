@@ -1,6 +1,13 @@
 import process from "node:process";
 
-import type { Constraints, ScrollOffset, UINode } from "@faux-ui/core";
+import type {
+  Constraints,
+  PointerButton,
+  PointerDispatchMeta,
+  PointerModifiers,
+  ScrollOffset,
+  UINode,
+} from "@faux-ui/core";
 
 import type { FrameBuffer } from "./frame-buffer.js";
 import {
@@ -74,8 +81,10 @@ export interface TerminalHostIO {
   stdout: TerminalOutputStream;
 }
 
-export interface TerminalTuiHostConfig<THandler = unknown>
-  extends Omit<TuiRuntimeOptions<THandler>, "constraints"> {
+export interface TerminalTuiHostConfig<THandler = unknown> extends Omit<
+  TuiRuntimeOptions<THandler>,
+  "constraints"
+> {
   constraints?: Constraints;
   exitOnCtrlC?: boolean;
   enableMouse?: boolean;
@@ -83,8 +92,9 @@ export interface TerminalTuiHostConfig<THandler = unknown>
   environment?: TerminalEnvironment;
 }
 
-export interface TerminalTuiHostOptions<THandler = unknown>
-  extends TerminalTuiHostConfig<THandler> {
+export interface TerminalTuiHostOptions<
+  THandler = unknown,
+> extends TerminalTuiHostConfig<THandler> {
   io?: Partial<TerminalHostIO>;
 }
 
@@ -92,14 +102,27 @@ export type TerminalControl =
   | { type: "focusNext" }
   | { type: "focusPrevious" }
   | { type: "keyDown"; key: string }
-  | { type: "pointerDown"; point: { x: number; y: number } }
-  | { type: "pointerMove"; point: { x: number; y: number } }
-  | { type: "pointerUp"; point: { x: number; y: number } }
+  | {
+      type: "pointerDown";
+      point: { x: number; y: number };
+      pointer: PointerDispatchMeta;
+    }
+  | {
+      type: "pointerMove";
+      point: { x: number; y: number };
+      pointer: PointerDispatchMeta;
+    }
+  | {
+      type: "pointerUp";
+      point: { x: number; y: number };
+      pointer: PointerDispatchMeta;
+    }
   | { type: "quit" }
   | {
       type: "scroll";
       point: { x: number; y: number };
       delta: ScrollOffset;
+      pointer: PointerDispatchMeta;
     };
 
 export interface TerminalInputParseResult {
@@ -111,7 +134,10 @@ export interface MountedTerminalTuiHost<THandler = unknown> {
   start(): void;
   stop(): void;
   isRunning(): boolean;
-  update(root?: UINode, options?: Partial<TerminalTuiHostConfig<THandler>>): void;
+  update(
+    root?: UINode,
+    options?: Partial<TerminalTuiHostConfig<THandler>>,
+  ): void;
   render(): FrameBuffer;
   rerender(): FrameBuffer;
   getRuntime(): MountedTuiRoot<THandler>;
@@ -134,7 +160,7 @@ export function mountTerminalTuiHost<THandler>(
   let currentOptions = cloneHostConfig(options);
   let running = false;
   let pendingInput = "";
-  let lastPointerDown: { x: number; y: number } | null = null;
+  let lastPointerDown: PointerDispatchMeta | null = null;
   let pointerMovedWhilePressed = false;
   let mouseSupport = resolveTerminalMouseSupport(currentOptions, io.stdout);
 
@@ -222,17 +248,26 @@ export function mountTerminalTuiHost<THandler>(
         }
       }
 
-      runtime.update(currentRoot, buildRuntimeOptions(currentOptions, io.stdout));
+      runtime.update(
+        currentRoot,
+        buildRuntimeOptions(currentOptions, io.stdout),
+      );
       if (running) {
         rerenderInternal();
       }
     },
     render() {
-      runtime.update(currentRoot, buildRuntimeOptions(currentOptions, io.stdout));
+      runtime.update(
+        currentRoot,
+        buildRuntimeOptions(currentOptions, io.stdout),
+      );
       return runtime.render();
     },
     rerender() {
-      runtime.update(currentRoot, buildRuntimeOptions(currentOptions, io.stdout));
+      runtime.update(
+        currentRoot,
+        buildRuntimeOptions(currentOptions, io.stdout),
+      );
       return runtime.rerender();
     },
     getRuntime() {
@@ -262,29 +297,49 @@ export function mountTerminalTuiHost<THandler>(
         runtime.dispatchKeyDown(control.key, control.key);
         return true;
       case "pointerDown":
-        lastPointerDown = control.point;
+        lastPointerDown = control.pointer;
         pointerMovedWhilePressed = false;
-        runtime.dispatchEvent({ type: "pointerDown", point: control.point });
+        runtime.dispatchEvent({
+          type: "pointerDown",
+          point: control.point,
+          pointer: control.pointer,
+          nativeEvent: control.pointer,
+        });
         return true;
       case "pointerMove":
         if (
           lastPointerDown !== null &&
-          (lastPointerDown.x !== control.point.x ||
-            lastPointerDown.y !== control.point.y)
+          (lastPointerDown.point.x !== control.point.x ||
+            lastPointerDown.point.y !== control.point.y)
         ) {
           pointerMovedWhilePressed = true;
         }
-        runtime.dispatchEvent({ type: "pointerMove", point: control.point });
+        runtime.dispatchEvent({
+          type: "pointerMove",
+          point: control.point,
+          pointer: control.pointer,
+          nativeEvent: control.pointer,
+        });
         return true;
       case "pointerUp":
-        runtime.dispatchEvent({ type: "pointerUp", point: control.point });
+        runtime.dispatchEvent({
+          type: "pointerUp",
+          point: control.point,
+          pointer: control.pointer,
+          nativeEvent: control.pointer,
+        });
         if (
           lastPointerDown !== null &&
           !pointerMovedWhilePressed &&
-          lastPointerDown.x === control.point.x &&
-          lastPointerDown.y === control.point.y
+          lastPointerDown.point.x === control.point.x &&
+          lastPointerDown.point.y === control.point.y
         ) {
-          runtime.dispatchEvent({ type: "click", point: control.point });
+          runtime.dispatchEvent({
+            type: "click",
+            point: control.point,
+            pointer: control.pointer,
+            nativeEvent: control.pointer,
+          });
         }
         lastPointerDown = null;
         pointerMovedWhilePressed = false;
@@ -294,6 +349,8 @@ export function mountTerminalTuiHost<THandler>(
           type: "scroll",
           point: control.point,
           delta: control.delta,
+          pointer: control.pointer,
+          nativeEvent: control.pointer,
         });
         return true;
     }
@@ -480,7 +537,9 @@ export function supportsTerminalMouse(
   return Boolean(environment.WT_SESSION || environment.TERM_PROGRAM);
 }
 
-function resolveHostIO(io: Partial<TerminalHostIO> | undefined): TerminalHostIO {
+function resolveHostIO(
+  io: Partial<TerminalHostIO> | undefined,
+): TerminalHostIO {
   return {
     stdin: io?.stdin ?? process.stdin,
     stdout: io?.stdout ?? process.stdout,
@@ -558,7 +617,10 @@ function cloneScrollOffsets(
   return next;
 }
 
-function clampConstraint(base: number | undefined, terminal: number | undefined) {
+function clampConstraint(
+  base: number | undefined,
+  terminal: number | undefined,
+) {
   const normalizedTerminal =
     typeof terminal === "number" && Number.isFinite(terminal) && terminal > 0
       ? Math.trunc(terminal)
@@ -626,37 +688,95 @@ function parseMouseSequence(
   const code = Number.parseInt(parts[0] ?? "", 10);
   const column = Number.parseInt(parts[1] ?? "", 10);
   const row = Number.parseInt(parts[2] ?? "", 10);
-  if (!Number.isInteger(code) || !Number.isInteger(column) || !Number.isInteger(row)) {
+  if (
+    !Number.isInteger(code) ||
+    !Number.isInteger(column) ||
+    !Number.isInteger(row)
+  ) {
     return null;
   }
 
   const point = { x: Math.max(0, column - 1), y: Math.max(0, row - 1) };
+  const modifiers = readTerminalMouseModifiers(code);
 
   if ((code & 64) !== 0) {
     const direction = code & 3;
     if (direction === 0) {
-      return { type: "scroll", point, delta: { x: 0, y: -1 } };
+      return {
+        type: "scroll",
+        point,
+        delta: { x: 0, y: -1 },
+        pointer: createPointerDispatchMeta(point, null, modifiers),
+      };
     }
 
     if (direction === 1) {
-      return { type: "scroll", point, delta: { x: 0, y: 1 } };
+      return {
+        type: "scroll",
+        point,
+        delta: { x: 0, y: 1 },
+        pointer: createPointerDispatchMeta(point, null, modifiers),
+      };
     }
 
     return null;
   }
 
+  const button = readTerminalMouseButton(code);
+  const pointer = createPointerDispatchMeta(point, button, modifiers);
+
   if (terminator === "m") {
-    return { type: "pointerUp", point };
+    return { type: "pointerUp", point, pointer };
   }
 
   if ((code & 32) !== 0) {
-    return { type: "pointerMove", point };
+    return { type: "pointerMove", point, pointer };
   }
 
-  return { type: "pointerDown", point };
+  return { type: "pointerDown", point, pointer };
 }
 
-function listen<TTarget, TEvent extends string, TListener extends (...args: any[]) => void>(
+function createPointerDispatchMeta(
+  point: { x: number; y: number },
+  button: PointerButton | null,
+  modifiers: PointerModifiers,
+): PointerDispatchMeta {
+  return {
+    point,
+    button,
+    modifiers,
+  };
+}
+
+function readTerminalMouseButton(code: number): PointerButton | null {
+  switch (code & 3) {
+    case 0:
+      return "primary";
+    case 1:
+      return "middle";
+    case 2:
+      return "secondary";
+    default:
+      return null;
+  }
+}
+
+function readTerminalMouseModifiers(code: number): PointerModifiers {
+  const altKey = (code & 8) !== 0;
+
+  return {
+    altKey,
+    ctrlKey: (code & 16) !== 0,
+    metaKey: false,
+    shiftKey: (code & 4) !== 0,
+  };
+}
+
+function listen<
+  TTarget,
+  TEvent extends string,
+  TListener extends (...args: any[]) => void,
+>(
   target: TTarget & { on(event: TEvent, listener: TListener): unknown },
   event: TEvent,
   listener: TListener,
@@ -664,7 +784,11 @@ function listen<TTarget, TEvent extends string, TListener extends (...args: any[
   target.on(event, listener);
 }
 
-function unlisten<TTarget, TEvent extends string, TListener extends (...args: any[]) => void>(
+function unlisten<
+  TTarget,
+  TEvent extends string,
+  TListener extends (...args: any[]) => void,
+>(
   target: TTarget & {
     off?(event: TEvent, listener: TListener): unknown;
     removeListener?(event: TEvent, listener: TListener): unknown;

@@ -75,7 +75,12 @@ describe("schema validation", () => {
       root: {
         kind: "view",
         columns: [8, "1fr"],
-        bind: { click: "open-menu" },
+        bind: {
+          click: "open-menu",
+          dragStart: "start-menu-drag",
+          drag: "drag-menu",
+          dragEnd: "end-menu-drag",
+        },
         children: [
           { kind: "text", text: "Menu", style: { color: "accent" } },
           { kind: "view", scroll: "y" },
@@ -99,5 +104,22 @@ describe("schema validation", () => {
     if (!result.ok) {
       expect(result.issues[0]?.message).toContain("Compact node tag");
     }
+  });
+
+  it("accepts additive drag bindings in readable documents", () => {
+    const result = validateDocumentSpec({
+      version: 1,
+      root: {
+        kind: "view",
+        bind: {
+          mouseDown: "start-press",
+          dragStart: "drag-start",
+          drag: "dragging",
+          dragEnd: "drag-end",
+        },
+      },
+    });
+
+    expect(result.ok).toBe(true);
   });
 });

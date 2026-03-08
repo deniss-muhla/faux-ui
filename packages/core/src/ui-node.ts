@@ -34,6 +34,9 @@ export type BoundActions = {
   mouseEnter?: BindingToken;
   mouseLeave?: BindingToken;
   mouseMove?: BindingToken;
+  dragStart?: BindingToken;
+  drag?: BindingToken;
+  dragEnd?: BindingToken;
   scroll?: BindingToken;
 };
 

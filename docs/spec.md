@@ -145,9 +145,34 @@ type ViewProps = {
   onMouseEnter?: (e: MouseEvent) => void;
   onMouseLeave?: (e: MouseEvent) => void;
   onMouseMove?: (e: MouseEvent) => void;
+  onDragStart?: (e: PointerEvent) => void;
+  onDrag?: (e: PointerEvent) => void;
+  onDragEnd?: (e: PointerEvent) => void;
   onScroll?: (e: ScrollEvent) => void;
 };
 ```
+
+Shared pointer payload:
+
+```ts
+type PointerEvent = {
+  point: { x: number; y: number };
+  button: 'primary' | 'middle' | 'secondary' | null;
+  modifiers: {
+    altKey: boolean;
+    ctrlKey: boolean;
+    metaKey: boolean;
+    shiftKey: boolean;
+  };
+};
+```
+
+Frozen interaction rules:
+
+- Existing mouse binding names remain valid and unchanged.
+- Drag lifecycle is additive: `onDragStart`, `onDrag`, and `onDragEnd` are synthesized from the same down-move-up path used by runtime pointer dispatch.
+- Button identity and modifier keys are runtime metadata, not layout state.
+- DOM and TUI project into the same pointer payload shape even when the underlying native event sources differ.
 
 Placement model:
 

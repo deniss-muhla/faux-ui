@@ -8,6 +8,20 @@ import {
 import type { BindingToken, BoundActions } from "./ui-node.js";
 
 export type BindingName = keyof BoundActions;
+export type PointerButton = "primary" | "middle" | "secondary";
+
+export interface PointerModifiers {
+  altKey: boolean;
+  ctrlKey: boolean;
+  metaKey: boolean;
+  shiftKey: boolean;
+}
+
+export interface PointerDispatchMeta {
+  point: Point;
+  button: PointerButton | null;
+  modifiers: PointerModifiers;
+}
 
 export type BindingHandlerResolver<THandler> = (
   token: BindingToken,

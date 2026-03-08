@@ -62,6 +62,9 @@ const bindingKeys = new Set([
   "mouseEnter",
   "mouseLeave",
   "mouseMove",
+  "dragStart",
+  "drag",
+  "dragEnd",
   "scroll",
 ]);
 
@@ -233,6 +236,9 @@ export function validateCompactBindings(
     "me",
     "ml",
     "mm",
+    "ds",
+    "dg",
+    "de",
     "sc",
   ]);
   rejectUnknownKeys(value, allowed, path, issues);

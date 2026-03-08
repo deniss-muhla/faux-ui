@@ -285,6 +285,169 @@ describe("tui renderer", () => {
     expect(runtime.focusPrevious()).toBe(first.id);
   });
 
+  it("dispatches drag lifecycle bindings with pointer metadata", () => {
+    const dispatched: Array<{
+      binding: string;
+      pointer: unknown;
+      tokens: Array<string | number>;
+    }> = [];
+    const root = createViewNode({
+      bindings: {
+        mouseDown: "mouse-down-root",
+        mouseMove: "mouse-move-root",
+        mouseUp: "mouse-up-root",
+        dragStart: "drag-start-root",
+        drag: "drag-root",
+        dragEnd: "drag-end-root",
+      },
+    });
+    appendChild(
+      root,
+      createTextNode({ spec: { text: "AB", wrap: false, style: null } }),
+    );
+
+    const runtime = mountTuiRoot(root, {
+      constraints: {},
+      onDispatch: ({ binding, result, pointer }) => {
+        dispatched.push({
+          binding,
+          pointer,
+          tokens: result.actions.map((action) => action.token),
+        });
+      },
+    });
+
+    runtime.dispatchEvent({
+      type: "pointerDown",
+      point: { x: 0, y: 0 },
+      pointer: {
+        point: { x: 0, y: 0 },
+        button: "secondary",
+        modifiers: {
+          altKey: true,
+          ctrlKey: false,
+          metaKey: false,
+          shiftKey: true,
+        },
+      },
+    });
+    runtime.dispatchEvent({
+      type: "pointerMove",
+      point: { x: 1, y: 0 },
+      pointer: {
+        point: { x: 1, y: 0 },
+        button: "secondary",
+        modifiers: {
+          altKey: true,
+          ctrlKey: false,
+          metaKey: false,
+          shiftKey: true,
+        },
+      },
+    });
+    runtime.dispatchEvent({
+      type: "pointerUp",
+      point: { x: 1, y: 0 },
+      pointer: {
+        point: { x: 1, y: 0 },
+        button: "secondary",
+        modifiers: {
+          altKey: true,
+          ctrlKey: false,
+          metaKey: false,
+          shiftKey: true,
+        },
+      },
+    });
+
+    expect(dispatched).toEqual([
+      {
+        binding: "mouseDown",
+        tokens: ["mouse-down-root"],
+        pointer: {
+          point: { x: 0, y: 0 },
+          button: "secondary",
+          modifiers: {
+            altKey: true,
+            ctrlKey: false,
+            metaKey: false,
+            shiftKey: true,
+          },
+        },
+      },
+      {
+        binding: "mouseMove",
+        tokens: ["mouse-move-root"],
+        pointer: {
+          point: { x: 1, y: 0 },
+          button: "secondary",
+          modifiers: {
+            altKey: true,
+            ctrlKey: false,
+            metaKey: false,
+            shiftKey: true,
+          },
+        },
+      },
+      {
+        binding: "dragStart",
+        tokens: ["drag-start-root"],
+        pointer: {
+          point: { x: 1, y: 0 },
+          button: "secondary",
+          modifiers: {
+            altKey: true,
+            ctrlKey: false,
+            metaKey: false,
+            shiftKey: true,
+          },
+        },
+      },
+      {
+        binding: "drag",
+        tokens: ["drag-root"],
+        pointer: {
+          point: { x: 1, y: 0 },
+          button: "secondary",
+          modifiers: {
+            altKey: true,
+            ctrlKey: false,
+            metaKey: false,
+            shiftKey: true,
+          },
+        },
+      },
+      {
+        binding: "mouseUp",
+        tokens: ["mouse-up-root"],
+        pointer: {
+          point: { x: 1, y: 0 },
+          button: "secondary",
+          modifiers: {
+            altKey: true,
+            ctrlKey: false,
+            metaKey: false,
+            shiftKey: true,
+          },
+        },
+      },
+      {
+        binding: "dragEnd",
+        tokens: ["drag-end-root"],
+        pointer: {
+          point: { x: 1, y: 0 },
+          button: "secondary",
+          modifiers: {
+            altKey: true,
+            ctrlKey: false,
+            metaKey: false,
+            shiftKey: true,
+          },
+        },
+      },
+    ]);
+  });
+
   it("updates managed scroll offsets and rerenders through the TUI runtime", () => {
     const dispatched: Array<Array<string | number>> = [];
     const root = createViewNode({

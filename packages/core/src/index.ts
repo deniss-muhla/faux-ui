@@ -46,6 +46,9 @@ export type {
   DispatchAction,
   DispatchExecution,
   DispatchResult,
+  PointerButton,
+  PointerDispatchMeta,
+  PointerModifiers,
   ResolvedDispatchAction,
 } from "./events.js";
 export {

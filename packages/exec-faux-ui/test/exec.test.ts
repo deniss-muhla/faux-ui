@@ -1,3 +1,4 @@
+import { EventEmitter } from "node:events";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -25,6 +26,20 @@ class MockStdout {
   on(): void {}
 
   off(): void {}
+}
+
+class MockInput extends EventEmitter {
+  isTTY = true;
+
+  setRawMode(): void {}
+
+  resume(): void {}
+
+  pause(): void {}
+}
+
+class InteractiveStdout extends MockStdout {
+  override isTTY = true;
 }
 
 describe("exec-faux-ui", () => {
@@ -67,6 +82,47 @@ describe("exec-faux-ui", () => {
     expect(output).toContain("[text 2x1");
   });
 
+  it("prints the semantic binding tree for bindings inspection", () => {
+    const output = executeDocumentText(
+      JSON.stringify({
+        version: 1,
+        root: {
+          kind: "view",
+          bind: {
+            click: "open-root",
+            dragStart: "drag-root-start",
+          },
+          children: [
+            {
+              kind: "text",
+              text: "Hi",
+            },
+          ],
+        },
+      }),
+      {
+        target: "dom",
+        format: "readable",
+        inspect: "bindings",
+        constraints: {},
+      },
+    );
+
+    expect(JSON.parse(output)).toMatchObject({
+      kind: "view",
+      bindings: {
+        click: "open-root",
+        dragStart: "drag-root-start",
+      },
+      children: [
+        {
+          kind: "text",
+          bindings: {},
+        },
+      ],
+    });
+  });
+
   it("renders DOM target output as a JSON projection model", () => {
     const output = executeDocumentText(
       JSON.stringify({
@@ -99,6 +155,9 @@ describe("exec-faux-ui", () => {
 
     expect(output).toContain("Usage: exec-faux-ui");
     expect(output).toContain("target tui uses an interactive terminal host");
+    expect(output).toContain(
+      "inspect bindings prints the semantic binding tree",
+    );
   });
 
   it("chooses interactive TUI mode only when it is usable", () => {
@@ -173,5 +232,85 @@ describe("exec-faux-ui", () => {
     expect(exitCode).toBe(0);
     expect(readFileSync(snapshotPath, "utf8")).toContain('"textContent": "Hi"');
     expect(stdout.output).toContain('"textContent": "Hi"');
+  });
+
+  it("writes interactive TUI dispatch events to a JSONL log", () => {
+    const cwd = mkdtempSync(join(tmpdir(), "exec-faux-ui-events-"));
+    const entryPath = join(cwd, "document.json");
+    const eventLogPath = join(cwd, "events", "session.jsonl");
+    writeFileSync(
+      entryPath,
+      JSON.stringify({
+        version: 1,
+        root: {
+          kind: "view",
+          bind: {
+            mouseDown: "mouse-down-root",
+            dragStart: "drag-start-root",
+            drag: "drag-root",
+            dragEnd: "drag-end-root",
+          },
+          children: [{ kind: "text", text: "AB" }],
+        },
+      }),
+      "utf8",
+    );
+
+    const stdin = new MockInput();
+    const stdout = new InteractiveStdout();
+    const exitCode = mainWithIO(
+      [
+        entryPath,
+        "--target",
+        "tui",
+        "--interactive",
+        "--event-log",
+        eventLogPath,
+      ],
+      {
+        stdin,
+        stdout,
+      },
+    );
+
+    stdin.emit("data", "\u001b[<0;1;1M");
+    stdin.emit("data", "\u001b[<32;2;1M");
+    stdin.emit("data", "\u001b[<0;2;1m");
+    stdin.emit("data", "\u0003");
+
+    expect(exitCode).toBe(0);
+
+    const events = readFileSync(eventLogPath, "utf8")
+      .trim()
+      .split("\n")
+      .filter((line) => line.length > 0)
+      .map((line) => JSON.parse(line));
+
+    expect(events).toEqual([
+      expect.objectContaining({
+        binding: "mouseDown",
+        pointer: expect.objectContaining({ button: "primary" }),
+        actions: [{ token: "mouse-down-root", nodeId: expect.any(Number) }],
+      }),
+      expect.objectContaining({
+        binding: "mouseMove",
+      }),
+      expect.objectContaining({
+        binding: "dragStart",
+        pointer: expect.objectContaining({ button: "primary" }),
+        actions: [{ token: "drag-start-root", nodeId: expect.any(Number) }],
+      }),
+      expect.objectContaining({
+        binding: "drag",
+        actions: [{ token: "drag-root", nodeId: expect.any(Number) }],
+      }),
+      expect.objectContaining({
+        binding: "mouseUp",
+      }),
+      expect.objectContaining({
+        binding: "dragEnd",
+        actions: [{ token: "drag-end-root", nodeId: expect.any(Number) }],
+      }),
+    ]);
   });
 });

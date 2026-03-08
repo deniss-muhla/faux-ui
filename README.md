@@ -52,10 +52,10 @@ The current implementation includes:
 - executable tests for `UINode` invalidation behavior
 - readable JSON validation plus compact-codec encode/decode support in `@faux-ui/schema`
 - an initial React reconciler bridge with `View` and `Text` JSX wrappers over the custom host config
-- a TUI renderer with character-cell text measurement, frame-buffer output, clipping, render-phase scroll offsets, runtime dispatch helpers, hover transitions, a concrete terminal host loop, and snapshots
-- a DOM renderer with absolute-positioned model projection, delegated DOM measurement adapters, live mounting, browser-style input routing, focus tracking, runtime scroll management, and snapshots
+- a TUI renderer with character-cell text measurement, frame-buffer output, clipping, render-phase scroll offsets, runtime dispatch helpers, hover and drag transitions, shared pointer metadata, a concrete terminal host loop, and snapshots
+- a DOM renderer with absolute-positioned model projection, delegated DOM measurement adapters, live mounting, browser-style input routing, focus tracking, drag-aware pointer dispatch, runtime scroll management, and snapshots
 - browser-level Playwright visual regression coverage for DOM projection output
-- an execution CLI that renders schema documents to DOM or TUI targets, exposes inspect modes, and can launch an interactive terminal session on TTYs
-- a scaffold CLI that generates starter projects for JSX, JSON, and hybrid authoring flows
+- an execution CLI that renders schema documents to DOM or TUI targets, exposes binding/layout/render-tree inspect modes, can log live interactive dispatch events, and can launch an interactive terminal session on TTYs
+- a scaffold CLI that generates starter projects for JSX, JSON, and hybrid authoring flows with binding-inspection scripts and drag-token examples
 
-The main remaining MVP gaps are richer terminal pointer semantics, broader exec/scaffold workflows, and deeper tooling on top of the current inspection surfaces.
+The main remaining MVP gaps are broader exec/scaffold workflows and deeper tooling on top of the current inspection surfaces.

@@ -120,19 +120,36 @@ describe("reconciler skeleton", () => {
     root.render(
       createElement(
         VIEW_TYPE,
-        { columns: [4], onClick: "open-root", focusable: true },
-        createElement(TEXT_TYPE, { onPress: "submit-child", wrap: true }, "AB"),
+        {
+          columns: [4],
+          onClick: "open-root",
+          onDragStart: "drag-root-start",
+          onDrag: "drag-root",
+          focusable: true,
+        },
+        createElement(
+          TEXT_TYPE,
+          { onPress: "submit-child", onDragEnd: "drag-child-end", wrap: true },
+          "AB",
+        ),
       ),
     );
 
     const mounted = root.getMountedNode();
     expect(mounted?.kind).toBe("view");
     if (mounted?.kind === "view") {
-      expect(mounted.bindings).toEqual({ click: "open-root" });
+      expect(mounted.bindings).toEqual({
+        click: "open-root",
+        dragStart: "drag-root-start",
+        drag: "drag-root",
+      });
       expect(mounted.children[0]?.kind).toBe("text");
       const child = mounted.children[0];
       if (child?.kind === "text") {
-        expect(child.bindings).toEqual({ press: "submit-child" });
+        expect(child.bindings).toEqual({
+          press: "submit-child",
+          dragEnd: "drag-child-end",
+        });
         expect(child.spec.wrap).toBe(true);
       }
     }

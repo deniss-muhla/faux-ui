@@ -51,6 +51,9 @@ export interface EventBindingProps {
   onMouseEnter?: BindingToken;
   onMouseLeave?: BindingToken;
   onMouseMove?: BindingToken;
+  onDragStart?: BindingToken;
+  onDrag?: BindingToken;
+  onDragEnd?: BindingToken;
   onScroll?: BindingToken;
 }
 
@@ -150,6 +153,9 @@ const BINDING_PROP_NAMES = {
   onMouseEnter: "mouseEnter",
   onMouseLeave: "mouseLeave",
   onMouseMove: "mouseMove",
+  onDragStart: "dragStart",
+  onDrag: "drag",
+  onDragEnd: "dragEnd",
   onScroll: "scroll",
 } as const satisfies Record<keyof EventBindingProps, keyof BoundActions>;
 

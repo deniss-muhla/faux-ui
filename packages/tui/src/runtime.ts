@@ -9,6 +9,9 @@ import {
   type DispatchExecution,
   type DispatchResult,
   type NodeId,
+  type PointerButton,
+  type PointerDispatchMeta,
+  type PointerModifiers,
   type RenderHit,
   type RenderTree,
   type RenderTreeNode,
@@ -35,6 +38,7 @@ export type TuiRuntimeEvent =
   | {
       type: "click" | "pointerDown" | "pointerMove" | "pointerUp";
       point: TuiPoint;
+      pointer?: PointerDispatchMeta;
       nativeEvent?: unknown;
     }
   | {
@@ -60,6 +64,7 @@ export type TuiRuntimeEvent =
       type: "scroll";
       point: TuiPoint;
       delta: TuiScrollDelta;
+      pointer?: PointerDispatchMeta;
       nativeEvent?: unknown;
     };
 
@@ -67,6 +72,7 @@ export interface TuiDispatchEvent<THandler = unknown> {
   binding: BindingName;
   result: DispatchResult;
   execution: DispatchExecution<THandler> | null;
+  pointer: PointerDispatchMeta | null;
   nativeEvent: unknown;
 }
 
@@ -125,6 +131,12 @@ export function mountTuiRoot<THandler>(
   sanitizeStoredScrollOffsets();
   let focusedNodeId: number | null = null;
   let hoveredPathNodeIds: NodeId[] = [];
+  let activePointer: {
+    point: TuiPoint;
+    button: PointerButton | null;
+    modifiers: PointerModifiers;
+    dragging: boolean;
+  } | null = null;
   let focusableNodeIds = collectFocusableNodeIds(currentRoot);
 
   return {
@@ -198,18 +210,79 @@ export function mountTuiRoot<THandler>(
   function dispatchEventInternal(event: TuiRuntimeEvent): void {
     switch (event.type) {
       case "click":
-        dispatchAtPointInternal("click", event.point, event.nativeEvent);
+        dispatchAtPointInternal(
+          "click",
+          event.point,
+          event.nativeEvent,
+          event.pointer ?? null,
+        );
         return;
       case "pointerDown":
         focusAtPointInternal(event.point, event.nativeEvent);
-        dispatchAtPointInternal("mouseDown", event.point, event.nativeEvent);
+        activePointer = {
+          point: event.point,
+          button: event.pointer?.button ?? null,
+          modifiers: event.pointer?.modifiers ?? emptyPointerModifiers(),
+          dragging: false,
+        };
+        dispatchAtPointInternal(
+          "mouseDown",
+          event.point,
+          event.nativeEvent,
+          event.pointer ?? null,
+        );
         return;
       case "pointerMove":
         syncHoveredPathAtPoint(event.point, event.nativeEvent);
-        dispatchAtPointInternal("mouseMove", event.point, event.nativeEvent);
+        dispatchAtPointInternal(
+          "mouseMove",
+          event.point,
+          event.nativeEvent,
+          event.pointer ?? activePointerMeta(event.point),
+        );
+
+        if (
+          activePointer !== null &&
+          !samePoint(activePointer.point, event.point)
+        ) {
+          const pointer = event.pointer ?? activePointerMeta(event.point);
+          if (!activePointer.dragging) {
+            dispatchAtPointInternal(
+              "dragStart",
+              event.point,
+              event.nativeEvent,
+              pointer,
+            );
+            activePointer.dragging = true;
+          }
+
+          dispatchAtPointInternal(
+            "drag",
+            event.point,
+            event.nativeEvent,
+            pointer,
+          );
+          activePointer.point = event.point;
+          activePointer.modifiers =
+            pointer?.modifiers ?? emptyPointerModifiers();
+        }
         return;
       case "pointerUp":
-        dispatchAtPointInternal("mouseUp", event.point, event.nativeEvent);
+        dispatchAtPointInternal(
+          "mouseUp",
+          event.point,
+          event.nativeEvent,
+          event.pointer ?? activePointerMeta(event.point),
+        );
+        if (activePointer?.dragging) {
+          dispatchAtPointInternal(
+            "dragEnd",
+            event.point,
+            event.nativeEvent,
+            event.pointer ?? activePointerMeta(event.point),
+          );
+        }
+        activePointer = null;
         return;
       case "focusAtPoint":
         focusAtPointInternal(event.point, event.nativeEvent);
@@ -236,7 +309,12 @@ export function mountTuiRoot<THandler>(
         );
         return;
       case "scroll":
-        scrollAtPointInternal(event.point, event.delta, event.nativeEvent);
+        scrollAtPointInternal(
+          event.point,
+          event.delta,
+          event.nativeEvent,
+          event.pointer ?? null,
+        );
         return;
     }
   }
@@ -254,9 +332,10 @@ export function mountTuiRoot<THandler>(
     binding: BindingName,
     point: TuiPoint,
     nativeEvent: unknown,
+    pointer: PointerDispatchMeta | null = null,
   ): DispatchResult {
     const result = dispatchBindingAtPoint(buildInputTree(), point, binding);
-    notifyDispatch(binding, result, nativeEvent);
+    notifyDispatch(binding, result, nativeEvent, pointer);
     return result;
   }
 
@@ -279,10 +358,11 @@ export function mountTuiRoot<THandler>(
     point: TuiPoint,
     delta: TuiScrollDelta,
     nativeEvent: unknown,
+    pointer: PointerDispatchMeta | null = null,
   ): DispatchResult {
     const result = dispatchBindingAtPoint(buildInputTree(), point, "scroll");
     applyScrollDelta(result.hit, delta);
-    notifyDispatch("scroll", result, nativeEvent ?? { point, delta });
+    notifyDispatch("scroll", result, nativeEvent ?? { point, delta }, pointer);
     return result;
   }
 
@@ -384,6 +464,7 @@ export function mountTuiRoot<THandler>(
     binding: BindingName,
     result: DispatchResult,
     nativeEvent: unknown,
+    pointer: PointerDispatchMeta | null = null,
   ): void {
     const execution =
       currentOptions.resolveAction === undefined
@@ -394,8 +475,21 @@ export function mountTuiRoot<THandler>(
       binding,
       result,
       execution,
+      pointer,
       nativeEvent,
     });
+  }
+
+  function activePointerMeta(point: TuiPoint): PointerDispatchMeta | null {
+    if (activePointer === null) {
+      return null;
+    }
+
+    return {
+      point,
+      button: activePointer.button,
+      modifiers: activePointer.modifiers,
+    };
   }
 
   function syncHoveredPathAtPoint(point: TuiPoint, nativeEvent: unknown): void {
@@ -713,6 +807,19 @@ function clampScrollOffset(
 
 function clampAxis(value: number, max: number): number {
   return Math.max(0, Math.min(max, value));
+}
+
+function emptyPointerModifiers(): PointerModifiers {
+  return {
+    altKey: false,
+    ctrlKey: false,
+    metaKey: false,
+    shiftKey: false,
+  };
+}
+
+function samePoint(left: TuiPoint, right: TuiPoint): boolean {
+  return left.x === right.x && left.y === right.y;
 }
 
 function findHitByNodeId(tree: RenderTree, nodeId: NodeId): RenderHit | null {

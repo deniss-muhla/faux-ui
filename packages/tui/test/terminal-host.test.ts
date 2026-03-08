@@ -52,12 +52,69 @@ describe("terminal tui host", () => {
     expect(
       consumeTerminalInput("\u001b[<0;3;2M\u001b[<0;3;2m").controls,
     ).toEqual([
-      { type: "pointerDown", point: { x: 2, y: 1 } },
-      { type: "pointerUp", point: { x: 2, y: 1 } },
+      {
+        type: "pointerDown",
+        point: { x: 2, y: 1 },
+        pointer: {
+          point: { x: 2, y: 1 },
+          button: "primary",
+          modifiers: {
+            altKey: false,
+            ctrlKey: false,
+            metaKey: false,
+            shiftKey: false,
+          },
+        },
+      },
+      {
+        type: "pointerUp",
+        point: { x: 2, y: 1 },
+        pointer: {
+          point: { x: 2, y: 1 },
+          button: "primary",
+          modifiers: {
+            altKey: false,
+            ctrlKey: false,
+            metaKey: false,
+            shiftKey: false,
+          },
+        },
+      },
     ]);
 
     expect(consumeTerminalInput("\u001b[<65;1;1M").controls).toEqual([
-      { type: "scroll", point: { x: 0, y: 0 }, delta: { x: 0, y: 1 } },
+      {
+        type: "scroll",
+        point: { x: 0, y: 0 },
+        delta: { x: 0, y: 1 },
+        pointer: {
+          point: { x: 0, y: 0 },
+          button: null,
+          modifiers: {
+            altKey: false,
+            ctrlKey: false,
+            metaKey: false,
+            shiftKey: false,
+          },
+        },
+      },
+    ]);
+
+    expect(consumeTerminalInput("\u001b[<20;4;3M").controls).toEqual([
+      {
+        type: "pointerDown",
+        point: { x: 3, y: 2 },
+        pointer: {
+          point: { x: 3, y: 2 },
+          button: "primary",
+          modifiers: {
+            altKey: false,
+            ctrlKey: true,
+            metaKey: false,
+            shiftKey: true,
+          },
+        },
+      },
     ]);
 
     expect(consumeTerminalInput("\u001b[<0;1")).toEqual({
@@ -90,11 +147,7 @@ describe("terminal tui host", () => {
     ).toBe(true);
 
     expect(
-      supportsTerminalMouse(
-        { isTTY: true },
-        { TERM: "dumb" },
-        "linux",
-      ),
+      supportsTerminalMouse({ isTTY: true }, { TERM: "dumb" }, "linux"),
     ).toBe(false);
 
     expect(
@@ -125,8 +178,7 @@ describe("terminal tui host", () => {
       enabled: true,
       mode: "move",
       enableSequence: "\u001b[?1000h\u001b[?1002h\u001b[?1003h\u001b[?1006h",
-      disableSequence:
-        "\u001b[?1000l\u001b[?1002l\u001b[?1003l\u001b[?1006l",
+      disableSequence: "\u001b[?1000l\u001b[?1002l\u001b[?1003l\u001b[?1006l",
     });
 
     expect(
@@ -214,6 +266,13 @@ describe("terminal tui host", () => {
     stdin.emit("data", "\u001b[<32;2;1M");
     stdin.emit("data", "\u001b[<0;2;1m");
 
-    expect(dispatched).toEqual(["mouseDown", "mouseMove", "mouseUp"]);
+    expect(dispatched).toEqual([
+      "mouseDown",
+      "mouseMove",
+      "dragStart",
+      "drag",
+      "mouseUp",
+      "dragEnd",
+    ]);
   });
 });

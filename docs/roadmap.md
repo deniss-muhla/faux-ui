@@ -60,10 +60,11 @@ Delivered so far:
 - terminal hosts can drive the runtime through a single event entrypoint or imperative helpers without reimplementing hit testing or focus rules
 - `@faux-ui/tui` now ships a concrete terminal host that manages raw-mode input, alternate-screen rendering, resize handling, mouse reporting, and TTY-aware viewport constraints
 - pointer movement now produces shared-path `mouseEnter` and `mouseLeave` transitions in the TUI runtime instead of only raw `mouseMove` dispatches
+- DOM and TUI now expose the same pointer payload metadata for button identity and modifier keys, and both runtimes synthesize additive `dragStart` / `drag` / `dragEnd` bindings from the shared pointer flow
 
 Remaining:
 
-- flesh out richer pointer behavior where terminal environments expose it
+- broaden terminal-specific gesture semantics only if MVP consumers prove they need more than the current button plus modifier plus drag contract
 
 ### 3. Improve DOM runtime completeness
 
@@ -127,8 +128,9 @@ Delivered so far:
 
 - `exec-faux-ui` now loads readable JSON documents or compact FUI arrays from a file path or stdin
 - the CLI supports `--target dom|tui`, automatic or explicit format selection, and size constraints
-- inspect-oriented modes now expose semantic layout dumps and visible render-tree JSON for debugging workflows
+- inspect-oriented modes now expose semantic binding dumps, semantic layout dumps, and visible render-tree JSON for debugging workflows
 - TTY execution now automatically enters a live TUI host mode, with explicit `--interactive` and `--static` control for terminal versus scriptable workflows
+- interactive TUI execution can now persist live dispatch activity with `--event-log`, which makes pointer and drag behavior inspectable without custom application code
 - static execution can now persist render or inspection output via `--snapshot`, which makes the current CLI modes usable in CI and artifact-oriented automation
 
 ### 6. Finish the scaffold CLI
@@ -149,7 +151,7 @@ Delivered so far:
 
 - `create-faux-ui` now generates starter projects for `jsx`, `json`, and `hybrid` entry modes
 - generated projects include package-manager-aware metadata for Bun, npm, or pnpm workflows
-- JSX starters include a runnable terminal app entrypoint, while JSON starters include ready-to-inspect schema documents for `exec-faux-ui`
+- JSX starters now include bound drag tokens in the sample app, while JSON starters include ready-to-inspect schema documents and binding-inspection scripts for `exec-faux-ui`
 
 ## Longer-Term Direction
 

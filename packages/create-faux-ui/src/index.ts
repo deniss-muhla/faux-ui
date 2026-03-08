@@ -1,11 +1,6 @@
 #!/usr/bin/env node
 
-import {
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -142,9 +137,10 @@ if (isMain) {
   process.exitCode = main(process.argv.slice(2));
 }
 
-function parseScaffoldArgs(args: string[], cwd: string):
-  | { help: true }
-  | { help: false; options: ScaffoldOptions } {
+function parseScaffoldArgs(
+  args: string[],
+  cwd: string,
+): { help: true } | { help: false; options: ScaffoldOptions } {
   let name: string | null = null;
   let template = DEFAULT_TEMPLATE;
   let packageManager = DEFAULT_PACKAGE_MANAGER;
@@ -215,8 +211,12 @@ function buildPackageJson(options: ScaffoldOptions): Record<string, unknown> {
 
   if (options.template === "json" || options.template === "hybrid") {
     dependencies["exec-faux-ui"] = "0.1.0";
-    scripts["preview:tui"] = "exec-faux-ui src/document.json --target tui --static";
-    scripts["inspect:layout"] = "exec-faux-ui src/document.json --inspect layout";
+    scripts["preview:tui"] =
+      "exec-faux-ui src/document.json --target tui --static";
+    scripts["inspect:bindings"] =
+      "exec-faux-ui src/document.json --inspect bindings";
+    scripts["inspect:layout"] =
+      "exec-faux-ui src/document.json --inspect layout";
     scripts["inspect:render-tree"] =
       "exec-faux-ui src/document.json --inspect render-tree";
   }
@@ -276,7 +276,10 @@ function buildReadme(options: ScaffoldOptions): string {
     `- Install: ${buildInstallCommand(options.packageManager)}`,
     `- Start: ${buildStartCommand(options.template, options.packageManager)}`,
     ...(options.template === "hybrid" || options.template === "json"
-      ? ["- Inspect layout: exec-faux-ui src/document.json --inspect layout"]
+      ? [
+          "- Inspect bindings: exec-faux-ui src/document.json --inspect bindings",
+          "- Inspect layout: exec-faux-ui src/document.json --inspect layout",
+        ]
       : []),
     "",
     "## Notes",
@@ -298,8 +301,11 @@ function buildJsxApp(name: string): string {
     "const root = reconciler.createRoot();",
     "",
     "root.render(",
-    "  <View rows={[1, 1, 1]}>",
+    '  <View rows={[1, 1, 1, 1]} onClick="open-root">',
     "    <Text>{`${appName} starter`}</Text>",
+    '    <View focusable onMouseDown="drag-card-down" onDragStart="drag-card-start" onDrag="drag-card" onDragEnd="drag-card-end">',
+    "      <Text>Drag tokens are already bound on this card.</Text>",
+    "    </View>",
     "    <Text>faux-ui is rendering this layout through the TUI runtime.</Text>",
     "    <Text>Press Ctrl+C to exit.</Text>",
     "  </View>,",
@@ -321,13 +327,22 @@ function buildDocumentSpec(name: string): Record<string, unknown> {
     root: {
       kind: "view",
       rows: ["auto", "auto", "auto"],
+      bind: {
+        click: "open-root",
+        dragStart: "drag-root-start",
+        drag: "drag-root",
+        dragEnd: "drag-root-end",
+      },
       children: [
         { kind: "text", text: `${name} starter` },
         {
           kind: "text",
           text: "Use exec-faux-ui to inspect or render this document.",
         },
-        { kind: "text", text: "This starter uses the shared faux-ui schema." },
+        {
+          kind: "text",
+          text: "Run exec-faux-ui src/document.json --inspect bindings to see the drag tokens.",
+        },
       ],
     },
   };

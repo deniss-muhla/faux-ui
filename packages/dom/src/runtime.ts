@@ -9,6 +9,9 @@ import {
   type DispatchExecution,
   type DispatchResult,
   type NodeId,
+  type PointerButton,
+  type PointerDispatchMeta,
+  type PointerModifiers,
   type RenderHit,
   type RenderTree,
   type RenderTreeNode,
@@ -50,6 +53,12 @@ export interface DomElementLike {
 export interface DomPointerEventLike {
   clientX: number;
   clientY: number;
+  button?: number;
+  buttons?: number;
+  altKey?: boolean;
+  ctrlKey?: boolean;
+  metaKey?: boolean;
+  shiftKey?: boolean;
   preventDefault?(): void;
 }
 
@@ -71,6 +80,7 @@ export interface DomDispatchEvent<THandler = unknown> {
   binding: BindingName;
   result: DispatchResult;
   execution: DispatchExecution<THandler> | null;
+  pointer: PointerDispatchMeta | null;
   nativeEvent: unknown;
 }
 
@@ -124,6 +134,12 @@ export function mountDomRoot<THandler>(
   sanitizeStoredScrollOffsets();
   let focusedNodeId: number | null = null;
   let hoveredPathNodeIds: NodeId[] = [];
+  let activePointer: {
+    point: DomPoint;
+    button: PointerButton | null;
+    modifiers: PointerModifiers;
+    dragging: boolean;
+  } | null = null;
   let elementNodeIds = new WeakMap<DomElementLike, NodeId>();
   let nodeElements = new Map<NodeId, DomElementLike>();
   let focusableNodeIds = collectFocusableNodeIds(currentRoot);
@@ -136,10 +152,16 @@ export function mountDomRoot<THandler>(
       return;
     }
 
+    const point = pointFromPointerEvent(container, event);
     dispatchAtPointInternal(
       "click",
-      pointFromPointerEvent(container, event),
+      point,
       event,
+      createPointerDispatchMeta(
+        point,
+        readDomPointerButton(event.button),
+        event,
+      ),
     );
   };
 
@@ -149,8 +171,19 @@ export function mountDomRoot<THandler>(
     }
 
     const point = pointFromPointerEvent(container, event);
+    const pointer = createPointerDispatchMeta(
+      point,
+      readDomPointerButton(event.button),
+      event,
+    );
     focusAtPointInternal(point, event);
-    dispatchAtPointInternal("mouseDown", point, event);
+    activePointer = {
+      point,
+      button: pointer.button,
+      modifiers: pointer.modifiers,
+      dragging: false,
+    };
+    dispatchAtPointInternal("mouseDown", point, event, pointer);
   };
 
   const mouseUpListener: EventListener = (event) => {
@@ -158,11 +191,20 @@ export function mountDomRoot<THandler>(
       return;
     }
 
-    dispatchAtPointInternal(
-      "mouseUp",
-      pointFromPointerEvent(container, event),
+    const point = pointFromPointerEvent(container, event);
+    const pointer = createPointerDispatchMeta(
+      point,
+      activePointer?.button ?? readDomPointerButton(event.button),
       event,
     );
+
+    dispatchAtPointInternal("mouseUp", point, event, pointer);
+
+    if (activePointer?.dragging) {
+      dispatchAtPointInternal("dragEnd", point, event, pointer);
+    }
+
+    activePointer = null;
   };
 
   const mouseMoveListener: EventListener = (event) => {
@@ -171,9 +213,25 @@ export function mountDomRoot<THandler>(
     }
 
     const point = pointFromPointerEvent(container, event);
+    const pointer = createPointerDispatchMeta(
+      point,
+      activePointer?.button ?? readDomPointerButton(event.button),
+      event,
+    );
     syncHoveredPathAtPoint(point, event);
 
-    dispatchAtPointInternal("mouseMove", point, event);
+    dispatchAtPointInternal("mouseMove", point, event, pointer);
+
+    if (activePointer !== null && !samePoint(activePointer.point, point)) {
+      if (!activePointer.dragging) {
+        dispatchAtPointInternal("dragStart", point, event, pointer);
+        activePointer.dragging = true;
+      }
+
+      dispatchAtPointInternal("drag", point, event, pointer);
+      activePointer.point = point;
+      activePointer.modifiers = pointer.modifiers;
+    }
   };
 
   const mouseLeaveListener: EventListener = (event) => {
@@ -269,6 +327,7 @@ export function mountDomRoot<THandler>(
       elementNodeIds = new WeakMap<DomElementLike, NodeId>();
       hoveredPathNodeIds = [];
       focusedNodeId = null;
+      activePointer = null;
     },
     dispatchAtPoint(binding, point, nativeEvent) {
       return dispatchAtPointInternal(binding, point, nativeEvent);
@@ -371,9 +430,13 @@ export function mountDomRoot<THandler>(
     binding: BindingName,
     point: DomPoint,
     nativeEvent: unknown,
+    pointer: PointerDispatchMeta | null = resolveDomPointerDispatchMeta(
+      point,
+      nativeEvent,
+    ),
   ): DispatchResult {
     const result = dispatchBindingAtPoint(buildInputTree(), point, binding);
-    notifyDispatch(binding, result, nativeEvent);
+    notifyDispatch(binding, result, nativeEvent, pointer);
     return result;
   }
 
@@ -392,7 +455,12 @@ export function mountDomRoot<THandler>(
       rerenderInternal();
     }
 
-    notifyDispatch("scroll", result, event);
+    notifyDispatch(
+      "scroll",
+      result,
+      event,
+      createPointerDispatchMeta(point, null, event),
+    );
     return result;
   }
 
@@ -466,6 +534,7 @@ export function mountDomRoot<THandler>(
     binding: BindingName,
     result: DispatchResult,
     nativeEvent: unknown,
+    pointer: PointerDispatchMeta | null = null,
   ): void {
     const execution =
       currentOptions.resolveAction === undefined
@@ -476,6 +545,7 @@ export function mountDomRoot<THandler>(
       binding,
       result,
       execution,
+      pointer,
       nativeEvent,
     });
   }
@@ -1062,6 +1132,71 @@ function isPointerEventLike(value: unknown): value is DomPointerEventLike {
     typeof (value as Record<string, unknown>).clientX === "number" &&
     typeof (value as Record<string, unknown>).clientY === "number"
   );
+}
+
+function resolveDomPointerDispatchMeta(
+  point: DomPoint,
+  nativeEvent: unknown,
+): PointerDispatchMeta | null {
+  if (!isPointerEventLike(nativeEvent)) {
+    return null;
+  }
+
+  return createPointerDispatchMeta(
+    point,
+    readDomPointerButton(nativeEvent.button),
+    nativeEvent,
+  );
+}
+
+function createPointerDispatchMeta(
+  point: DomPoint,
+  button: PointerButton | null,
+  event: {
+    altKey?: boolean;
+    ctrlKey?: boolean;
+    metaKey?: boolean;
+    shiftKey?: boolean;
+  },
+): PointerDispatchMeta {
+  return {
+    point,
+    button,
+    modifiers: readPointerModifiers(event),
+  };
+}
+
+function readDomPointerButton(
+  button: number | undefined,
+): PointerButton | null {
+  switch (button) {
+    case 0:
+      return "primary";
+    case 1:
+      return "middle";
+    case 2:
+      return "secondary";
+    default:
+      return null;
+  }
+}
+
+function readPointerModifiers(event: {
+  altKey?: boolean;
+  ctrlKey?: boolean;
+  metaKey?: boolean;
+  shiftKey?: boolean;
+}): PointerModifiers {
+  return {
+    altKey: event.altKey === true,
+    ctrlKey: event.ctrlKey === true,
+    metaKey: event.metaKey === true,
+    shiftKey: event.shiftKey === true,
+  };
+}
+
+function samePoint(left: DomPoint, right: DomPoint): boolean {
+  return left.x === right.x && left.y === right.y;
 }
 
 function isWheelEventLike(value: unknown): value is DomWheelEventLike {

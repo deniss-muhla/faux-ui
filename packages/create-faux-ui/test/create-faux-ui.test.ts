@@ -32,11 +32,15 @@ describe("create-faux-ui", () => {
     const packageJson = plan.files.find((file) => file.path === "package.json");
     expect(packageJson?.content).toContain("exec-faux-ui");
     expect(packageJson?.content).toContain("preview:tui");
+    expect(packageJson?.content).toContain("inspect:bindings");
   });
 
   it("writes the scaffold to disk and prints next steps", () => {
     const cwd = mkdtempSync(join(tmpdir(), "create-faux-ui-"));
-    const output = run(["demo-hybrid", "--template", "hybrid", "--pm", "pnpm"], cwd);
+    const output = run(
+      ["demo-hybrid", "--template", "hybrid", "--pm", "pnpm"],
+      cwd,
+    );
 
     expect(output).toContain("Next steps:");
     expect(output).toContain("pnpm install");
@@ -46,15 +50,20 @@ describe("create-faux-ui", () => {
       join(cwd, "demo-hybrid", "package.json"),
       "utf8",
     );
-    const appSource = readFileSync(join(cwd, "demo-hybrid", "src", "app.tsx"), "utf8");
+    const appSource = readFileSync(
+      join(cwd, "demo-hybrid", "src", "app.tsx"),
+      "utf8",
+    );
     const documentSource = readFileSync(
       join(cwd, "demo-hybrid", "src", "document.json"),
       "utf8",
     );
 
     expect(packageJson).toContain('"packageManager": "pnpm@9"');
+    expect(appSource).toContain("onDragStart");
     expect(appSource).toContain("mountTerminalTuiHost");
-    expect(documentSource).toContain("demo-hybrid starter");
+    expect(documentSource).toContain("drag-root-start");
+    expect(documentSource).toContain("--inspect bindings");
   });
 
   it("refuses to scaffold into a non-empty directory", () => {
@@ -62,9 +71,9 @@ describe("create-faux-ui", () => {
     const projectRoot = join(cwd, "occupied");
     scaffoldProject({ ...baseOptions(), cwd, name: "occupied" });
 
-    expect(() => scaffoldProject({ ...baseOptions(), cwd, name: "occupied" })).toThrow(
-      `Target directory is not empty: ${projectRoot}`,
-    );
+    expect(() =>
+      scaffoldProject({ ...baseOptions(), cwd, name: "occupied" }),
+    ).toThrow(`Target directory is not empty: ${projectRoot}`);
   });
 });
 

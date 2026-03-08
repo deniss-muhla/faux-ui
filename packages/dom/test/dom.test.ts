@@ -569,6 +569,153 @@ describe("dom renderer", () => {
     ]);
   });
 
+  it("dispatches drag lifecycle bindings with pointer metadata", () => {
+    const dispatched: Array<{
+      binding: string;
+      pointer: unknown;
+      tokens: Array<string | number>;
+    }> = [];
+    const root = createViewNode({
+      bindings: {
+        mouseDown: "mouse-down-root",
+        mouseMove: "mouse-move-root",
+        mouseUp: "mouse-up-root",
+        dragStart: "drag-start-root",
+        drag: "drag-root",
+        dragEnd: "drag-end-root",
+      },
+    });
+    appendChild(
+      root,
+      createTextNode({ spec: { text: "AB", wrap: false, style: null } }),
+    );
+
+    const document = new FakeDocument();
+    const container = document.createElement("div");
+    mountDomRoot(root, {
+      container,
+      document,
+      constraints: {},
+      measureText: ({ text }) => ({ width: text.length, height: 1 }),
+      onDispatch: ({ binding, result, pointer }) => {
+        dispatched.push({
+          binding,
+          pointer,
+          tokens: result.actions.map((action) => action.token),
+        });
+      },
+    });
+
+    container.emit("mousedown", {
+      clientX: 0,
+      clientY: 0,
+      button: 2,
+      ctrlKey: true,
+      shiftKey: true,
+    });
+    container.emit("mousemove", {
+      clientX: 1,
+      clientY: 0,
+      button: 2,
+      ctrlKey: true,
+      shiftKey: true,
+    });
+    container.emit("mouseup", {
+      clientX: 1,
+      clientY: 0,
+      button: 2,
+      ctrlKey: true,
+      shiftKey: true,
+    });
+
+    expect(dispatched).toEqual([
+      {
+        binding: "mouseDown",
+        tokens: ["mouse-down-root"],
+        pointer: {
+          point: { x: 0, y: 0 },
+          button: "secondary",
+          modifiers: {
+            altKey: false,
+            ctrlKey: true,
+            metaKey: false,
+            shiftKey: true,
+          },
+        },
+      },
+      {
+        binding: "mouseMove",
+        tokens: ["mouse-move-root"],
+        pointer: {
+          point: { x: 1, y: 0 },
+          button: "secondary",
+          modifiers: {
+            altKey: false,
+            ctrlKey: true,
+            metaKey: false,
+            shiftKey: true,
+          },
+        },
+      },
+      {
+        binding: "dragStart",
+        tokens: ["drag-start-root"],
+        pointer: {
+          point: { x: 1, y: 0 },
+          button: "secondary",
+          modifiers: {
+            altKey: false,
+            ctrlKey: true,
+            metaKey: false,
+            shiftKey: true,
+          },
+        },
+      },
+      {
+        binding: "drag",
+        tokens: ["drag-root"],
+        pointer: {
+          point: { x: 1, y: 0 },
+          button: "secondary",
+          modifiers: {
+            altKey: false,
+            ctrlKey: true,
+            metaKey: false,
+            shiftKey: true,
+          },
+        },
+      },
+      {
+        binding: "mouseUp",
+        tokens: ["mouse-up-root"],
+        pointer: {
+          point: { x: 1, y: 0 },
+          button: "secondary",
+          modifiers: {
+            altKey: false,
+            ctrlKey: true,
+            metaKey: false,
+            shiftKey: true,
+          },
+        },
+      },
+      {
+        binding: "dragEnd",
+        tokens: ["drag-end-root"],
+        pointer: {
+          point: { x: 1, y: 0 },
+          button: "secondary",
+          modifiers: {
+            altKey: false,
+            ctrlKey: true,
+            metaKey: false,
+            shiftKey: true,
+          },
+        },
+      },
+    ]);
+  });
+
   it("routes browser-style input through DOM dispatch and focus state", () => {
     const dispatched: Array<{
       binding: string;
