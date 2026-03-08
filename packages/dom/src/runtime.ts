@@ -39,6 +39,7 @@ export interface DomDocumentLike {
 
 export interface DomElementLike {
   ownerDocument?: DomDocumentLike;
+  parentElement?: DomElementLike | null;
   style: DomStyleDeclarationLike;
   textContent: string | null;
   tabIndex: number;
@@ -140,9 +141,13 @@ export function mountDomRoot<THandler>(
     modifiers: PointerModifiers;
     dragging: boolean;
   } | null = null;
+  let liveRootElement: DomElementLike | null = null;
   let elementNodeIds = new WeakMap<DomElementLike, NodeId>();
   let nodeElements = new Map<NodeId, DomElementLike>();
   let focusableNodeIds = collectFocusableNodeIds(currentRoot);
+  let rerenderQueued = false;
+  let rerenderTimer: ReturnType<typeof setTimeout> | null = null;
+  let suppressNativeFocusLifecycle = false;
 
   const container = options.container;
   const document = resolveDocument(options);
@@ -152,7 +157,7 @@ export function mountDomRoot<THandler>(
       return;
     }
 
-    const point = pointFromPointerEvent(container, event);
+    const point = pointFromPointerEvent(pointerOriginElement(), event);
     dispatchAtPointInternal(
       "click",
       point,
@@ -170,7 +175,7 @@ export function mountDomRoot<THandler>(
       return;
     }
 
-    const point = pointFromPointerEvent(container, event);
+    const point = pointFromPointerEvent(pointerOriginElement(), event);
     const pointer = createPointerDispatchMeta(
       point,
       readDomPointerButton(event.button),
@@ -191,7 +196,7 @@ export function mountDomRoot<THandler>(
       return;
     }
 
-    const point = pointFromPointerEvent(container, event);
+    const point = pointFromPointerEvent(pointerOriginElement(), event);
     const pointer = createPointerDispatchMeta(
       point,
       activePointer?.button ?? readDomPointerButton(event.button),
@@ -212,7 +217,7 @@ export function mountDomRoot<THandler>(
       return;
     }
 
-    const point = pointFromPointerEvent(container, event);
+    const point = pointFromPointerEvent(pointerOriginElement(), event);
     const pointer = createPointerDispatchMeta(
       point,
       activePointer?.button ?? readDomPointerButton(event.button),
@@ -236,7 +241,7 @@ export function mountDomRoot<THandler>(
 
   const mouseLeaveListener: EventListener = (event) => {
     if (syncHoveredPath(null, event)) {
-      rerenderInternal();
+      queueRerenderInternal();
     }
   };
 
@@ -246,7 +251,7 @@ export function mountDomRoot<THandler>(
     }
 
     dispatchWheelAtPointInternal(
-      pointFromPointerEvent(container, event),
+      pointFromPointerEvent(pointerOriginElement(), event),
       event,
     );
   };
@@ -323,6 +328,7 @@ export function mountDomRoot<THandler>(
       container.removeEventListener("keydown", keyDownListener);
       container.removeEventListener("keyup", keyUpListener);
       container.replaceChildren();
+      liveRootElement = null;
       nodeElements = new Map<NodeId, DomElementLike>();
       elementNodeIds = new WeakMap<DomElementLike, NodeId>();
       hoveredPathNodeIds = [];
@@ -352,11 +358,18 @@ export function mountDomRoot<THandler>(
     },
   };
 
+  function pointerOriginElement(): DomElementLike {
+    return liveRootElement ?? container;
+  }
+
   function rerenderInternal(): void {
     focusableNodeIds = collectFocusableNodeIds(currentRoot);
     const model = renderToDomModel(currentRoot, renderOptions());
     const rootElement = createLiveNode(model);
+    liveRootElement = rootElement;
+    suppressNativeFocusLifecycle = true;
     container.replaceChildren(rootElement);
+    suppressNativeFocusLifecycle = false;
 
     if (focusedNodeId !== null) {
       const focusedElement = nodeElements.get(focusedNodeId);
@@ -409,13 +422,24 @@ export function mountDomRoot<THandler>(
       element.tabIndex = isFocusable ? 0 : -1;
       if (isFocusable) {
         element.addEventListener("focus", () => {
+          if (suppressNativeFocusLifecycle) {
+            return;
+          }
+
           focusNodeInternal(model.nodeId, { type: "native-focus" });
         });
         element.addEventListener("blur", (event) => {
+          if (suppressNativeFocusLifecycle) {
+            return;
+          }
+
           const relatedNodeId = resolveNodeIdFromElement(
             (event as DomFocusEventLike).relatedTarget,
           );
-          focusNodeInternal(relatedNodeId, event);
+          focusNodeInternal(relatedNodeId, {
+            type: "native-blur",
+            relatedTarget: (event as DomFocusEventLike).relatedTarget ?? null,
+          });
         });
       }
       for (const child of model.children) {
@@ -435,7 +459,12 @@ export function mountDomRoot<THandler>(
       nativeEvent,
     ),
   ): DispatchResult {
-    const result = dispatchBindingAtPoint(buildInputTree(), point, binding);
+    const tree = buildInputTree();
+    const targetNodeId = resolveTargetNodeIdFromNativeEvent(nativeEvent);
+    const result =
+      targetNodeId === null
+        ? dispatchBindingAtPoint(tree, point, binding)
+        : collectDispatchResultForNodeFromTree(tree, targetNodeId, binding);
     notifyDispatch(binding, result, nativeEvent, pointer);
     return result;
   }
@@ -468,7 +497,7 @@ export function mountDomRoot<THandler>(
     point: DomPoint,
     nativeEvent: unknown,
   ): number | null {
-    const path = hitPathAtPoint(point);
+    const path = resolveTargetPath(nativeEvent) ?? hitPathAtPoint(point);
     const target = resolveFocusableNodeId(path);
     focusNodeInternal(target, nativeEvent);
     return target;
@@ -490,7 +519,11 @@ export function mountDomRoot<THandler>(
     }
 
     focusedNodeId = nextNodeId;
-    rerenderInternal();
+    if (shouldQueueFocusRerender(nativeEvent)) {
+      queueRerenderInternal();
+    } else {
+      rerenderInternal();
+    }
 
     if (nextNodeId !== null) {
       dispatchBindingForNodeInternal(nextNodeId, "focus", nativeEvent);
@@ -500,6 +533,17 @@ export function mountDomRoot<THandler>(
       previousNodeId,
       nodeId: nextNodeId,
     });
+  }
+
+  function queueRerenderInternal(): void {
+    if (rerenderQueued || rerenderTimer !== null) {
+      return;
+    }
+
+    rerenderTimer = setTimeout(() => {
+      rerenderTimer = null;
+      rerenderInternal();
+    }, 0);
   }
 
   function dispatchFocusedBindingInternal(
@@ -552,7 +596,11 @@ export function mountDomRoot<THandler>(
 
   function syncHoveredPathAtPoint(point: DomPoint, nativeEvent: unknown): void {
     if (syncHoveredPath(hitPathAtPoint(point), nativeEvent)) {
-      rerenderInternal();
+      if (isPointerEventLike(nativeEvent)) {
+        queueRerenderInternal();
+      } else {
+        rerenderInternal();
+      }
     }
   }
 
@@ -605,6 +653,15 @@ export function mountDomRoot<THandler>(
     return (
       dispatchBindingAtPoint(buildInputTree(), point, "click").hit?.path ?? null
     );
+  }
+
+  function resolveTargetPath(nativeEvent: unknown): RenderTreeNode[] | null {
+    const targetNodeId = resolveTargetNodeIdFromNativeEvent(nativeEvent);
+    if (targetNodeId === null) {
+      return null;
+    }
+
+    return findPathByNodeId(buildInputTree().root, targetNodeId);
   }
 
   function buildInputTree(): RenderTree {
@@ -663,6 +720,30 @@ export function mountDomRoot<THandler>(
     }
 
     return elementNodeIds.get(element) ?? null;
+  }
+
+  function resolveTargetNodeIdFromNativeEvent(
+    nativeEvent: unknown,
+  ): number | null {
+    if (nativeEvent === null || typeof nativeEvent !== "object") {
+      return null;
+    }
+
+    let target = (nativeEvent as { target?: unknown }).target;
+    while (
+      target !== null &&
+      target !== undefined &&
+      typeof target === "object"
+    ) {
+      const nodeId = resolveNodeIdFromElement(target as DomElementLike);
+      if (nodeId !== null) {
+        return nodeId;
+      }
+
+      target = (target as { parentElement?: unknown }).parentElement;
+    }
+
+    return null;
   }
 
   function applyScrollDelta(
@@ -922,6 +1003,24 @@ export function mountDomRoot<THandler>(
   }
 }
 
+function isNativeFocusLifecycleEvent(
+  nativeEvent: unknown,
+): nativeEvent is { type: "native-focus" | "native-blur" } {
+  return (
+    nativeEvent !== null &&
+    typeof nativeEvent === "object" &&
+    "type" in nativeEvent &&
+    ((nativeEvent as { type?: unknown }).type === "native-focus" ||
+      (nativeEvent as { type?: unknown }).type === "native-blur")
+  );
+}
+
+function shouldQueueFocusRerender(nativeEvent: unknown): boolean {
+  return (
+    isNativeFocusLifecycleEvent(nativeEvent) || isPointerEventLike(nativeEvent)
+  );
+}
+
 function cloneMountOptions<THandler>(
   options: DomMountOptions<THandler>,
 ): DomMountOptions<THandler> {
@@ -1105,6 +1204,19 @@ function findHitByNodeId(tree: RenderTree, nodeId: number): RenderHit | null {
     path,
     localPoint: { x: 0, y: 0 },
   };
+}
+
+function collectDispatchResultForNodeFromTree(
+  tree: RenderTree,
+  nodeId: number,
+  binding: BindingName,
+): DispatchResult {
+  const hit = findHitByNodeId(tree, nodeId);
+
+  return {
+    hit,
+    actions: collectDispatchActions(hit, binding),
+  } satisfies DispatchResult;
 }
 
 function findPathByNodeId(

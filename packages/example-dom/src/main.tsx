@@ -9,6 +9,7 @@ import {
   type MountedDomRoot,
 } from "@faux-ui/dom";
 import { createReconciler, Text, View } from "@faux-ui/reconciler";
+import { appendEventEntries, createEventEntries, type EventEntry } from "./log.js";
 
 import "./styles.css";
 
@@ -37,7 +38,7 @@ interface AppState {
   selectedTaskIndex: number;
   priority: Priority;
   spotlight: boolean;
-  events: string[];
+  events: EventEntry[];
 }
 
 const lanes: LaneDefinition[] = [
@@ -74,10 +75,10 @@ const initialState: AppState = {
   selectedTaskIndex: 0,
   priority: "calm",
   spotlight: true,
-  events: [
+  events: createEventEntries([
     "Studio ready. Click any lane or task card.",
     "Tab moves focus between faux-ui controls.",
-  ],
+  ]),
 };
 
 const canvas = document.createElement("canvas");
@@ -245,10 +246,11 @@ function selectLane(laneId: LaneId): void {
       ...current,
       selectedLane: laneId,
       selectedTaskIndex: Math.min(current.selectedTaskIndex, taskCount - 1),
-      events: [
+      events: appendEventEntries(
+        current.events,
         `Lane changed to ${labelForLane(laneId)}.`,
-        ...current.events,
-      ].slice(0, 10),
+        10,
+      ),
     };
   });
 }
@@ -263,7 +265,11 @@ function selectTask(index: number): void {
     return {
       ...current,
       selectedTaskIndex: index,
-      events: [`Task focused: ${task.title}.`, ...current.events].slice(0, 10),
+      events: appendEventEntries(
+        current.events,
+        `Task focused: ${task.title}.`,
+        10,
+      ),
     };
   });
 }
@@ -275,7 +281,11 @@ function advanceTask(): void {
     return {
       ...current,
       selectedTaskIndex: nextIndex,
-      events: [`Advanced to ${task?.title ?? "next task"}.`, ...current.events].slice(0, 10),
+      events: appendEventEntries(
+        current.events,
+        `Advanced to ${task?.title ?? "next task"}.`,
+        10,
+      ),
     };
   });
 }
@@ -284,10 +294,11 @@ function togglePriority(): void {
   setState((current) => ({
     ...current,
     priority: current.priority === "calm" ? "rush" : "calm",
-    events: [
+    events: appendEventEntries(
+      current.events,
       `Priority mode is now ${current.priority === "calm" ? "rush" : "calm"}.`,
-      ...current.events,
-    ].slice(0, 10),
+      10,
+    ),
   }));
 }
 
@@ -295,10 +306,11 @@ function toggleSpotlight(): void {
   setState((current) => ({
     ...current,
     spotlight: !current.spotlight,
-    events: [
+    events: appendEventEntries(
+      current.events,
       current.spotlight ? "Spotlight dimmed." : "Spotlight restored.",
-      ...current.events,
-    ].slice(0, 10),
+      10,
+    ),
   }));
 }
 
@@ -391,9 +403,9 @@ function App(props: { state: AppState }): React.ReactNode {
         <View rows={eventRows} scroll="y" style={{ background: "bgAlt" }}>
           <Text style={{ color: "accent" }}>Dispatch log</Text>
           {props.state.events.map((entry) => (
-            <View key={entry} style={{ background: "bg" }}>
+            <View key={entry.id} style={{ background: "bg" }}>
               <Text wrap style={{ color: "muted" }}>
-                {entry}
+                {entry.message}
               </Text>
             </View>
           ))}
@@ -433,7 +445,7 @@ function ActionButton(props: {
         color: props.active ? "fg" : "muted",
       }}
       styleHover={{ background: "focus" }}
-      styleFocus={{ background: "focus" }}
+      styleFocus={{ background: "accent" }}
     >
       <Text style={{ color: props.active ? "accent" : "fg" }}>{props.label}</Text>
       <Text wrap style={{ color: "muted" }}>

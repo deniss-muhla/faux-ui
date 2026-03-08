@@ -69,6 +69,7 @@ body {
 
 #surface {
   position: relative;
+  isolation: isolate;
   width: min(100%, 980px);
   height: 560px;
   overflow: hidden;
@@ -86,12 +87,15 @@ body {
   content: "";
   position: absolute;
   inset: 10px;
+  z-index: 0;
+  pointer-events: none;
   border-radius: 22px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(244, 237, 226, 0.9));
 }
 
 #surface > div {
+  position: relative;
   z-index: 1;
 }
 

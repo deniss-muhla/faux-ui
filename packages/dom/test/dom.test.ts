@@ -15,6 +15,10 @@ import {
 import { createDomTextMeasurer } from "../src/text-measurer.js";
 import { renderToDomModel } from "../src/model.js";
 import { mountDomRoot } from "../src/runtime.js";
+import { FakeDocument } from "./support/fake-dom.js";
+
+const waitForDeferredRerender = () =>
+  new Promise((resolve) => setTimeout(resolve, 0));
 
 describe("dom renderer", () => {
   it("adapts a delegated DOM measurer", () => {
@@ -334,7 +338,7 @@ describe("dom renderer", () => {
     expect(dispatched).toEqual([["scroll-root"]]);
   });
 
-  it("updates projected hover and focus styles through the DOM runtime", () => {
+  it("updates projected hover and focus styles through the DOM runtime", async () => {
     const root = createViewNode({
       spec: {
         focusable: true,
@@ -358,6 +362,7 @@ describe("dom renderer", () => {
     });
 
     container.emit("mousemove", { clientX: 0, clientY: 0 });
+    await waitForDeferredRerender();
 
     expect(container.children[0]?.style.toJSON()).toMatchObject({
       color: "var(--faux-ui-color-fg)",
@@ -365,6 +370,7 @@ describe("dom renderer", () => {
     });
 
     container.emit("mousedown", { clientX: 0, clientY: 0 });
+    await waitForDeferredRerender();
 
     expect(container.children[0]?.style.toJSON()).toMatchObject({
       color: "var(--faux-ui-color-focus)",
@@ -372,6 +378,7 @@ describe("dom renderer", () => {
     });
 
     container.emit("mouseleave", {});
+    await waitForDeferredRerender();
 
     expect(container.children[0]?.style.toJSON()).toMatchObject({
       color: "var(--faux-ui-color-focus)",
@@ -827,80 +834,4 @@ function stripNodeIds(model: unknown): unknown {
   }
 
   return model;
-}
-
-class FakeDocument {
-  createElement(tag: string): FakeElement {
-    return new FakeElement(tag, this);
-  }
-}
-
-class FakeStyle {
-  private readonly values = new Map<string, string>();
-
-  setProperty(name: string, value: string): void {
-    this.values.set(name, value);
-  }
-
-  toJSON(): Record<string, string> {
-    return Object.fromEntries(this.values.entries());
-  }
-}
-
-class FakeElement {
-  readonly style = new FakeStyle();
-  readonly children: FakeElement[] = [];
-  readonly ownerDocument: FakeDocument;
-  textContent: string | null = null;
-  tabIndex = -1;
-  private readonly listeners = new Map<
-    string,
-    Array<(event: unknown) => void>
-  >();
-
-  constructor(
-    readonly tag: string,
-    ownerDocument: FakeDocument,
-  ) {
-    this.ownerDocument = ownerDocument;
-  }
-
-  replaceChildren(...children: FakeElement[]): void {
-    this.children.length = 0;
-    this.children.push(...children);
-  }
-
-  appendChild(child: FakeElement): void {
-    this.children.push(child);
-  }
-
-  addEventListener(type: string, listener: (event: unknown) => void): void {
-    const listeners = this.listeners.get(type) ?? [];
-    listeners.push(listener);
-    this.listeners.set(type, listeners);
-  }
-
-  removeEventListener(type: string, listener: (event: unknown) => void): void {
-    const listeners = this.listeners.get(type);
-    if (listeners === undefined) {
-      return;
-    }
-
-    this.listeners.set(
-      type,
-      listeners.filter((current) => current !== listener),
-    );
-  }
-
-  getBoundingClientRect(): { left: number; top: number } {
-    return { left: 0, top: 0 };
-  }
-
-  focus(): void {}
-
-  emit(type: string, event: unknown): void {
-    for (const listener of this.listeners.get(type) ?? []) {
-      listener(event);
-    }
-  }
 }

@@ -11,6 +11,7 @@ import {
   type MountedTuiRoot,
 } from "@faux-ui/tui";
 import { createReconciler, Text, View } from "@faux-ui/reconciler";
+import { appendEventEntries, createEventEntries, type EventEntry } from "./log.js";
 
 type LaneId = "plan" | "build" | "review";
 type ActionToken =
@@ -25,7 +26,7 @@ interface AppState {
   selectedTaskIndex: number;
   priority: "steady" | "hot";
   spotlight: boolean;
-  events: string[];
+  events: EventEntry[];
 }
 
 interface TaskDefinition {
@@ -67,10 +68,10 @@ const initialState: AppState = {
   selectedTaskIndex: 0,
   priority: "steady",
   spotlight: true,
-  events: [
+  events: createEventEntries([
     "TUI example ready.",
     "Use Tab to move focus and Enter to activate.",
-  ],
+  ]),
 };
 
 const reconciler = createReconciler();
@@ -222,7 +223,7 @@ function selectLane(laneId: LaneId): void {
       current.selectedTaskIndex,
       tasksByLane[laneId].length - 1,
     ),
-    events: [`Lane set to ${laneId}.`, ...current.events].slice(0, 8),
+    events: appendEventEntries(current.events, `Lane set to ${laneId}.`, 8),
   }));
 }
 
@@ -236,7 +237,11 @@ function selectTask(index: number): void {
     return {
       ...current,
       selectedTaskIndex: index,
-      events: [`Task focused: ${task.title}.`, ...current.events].slice(0, 8),
+      events: appendEventEntries(
+        current.events,
+        `Task focused: ${task.title}.`,
+        8,
+      ),
     };
   });
 }
@@ -250,7 +255,11 @@ function advanceTask(): void {
     return {
       ...current,
       selectedTaskIndex: nextIndex,
-      events: [`Advanced to ${task?.title ?? "next"}.`, ...current.events].slice(0, 8),
+      events: appendEventEntries(
+        current.events,
+        `Advanced to ${task?.title ?? "next"}.`,
+        8,
+      ),
     };
   });
 }
@@ -259,10 +268,11 @@ function togglePriority(): void {
   setState((current) => ({
     ...current,
     priority: current.priority === "steady" ? "hot" : "steady",
-    events: [
+    events: appendEventEntries(
+      current.events,
       `Priority is ${current.priority === "steady" ? "hot" : "steady"}.`,
-      ...current.events,
-    ].slice(0, 8),
+      8,
+    ),
   }));
 }
 
@@ -270,10 +280,11 @@ function toggleSpotlight(): void {
   setState((current) => ({
     ...current,
     spotlight: !current.spotlight,
-    events: [
+    events: appendEventEntries(
+      current.events,
       current.spotlight ? "Spotlight off." : "Spotlight on.",
-      ...current.events,
-    ].slice(0, 8),
+      8,
+    ),
   }));
 }
 
@@ -348,8 +359,8 @@ function App(props: { state: AppState }): React.ReactNode {
         <View rows={eventRows} style={{ background: "bgAlt" }}>
           <Text style={{ color: "accent" }}> log </Text>
           {props.state.events.map((eventLine) => (
-            <View key={eventLine} style={{ background: "bg" }}>
-              <Text wrap style={{ color: "muted" }}> {eventLine} </Text>
+            <View key={eventLine.id} style={{ background: "bg" }}>
+              <Text wrap style={{ color: "muted" }}> {eventLine.message} </Text>
             </View>
           ))}
         </View>
@@ -387,7 +398,7 @@ function ActionCard(props: {
       onPress={props.token}
       style={{ background: props.active ? "selection" : "bg" }}
       styleHover={{ background: "focus" }}
-      styleFocus={{ background: "focus" }}
+      styleFocus={{ background: "accent" }}
     >
       <Text style={{ color: props.active ? "accent" : "fg" }}> {props.label} </Text>
       <Text wrap style={{ color: "muted" }}> {props.value} </Text>
