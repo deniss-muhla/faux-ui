@@ -14,6 +14,7 @@ The repository already has the first end-to-end runtime slices in place:
 - TUI framebuffer rendering plus coordinate dispatch helpers
 - JSON schema validation and compact document encoding/decoding
 - initial tooling seams in devtools, MCP types, and the scaffold/exec CLIs
+- monorepo DOM and TUI example apps that exercise the action contract with application-owned handler resolution
 
 The remaining work is mostly at the integration and productization layer rather than in the core architectural split.
 
@@ -153,9 +154,29 @@ Delivered so far:
 - generated projects include package-manager-aware metadata for Bun, npm, or pnpm workflows
 - JSX starters now include bound drag tokens in the sample app, while JSON starters include ready-to-inspect schema documents and binding-inspection scripts for `exec-faux-ui`
 
+### 7. Add first-party example apps
+
+Status: implemented
+
+Goal:
+
+- add a browser-backed DOM example to the monorepo
+- add an interactive terminal example that uses the same action contract
+- prove the runtime APIs are ergonomic before broader tooling grows around them
+
+Why this matters:
+
+Examples harden integration seams early. They make it easier to validate the action contract, runtime updates, and renderer-specific mounting behavior before more tooling builds on top of those assumptions.
+
+Delivered so far:
+
+- `@faux-ui/example-dom` now ships a Vite-backed browser demo that mounts a faux-ui tree into a styled DOM shell
+- `@faux-ui/example-tui` now ships an interactive terminal demo plus a static snapshot mode for CI-friendly inspection
+- both examples use application-owned token resolution and rerender the faux-ui tree after state changes instead of embedding behavior inside the renderers
+
 ## Longer-Term Direction
 
-### 7. Broaden tooling and inspection
+### 8. Broaden tooling and inspection
 
 Possible work:
 
@@ -163,7 +184,7 @@ Possible work:
 - MCP command implementations on top of the existing command types
 - reusable inspection output for CI and editor tooling
 
-### 8. Grow authoring and interchange workflows
+### 9. Grow authoring and interchange workflows
 
 Possible work:
 
@@ -171,7 +192,7 @@ Possible work:
 - authoring helpers that preserve the same semantics across JSX and schema documents
 - better inspection and migration support between authoring formats
 
-### 9. Revisit advanced reconciler/runtime features
+### 10. Revisit advanced reconciler/runtime features
 
 Possible work:
 

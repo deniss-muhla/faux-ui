@@ -27,6 +27,8 @@ Packages:
 - `@faux-ui/mcp`
 - `create-faux-ui`
 - `exec-faux-ui`
+- `@faux-ui/example-dom`
+- `@faux-ui/example-tui`
 
 ## Commands
 
@@ -36,6 +38,15 @@ bun run typecheck
 bun run test
 bun run build
 ```
+
+## Examples
+
+The monorepo now includes two stateful example apps that exercise the current action contract across renderers:
+
+- `bun run example:dom` starts a Vite-backed browser demo that mounts faux-ui into a styled DOM shell.
+- `bun run example:dom:build` produces a production browser bundle for the DOM example.
+- `bun run example:tui` launches an interactive terminal demo with the shared focus and dispatch flow.
+- `bun run example:tui:snapshot` renders the TUI example once in static mode for quick inspection.
 
 ## Current Scope
 
@@ -57,5 +68,6 @@ The current implementation includes:
 - browser-level Playwright visual regression coverage for DOM projection output
 - an execution CLI that renders schema documents to DOM or TUI targets, exposes binding/layout/render-tree inspect modes, can log live interactive dispatch events, and can launch an interactive terminal session on TTYs
 - a scaffold CLI that generates starter projects for JSX, JSON, and hybrid authoring flows with binding-inspection scripts and drag-token examples
+- DOM and TUI example applications that exercise the application-owned action contract with shared state-update patterns across renderer targets
 
 The main remaining MVP gaps are broader exec/scaffold workflows and deeper tooling on top of the current inspection surfaces.

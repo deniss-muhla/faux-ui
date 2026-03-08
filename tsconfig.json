@@ -9,6 +9,8 @@
     { "path": "./packages/devtools" },
     { "path": "./packages/mcp" },
     { "path": "./packages/create-faux-ui" },
-    { "path": "./packages/exec-faux-ui" }
+    { "path": "./packages/exec-faux-ui" },
+    { "path": "./packages/example-dom" },
+    { "path": "./packages/example-tui" }
   ]
 }
