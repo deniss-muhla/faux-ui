@@ -123,6 +123,28 @@ describe("exec-faux-ui", () => {
     });
   });
 
+  it("renders standalone HTML for DOM inspection", () => {
+    const output = executeDocumentText(
+      JSON.stringify({
+        version: 1,
+        root: {
+          kind: "text",
+          text: "Hi",
+        },
+      }),
+      {
+        target: "dom",
+        format: "readable",
+        inspect: "html",
+        constraints: {},
+      },
+    );
+
+    expect(output).toContain("<!doctype html>");
+    expect(output).toContain("faux-ui DOM snapshot");
+    expect(output).toContain(">Hi<");
+  });
+
   it("renders DOM target output as a JSON projection model", () => {
     const output = executeDocumentText(
       JSON.stringify({
@@ -158,6 +180,7 @@ describe("exec-faux-ui", () => {
     expect(output).toContain(
       "inspect bindings prints the semantic binding tree",
     );
+    expect(output).toContain("inspect html prints a standalone HTML snapshot");
   });
 
   it("chooses interactive TUI mode only when it is usable", () => {
@@ -232,6 +255,44 @@ describe("exec-faux-ui", () => {
     expect(exitCode).toBe(0);
     expect(readFileSync(snapshotPath, "utf8")).toContain('"textContent": "Hi"');
     expect(stdout.output).toContain('"textContent": "Hi"');
+  });
+
+  it("writes HTML snapshots for DOM inspection output", () => {
+    const cwd = mkdtempSync(join(tmpdir(), "exec-faux-ui-html-"));
+    const entryPath = join(cwd, "document.json");
+    const snapshotPath = join(cwd, "snapshots", "document.html");
+    writeFileSync(
+      entryPath,
+      JSON.stringify({
+        version: 1,
+        root: {
+          kind: "text",
+          text: "Hi",
+        },
+      }),
+      "utf8",
+    );
+
+    const stdout = new MockStdout();
+    const exitCode = mainWithIO(
+      [
+        entryPath,
+        "--target",
+        "dom",
+        "--inspect",
+        "html",
+        "--snapshot",
+        snapshotPath,
+      ],
+      {
+        stdin: { isTTY: false, on() {}, off() {} },
+        stdout,
+      },
+    );
+
+    expect(exitCode).toBe(0);
+    expect(readFileSync(snapshotPath, "utf8")).toContain("<!doctype html>");
+    expect(stdout.output).toContain("faux-ui DOM snapshot");
   });
 
   it("writes interactive TUI dispatch events to a JSONL log", () => {

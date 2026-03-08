@@ -92,7 +92,7 @@ Delivered so far:
 
 ### 4. Add visual and interaction regression coverage
 
-Status: partially implemented
+Status: implemented
 
 Goal:
 
@@ -108,12 +108,14 @@ Delivered so far:
 
 - DOM now has a dedicated Playwright snapshot lane for browser-rendered projection regressions
 - DOM and TUI runtime tests now cover manual scroll offset normalization and clamping in addition to event-driven scroll updates
+- DOM runtime tests cover hover enter and leave transitions, native focus synchronization, rerender cleanup, drag dispatch, and keyboard press routing
+- TUI runtime and terminal-host tests cover focus traversal, pointer hover transitions, drag dispatch, scroll updates, and terminal escape-sequence plumbing
 
 ## Mid-Term Milestones
 
 ### 5. Finish the execution CLI
 
-Status: partially implemented
+Status: implemented
 
 Goal:
 
@@ -130,6 +132,7 @@ Delivered so far:
 - `exec-faux-ui` now loads readable JSON documents or compact FUI arrays from a file path or stdin
 - the CLI supports `--target dom|tui`, automatic or explicit format selection, and size constraints
 - inspect-oriented modes now expose semantic binding dumps, semantic layout dumps, and visible render-tree JSON for debugging workflows
+- the DOM inspection path now also supports standalone HTML snapshots, which makes browser-oriented artifacts easier to review outside the monorepo
 - TTY execution now automatically enters a live TUI host mode, with explicit `--interactive` and `--static` control for terminal versus scriptable workflows
 - interactive TUI execution can now persist live dispatch activity with `--event-log`, which makes pointer and drag behavior inspectable without custom application code
 - static execution can now persist render or inspection output via `--snapshot`, which makes the current CLI modes usable in CI and artifact-oriented automation

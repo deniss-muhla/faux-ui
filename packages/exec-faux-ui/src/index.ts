@@ -42,7 +42,7 @@ import {
 
 export type ExecutionTarget = "dom" | "tui";
 export type ExecutionFormat = "auto" | "readable" | "compact";
-export type InspectMode = "bindings" | "layout" | "render-tree";
+export type InspectMode = "bindings" | "layout" | "render-tree" | "html";
 export type ExecutionMode = "auto" | "interactive" | "static";
 
 export interface BindingDumpNode {
@@ -307,6 +307,18 @@ function executeDocument(
     return JSON.stringify(serializeRenderNode(tree.root), null, 2);
   }
 
+  if (options.inspect === "html") {
+    if (options.target !== "dom") {
+      throw new Error("--inspect html is only supported with --target dom.");
+    }
+
+    const model = renderToDomModel(root, {
+      constraints: options.constraints,
+      measureText,
+    });
+    return renderDomSnapshotHtml(model);
+  }
+
   if (options.inspect === "bindings") {
     return JSON.stringify(buildBindingDump(root), null, 2);
   }
@@ -442,6 +454,91 @@ function serializeDomNode(node: DomRenderNode): unknown {
   };
 }
 
+function renderDomSnapshotHtml(model: DomRenderNode): string {
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>faux-ui DOM snapshot</title>
+    <style>
+      :root {
+        --faux-ui-color-fg: #1f2937;
+        --faux-ui-color-muted: #4b5563;
+        --faux-ui-color-accent: #0f766e;
+        --faux-ui-color-success: #166534;
+        --faux-ui-color-warning: #b45309;
+        --faux-ui-color-danger: #b91c1c;
+        --faux-ui-color-bg: #fffdf7;
+        --faux-ui-color-bgAlt: #f3efe1;
+        --faux-ui-color-border: #d6cfc3;
+        --faux-ui-color-focus: #d7f4f0;
+        --faux-ui-color-selection: #e7f5ef;
+        --faux-ui-color-inverse: #fffaf2;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        padding: 24px;
+        display: grid;
+        place-items: start center;
+        background: linear-gradient(180deg, #f8f3e7 0%, #f0e8d9 100%);
+        font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      }
+
+      #fixture {
+        position: relative;
+        width: ${model.styles.width ?? "0px"};
+        height: ${model.styles.height ?? "0px"};
+        overflow: hidden;
+        border: 1px solid rgba(64, 52, 38, 0.12);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.92);
+        box-shadow: 0 18px 48px rgba(65, 52, 36, 0.16);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="fixture">${renderDomHtmlNode(model)}</div>
+  </body>
+</html>`;
+}
+
+function renderDomHtmlNode(node: DomRenderNode): string {
+  const style = Object.entries(node.styles)
+    .map(([name, value]) => `${toKebabCase(name)}:${value}`)
+    .join(";");
+
+  if (node.kind === "text") {
+    return `<${node.tag} style="${escapeAttribute(style)}">${escapeHtml(
+      node.textContent ?? "",
+    )}</${node.tag}>`;
+  }
+
+  const children = node.children.map((child) => renderDomHtmlNode(child)).join("");
+  return `<${node.tag} style="${escapeAttribute(style)}">${children}</${node.tag}>`;
+}
+
+function toKebabCase(value: string): string {
+  return value.replace(/[A-Z]/g, (match) => `-${match.toLowerCase()}`);
+}
+
+function escapeAttribute(value: string): string {
+  return value.replaceAll("&", "&amp;").replaceAll('"', "&quot;");
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
 function cloneStyle(style: StyleValue | undefined): StyleValue | null {
   if (style === undefined) {
     return null;
@@ -498,7 +595,12 @@ function parseFormat(value: string): ExecutionFormat {
 }
 
 function parseInspectMode(value: string): InspectMode {
-  if (value === "bindings" || value === "layout" || value === "render-tree") {
+  if (
+    value === "bindings" ||
+    value === "layout" ||
+    value === "render-tree" ||
+    value === "html"
+  ) {
     return value;
   }
 
@@ -538,7 +640,7 @@ function requireOptionValue(
 function buildUsage(...preamble: string[]): string {
   const lines = [
     ...preamble,
-    "Usage: exec-faux-ui <entry|-> [--target dom|tui] [--format auto|readable|compact] [--inspect bindings|layout|render-tree] [--mode auto|interactive|static] [--interactive] [--static] [--event-log path] [--snapshot path] [--max-width N] [--max-height N]",
+    "Usage: exec-faux-ui <entry|-> [--target dom|tui] [--format auto|readable|compact] [--inspect bindings|layout|render-tree|html] [--mode auto|interactive|static] [--interactive] [--static] [--event-log path] [--snapshot path] [--max-width N] [--max-height N]",
     "- entry can be a JSON file path or - for stdin",
     "- auto format accepts readable document objects or compact FUI arrays",
     "- target dom prints a DOM projection model as JSON",
@@ -549,6 +651,7 @@ function buildUsage(...preamble: string[]): string {
     "- inspect bindings prints the semantic binding tree as JSON",
     "- inspect layout prints a semantic size tree",
     "- inspect render-tree prints the visible render tree as JSON",
+    "- inspect html prints a standalone HTML snapshot for the DOM target",
   ];
 
   return lines.join("\n");

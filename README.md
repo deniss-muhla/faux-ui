@@ -66,7 +66,7 @@ The current implementation includes:
 - a TUI renderer with character-cell text measurement, frame-buffer output, clipping, render-phase scroll offsets, runtime dispatch helpers, hover and drag transitions, shared pointer metadata, a concrete terminal host loop, and snapshots
 - a DOM renderer with absolute-positioned model projection, delegated DOM measurement adapters, live mounting, browser-style input routing, focus tracking, drag-aware pointer dispatch, runtime scroll management, and snapshots
 - browser-level Playwright visual regression coverage for DOM projection output
-- an execution CLI that renders schema documents to DOM or TUI targets, exposes binding/layout/render-tree inspect modes, can log live interactive dispatch events, and can launch an interactive terminal session on TTYs
+- an execution CLI that renders schema documents to DOM or TUI targets, exposes binding/layout/render-tree/HTML inspect modes, can log live interactive dispatch events, and can launch an interactive terminal session on TTYs
 - a scaffold CLI that generates JSX, JSON, and hybrid starters for DOM or TUI authoring flows with binding-inspection scripts and drag-token examples
 - DOM and TUI example applications that exercise the application-owned action contract with shared state-update patterns across renderer targets
 
