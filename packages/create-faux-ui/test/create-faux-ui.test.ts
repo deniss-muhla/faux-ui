@@ -90,7 +90,7 @@ describe("create-faux-ui", () => {
 
     expect(packageJson).toContain('"packageManager": "pnpm@9"');
     expect(packageJson).toContain('"start": "vite"');
-    expect(appSource).toContain("mountDomRoot");
+    expect(appSource).toContain("renderDom");
     expect(appSource).toContain("increment-count");
     expect(documentSource).toContain("drag-root-start");
     expect(documentSource).toContain("--inspect bindings");

@@ -1,7 +1,13 @@
 import { EventEmitter } from "node:events";
 
+import { createElement } from "react";
 import { describe, expect, it } from "vitest";
 
+import {
+  TEXT_TYPE,
+  VIEW_TYPE,
+  createStatefulApp,
+} from "../../reconciler/src/index.js";
 import {
   appendChild,
   createTextNode,
@@ -10,6 +16,8 @@ import {
 import {
   consumeTerminalInput,
   mountTerminalTuiHost,
+  renderStatefulTuiApp,
+  renderTui,
   resolveTerminalConstraints,
   resolveTerminalMouseSupport,
   supportsTerminalMouse,
@@ -225,6 +233,66 @@ describe("terminal tui host", () => {
 
     expect(stdin.rawMode).toBe(false);
     expect(stdout.writes.join("")).toContain("\u001b[?1049l");
+  });
+
+  it("renders a TUI app through the one-call render helper", () => {
+    const stdin = new MockInput();
+    const stdout = new MockOutput();
+    const mounted = renderTui(createElement(TEXT_TYPE, null, "A"), {
+      io: { stdin, stdout },
+      environment: { TERM: "dumb" },
+    });
+
+    expect(mounted.isRunning()).toBe(true);
+    expect(mounted.render().toString()).toContain("A");
+
+    mounted.update(createElement(TEXT_TYPE, null, "B"));
+
+    expect(mounted.render().toString()).toContain("B");
+
+    mounted.unmount();
+
+    expect(mounted.isRunning()).toBe(false);
+  });
+
+  it("renders and updates a stateful TUI app through the renderer helper", () => {
+    const stdin = new MockInput();
+    const stdout = new MockOutput();
+    const app = createStatefulApp({
+      initialState: 0,
+      initialViewState: { focusedNodeLabel: "none" },
+      reduce(state: number, action: "increment") {
+        return action === "increment" ? state + 1 : state;
+      },
+      render({ state, viewState }) {
+        return createElement(
+          VIEW_TYPE,
+          { focusable: true, onClick: "increment" },
+          createElement(
+            TEXT_TYPE,
+            null,
+            `${String(state)}:${viewState.focusedNodeLabel}`,
+          ),
+        );
+      },
+    });
+
+    const mounted = renderStatefulTuiApp({
+      app,
+      io: { stdin, stdout },
+      environment: { TERM: "dumb" },
+      mapAction(token) {
+        return token === "increment" ? "increment" : undefined;
+      },
+    });
+
+    stdin.emit("data", "\u001b[<0;1;1M\u001b[<0;1;1m");
+
+    expect(app.getState()).toBe(1);
+    expect(app.getViewState().focusedNodeLabel).not.toBe("none");
+    expect(mounted.render().toString()).toContain("1:");
+
+    mounted.unmount();
   });
 
   it("skips mouse protocol toggles when the terminal does not support them", () => {

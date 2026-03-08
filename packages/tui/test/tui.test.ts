@@ -1,3 +1,4 @@
+import { createElement } from "react";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -6,11 +7,13 @@ import {
   createViewNode,
   setNodeBindings,
 } from "../../core/src/index.js";
+import { TEXT_TYPE, createStatefulApp } from "../../reconciler/src/index.js";
 import {
   FrameBuffer,
   createTuiTextMeasurer,
   dispatchTuiBinding,
   mountTuiRoot,
+  renderStaticStatefulTuiApp,
   renderToFrameBuffer,
   resolveTuiBinding,
   resolveTuiFocusTarget,
@@ -261,6 +264,31 @@ describe("tui renderer", () => {
         handlers: ["handler:press-child"],
       },
     ]);
+  });
+
+  it("renders a static stateful TUI app through the renderer helper", () => {
+    const app = createStatefulApp({
+      initialState: 0,
+      initialViewState: { focusedNodeLabel: "none" },
+      reduce(state: number, action: "increment") {
+        return action === "increment" ? state + 1 : state;
+      },
+      render({ state }) {
+        return createElement(TEXT_TYPE, null, String(state));
+      },
+    });
+
+    const mounted = renderStaticStatefulTuiApp({
+      app,
+      constraints: { maxWidth: 4, maxHeight: 1 },
+    });
+
+    expect(mounted.render().toString()).toContain("0");
+
+    app.dispatch("increment");
+
+    expect(mounted.render().toString()).toContain("1");
+    mounted.unmount();
   });
 
   it("cycles focus in tree order through the TUI runtime", () => {

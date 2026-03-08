@@ -50,6 +50,12 @@ The monorepo now includes one shared example app with two renderer targets that 
 - `bun run example:tui` launches the terminal target for the same shared example app.
 - `bun run example:tui:snapshot` renders the shared example once in static TUI mode for quick inspection.
 
+The default path is now renderer-owned rather than app-owned root plumbing:
+
+- `@faux-ui/dom` exposes `renderDom()` for direct tree mounting plus `renderStatefulDomApp()` for reducer-driven browser apps.
+- `@faux-ui/tui` exposes `renderTui()` for direct terminal mounting plus `renderStatefulTuiApp()` and `renderStaticStatefulTuiApp()` for interactive and snapshot-style apps.
+- `@faux-ui/reconciler` still owns `View`, `Text`, and `createStatefulApp()`, but renderer packages now provide the common successful path on top of that shared React-side state controller.
+
 ## Current Scope
 
 The current implementation includes:
@@ -67,9 +73,11 @@ The current implementation includes:
 - an initial React reconciler bridge with `View` and `Text` JSX wrappers over the custom host config
 - a TUI renderer with character-cell text measurement, frame-buffer output, clipping, render-phase scroll offsets, runtime dispatch helpers, hover and drag transitions, shared pointer metadata, a concrete terminal host loop, and snapshots
 - a DOM renderer with absolute-positioned model projection, delegated DOM measurement adapters, live mounting, browser-style input routing, focus tracking, drag-aware pointer dispatch, runtime scroll management, and snapshots
+- DOM-side successful-path helpers for browser measurers, theme token installation, and stateful app mounting
 - browser-level Playwright visual regression coverage for DOM projection output
 - an execution CLI that renders schema documents to DOM or TUI targets, exposes binding/layout/render-tree/HTML inspect modes, can log live interactive dispatch events, and can launch an interactive terminal session on TTYs
 - a scaffold CLI that generates JSX, JSON, and hybrid starters for DOM or TUI authoring flows with binding-inspection scripts and drag-token examples
+- TUI-side successful-path helpers for interactive and static stateful apps above the raw runtime and terminal host layers
 - a single first-party example application under `apps/example` that projects the same state model and action tokens to DOM and TUI targets
 
 The main remaining MVP gaps are broader tooling on top of the current inspection surfaces and richer authoring workflows around the shared semantic model.

@@ -3,67 +3,51 @@ import process from "node:process";
 import React from "react";
 
 import {
-  mountTerminalTuiHost,
-  mountTuiRoot,
-  type MountedTerminalTuiHost,
-  type MountedTuiRoot,
-  type TuiDispatchEvent,
+  renderStatefulTuiApp,
+  renderStaticStatefulTuiApp,
 } from "@faux-ui/tui";
-import { createReconciler } from "@faux-ui/reconciler";
+import { createStatefulApp } from "@faux-ui/reconciler";
 
-import { ExampleApp, createInitialState, reduceExampleAction, type ActionToken, type AppState } from "./example-app.js";
+import { ExampleApp, createInitialState, reduceExampleAction, type ActionToken } from "./example-app.js";
 
-const reconciler = createReconciler();
-const fauxRoot = reconciler.createRoot();
-
-let state: AppState = createInitialState();
-let terminalHost: MountedTerminalTuiHost<() => void> | null = null;
-let staticRuntime: MountedTuiRoot<() => void> | null = null;
-let focusedNodeLabel = "none";
+const app = createStatefulApp({
+  initialState: createInitialState(),
+  initialViewState: { focusedNodeLabel: "none" },
+  reduce: reduceExampleAction,
+  render({ state, viewState }) {
+    return (
+      <ExampleApp
+        state={state}
+        target="tui"
+        focusedNodeLabel={viewState.focusedNodeLabel}
+      />
+    );
+  },
+});
 
 const options = parseArgs(process.argv.slice(2));
-renderTree();
 
 if (options.static) {
-  const mountedNode = requireMountedNode();
-  const mountedRuntime = mountTuiRoot<() => void>(mountedNode, {
+  const runtime = renderStaticStatefulTuiApp({
+    app,
     constraints: {
       maxWidth: options.width,
       maxHeight: options.height,
     },
-    resolveAction(token) {
-      if (typeof token !== "string") {
-        return undefined;
-      }
-
-      return createActionHandler(token as ActionToken);
+    mapAction(token) {
+      return typeof token === "string" ? (token as ActionToken) : undefined;
     },
   });
-  staticRuntime = mountedRuntime;
-  process.stdout.write(`${mountedRuntime.render().toString()}\n`);
+  process.stdout.write(`${runtime.render().toString()}\n`);
   process.exit(0);
 }
 
-const mountedNode = requireMountedNode();
-const mountedHost = mountTerminalTuiHost<() => void>(mountedNode, {
-  resolveAction(token) {
-    if (typeof token !== "string") {
-      return undefined;
-    }
-
-    return createActionHandler(token as ActionToken);
-  },
-  onDispatch(event) {
-    executeDispatch(event);
-  },
-  onFocusChange(event) {
-    focusedNodeLabel =
-      event.nodeId === null ? "none" : `node ${String(event.nodeId)}`;
-    renderTree();
+renderStatefulTuiApp({
+  app,
+  mapAction(token) {
+    return typeof token === "string" ? (token as ActionToken) : undefined;
   },
 });
-terminalHost = mountedHost;
-mountedHost.start();
 
 function parseArgs(args: string[]): {
   static: boolean;
@@ -112,53 +96,4 @@ function parseInteger(value: string | undefined, flag: string): number {
   }
 
   return parsed;
-}
-
-function executeDispatch(event: TuiDispatchEvent<() => void>): void {
-  for (const action of event.execution?.resolvedActions ?? []) {
-    action.handler();
-  }
-}
-
-function createActionHandler(token: ActionToken): () => void {
-  return () => {
-    state = reduceExampleAction(state, token);
-    renderTree();
-    focusedNodeLabel = readFocusedNodeLabel();
-    renderTree();
-  };
-}
-
-function renderTree(): void {
-  fauxRoot.render(
-    <ExampleApp
-      state={state}
-      target="tui"
-      focusedNodeLabel={focusedNodeLabel}
-    />,
-  );
-  const mountedNode = requireMountedNode();
-
-  if (terminalHost !== null) {
-    terminalHost.update(mountedNode);
-  }
-
-  if (staticRuntime !== null) {
-    staticRuntime.update(mountedNode);
-  }
-}
-
-function requireMountedNode() {
-  const mountedNode = fauxRoot.getMountedNode();
-  if (mountedNode === null) {
-    throw new Error("Expected the TUI example root node to be mounted.");
-  }
-
-  return mountedNode;
-}
-
-function readFocusedNodeLabel(): string {
-  const runtime = terminalHost?.getRuntime() ?? staticRuntime;
-  const nodeId = runtime?.getFocusedNodeId() ?? null;
-  return nodeId === null ? "none" : `node ${String(nodeId)}`;
 }

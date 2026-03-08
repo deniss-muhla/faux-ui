@@ -61,6 +61,8 @@ No renderer package redefines these rules. That is the main architectural guardr
 
 It converts React host instances into `UINode` objects, exposes author-facing `View` and `Text` wrappers, and maps shorthand event props such as `onClick` and `onKeyDown` into core binding slots. The reconciler does not perform layout or rendering. Its job is to maintain the semantic tree and preserve the framework's authoring constraints, such as raw text only being legal inside `Text`.
 
+It now also provides a small React-facing app controller through `createStatefulApp()`. That controller owns reducer state, view-only state, rerendering, and subscriptions, but it still stops short of renderer ownership. DOM and TUI consume it from their own higher-level entrypoints rather than pushing host behavior into the reconciler or semantic core.
+
 ### `@faux-ui/dom`
 
 `@faux-ui/dom` turns the shared render tree into browser-shaped output.
@@ -71,6 +73,7 @@ It provides:
 - DOM model projection from the render tree
 - a live mounting runtime for a host container
 - browser-style pointer, wheel, keyboard, and focus routing back into core dispatch helpers
+- higher-level DOM app helpers such as `renderDom()`, `renderStatefulDomApp()`, `createBrowserDomTextMeasurer()`, and `applyDomTheme()` for the common browser path
 
 DOM remains a projection target, not the semantic authority.
 
@@ -83,6 +86,7 @@ It provides:
 - character-cell text measurement
 - framebuffer painting
 - coordinate-based input dispatch helpers for cell positions
+- higher-level TUI app helpers such as `renderTui()`, `renderStatefulTuiApp()`, and `renderStaticStatefulTuiApp()` for interactive and snapshot-style terminal flows
 
 Like DOM, it depends on the shared render tree instead of reimplementing layout or event semantics.
 
@@ -200,10 +204,12 @@ For DOM:
 
 - `renderToDomModel()` projects the tree into absolute-positioned DOM model nodes
 - `mountDomRoot()` turns that model into live elements inside a host container
+- `renderDom()` and `renderStatefulDomApp()` provide renderer-owned successful paths above raw root management
 
 For TUI:
 
 - `renderToFrameBuffer()` paints the tree into a framebuffer using character-cell measurement
+- `renderTui()` and `renderStatefulTuiApp()` provide renderer-owned successful paths above raw host wiring
 
 The renderer packages stay narrow because core has already solved placement, clipping, and hit-test geometry.
 

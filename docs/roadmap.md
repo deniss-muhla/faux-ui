@@ -52,7 +52,7 @@ Likely outcomes:
 - a clearer split between authoring state and renderer host setup
 ### 2. Standardize action execution above raw dispatch tokens
 
-Status: partially implemented
+Status: substantially implemented
 
 Goal:
 - keep application-owned actions as the core contract
@@ -61,14 +61,14 @@ Goal:
 Why this matters:
 
 The token contract is correct, but the example still has to manually translate dispatch events into handler execution and state updates in each renderer entrypoint. That is too much ceremony for the common path.
-Likely outcomes:
+Delivered so far:
 
-- a shared action runtime helper that executes resolved actions and schedules rerenders
-- renderer adapters that agree on one higher-level callback surface
-- example apps that define actions, not dispatch plumbing
+- the reconciler now exposes `createStatefulApp()` as a shared React-side app controller
+- DOM and TUI renderer packages now provide stateful app helpers that execute resolved actions and rerender through that shared controller
+- the first-party example entrypoints now map tokens and host constraints, but no longer own manual dispatch execution loops
 ### 3. Move shared focus and runtime state exposure into reusable adapters
 
-Status: not started
+Status: partially implemented
 
 Goal:
 - expose focused node identity and related runtime state through stable shared APIs
@@ -77,14 +77,17 @@ Goal:
 Why this matters:
 
 The example currently manages focused-node labels through renderer-specific callbacks and extra rerenders. That is implementation leakage from the runtime layer into app code.
-Likely outcomes:
+Delivered so far:
 
-- shared runtime observers or subscriptions for focus state
-- higher-level mounted runtime handles with common inspection hooks
-- less imperative focus bookkeeping in example and consumer code
+- DOM and TUI stateful app helpers now synchronize focused node labels back into shared view state instead of leaving that loop to app entrypoints
+- the example app now consumes focused-node state through renderer-owned helpers rather than direct runtime wiring
+
+Remaining:
+
+- decide whether focused node identity should become a more explicit public subscription surface instead of a renderer-managed view-state convention
 ### 4. Reduce renderer bootstrapping boilerplate
 
-Status: not started
+Status: partially implemented
 
 Goal:
 - simplify DOM host mounting and TUI host mounting for the common case
@@ -93,11 +96,15 @@ Goal:
 Why this matters:
 
 The example should not need to hand-assemble text measurement bridging, host querying, resize wiring, and theme installation just to mount a shared app.
-Likely outcomes:
+Delivered so far:
 
-- easier DOM mount helpers with optional default text measurement adapters
-- easier terminal host setup for TUI apps
-- a smaller "hello world" and example entrypoint footprint
+- `@faux-ui/dom` now exposes `renderDom()` and `renderStatefulDomApp()` above raw root creation
+- `@faux-ui/tui` now exposes `renderTui()`, `renderStatefulTuiApp()`, and `renderStaticStatefulTuiApp()` above raw host wiring
+- the first-party example DOM and TUI entrypoints are now thin host configuration files instead of mini runtimes
+
+Remaining:
+
+- keep shrinking the required DOM defaults for simple browser apps so explicit host casts and custom constraint readers become rarer
 ### 5. Introduce higher-level authoring helpers for common layout patterns
 
 Status: not started
@@ -116,7 +123,7 @@ Likely outcomes:
 - fewer raw track literals in application code
 ### 6. Establish a first-class styling and theme story
 
-Status: not started
+Status: partially implemented
 
 Goal:
 - define how semantic colors and shared theme tokens should be installed and consumed
@@ -125,16 +132,19 @@ Goal:
 Why this matters:
 
 The example currently applies theme variables imperatively in the DOM entrypoint. That is workable for a demo, but too ad hoc for the framework's default path.
-Likely outcomes:
+Delivered so far:
 
-- shared theme definitions that DOM and TUI can both project
-- a documented install path for semantic color tokens
-- examples that demonstrate styling semantics instead of setup ceremony
+- `@faux-ui/dom` now exposes `applyDomTheme()` and a default DOM theme token set for the common browser path
+- the first-party DOM example now installs semantic color tokens through renderer-owned helpers rather than manual token-by-token setup
+
+Remaining:
+
+- decide how much theme structure should be shared across DOM and TUI beyond the current semantic color token mapping
 ## Mid-Term Milestones
 
 ### 7. Rewrite first-party examples to prove the ergonomic path
 
-Status: not started
+Status: partially implemented
 
 Goal:
 - keep `apps/example` as the primary proof that shared DOM and TUI authoring is actually lightweight
@@ -143,11 +153,14 @@ Goal:
 Why this matters:
 
 The example app is the clearest signal of whether faux-ui is meeting its main promise. Once the lower-level APIs improve, the example should be rewritten to validate that improvement explicitly.
-Success criteria:
+Delivered so far:
 
-- DOM and TUI entrypoints become thin wrappers over shared app mounting helpers
-- the shared example app defines state, actions, and semantic structure, not runtime plumbing
-- the example becomes easier to read than the current renderer setup files
+- `apps/example/src/dom.tsx` now delegates mounting, action execution, focus synchronization, resize updates, default browser measurement, and theme installation to `@faux-ui/dom`
+- `apps/example/src/tui.tsx` now delegates interactive and static runtime wiring to `@faux-ui/tui`
+
+Remaining:
+
+- move more layout-level repetition out of `apps/example/src/example-app.tsx` so the example proves ergonomic authoring as well as ergonomic mounting
 ### 8. Expand regression coverage around the higher-level APIs
 
 Status: partially implemented

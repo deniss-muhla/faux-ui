@@ -21,9 +21,25 @@ export type {
   DomWheelEventLike,
   MountedDomRoot,
 } from "./runtime.js";
-export type { ScrollOffset } from "@faux-ui/core";
-export { createDomTextMeasurer } from "./text-measurer.js";
+export { renderDom, renderStatefulDomApp } from "./render-app.js";
 export type {
+  DomAppViewState,
+  MountedRenderedDomApp,
+  MountedStatefulDomApp,
+  RenderStatefulDomAppOptions,
+} from "./render-app.js";
+export type { ScrollOffset } from "@faux-ui/core";
+export {
+  createBrowserDomTextMeasurer,
+  createDomTextMeasurer,
+} from "./text-measurer.js";
+export type {
+  BrowserDomTextMeasurerOptions,
   DomMeasurementAdapter,
+  DomCanvasContextLike,
+  DomCanvasDocumentLike,
+  DomCanvasLike,
   DomTextMeasurer,
 } from "./text-measurer.js";
+export { applyDomTheme, defaultDomTheme } from "./theme.js";
+export type { DomThemeValues } from "./theme.js";

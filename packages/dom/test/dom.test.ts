@@ -1,3 +1,4 @@
+import { createElement } from "react";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -8,13 +9,21 @@ import {
   setNodeBindings,
 } from "../../core/src/index.js";
 import {
+  TEXT_TYPE,
+  VIEW_TYPE,
+  createStatefulApp,
+} from "../../reconciler/src/index.js";
+import {
+  applyDomTheme,
+  createBrowserDomTextMeasurer,
   dispatchDomBinding,
+  renderStatefulDomApp,
   resolveDomBinding,
   resolveDomFocusTarget,
-} from "../src/events.js";
-import { createDomTextMeasurer } from "../src/text-measurer.js";
-import { renderToDomModel } from "../src/model.js";
-import { mountDomRoot } from "../src/runtime.js";
+  createDomTextMeasurer,
+  renderToDomModel,
+  mountDomRoot,
+} from "../src/index.js";
 import { FakeDocument } from "./support/fake-dom.js";
 
 const waitForDeferredRerender = () =>
@@ -32,6 +41,39 @@ describe("dom renderer", () => {
     expect(
       measurer.measure({ text: "hello", wrap: false, maxWidth: 3 }),
     ).toEqual({ width: 3, height: 1 });
+  });
+
+  it("creates a browser-style DOM measurer from a canvas-like context", () => {
+    const measurer = createBrowserDomTextMeasurer({
+      context: {
+        font: "",
+        measureText(text) {
+          return { width: text.length * 7.2 };
+        },
+      },
+      lineHeight: 18,
+      minimumWidth: 2,
+    });
+
+    expect(measurer.measure({ text: "AB", wrap: false })).toEqual({
+      width: 15,
+      height: 18,
+    });
+  });
+
+  it("applies semantic DOM theme tokens to a host element", () => {
+    const document = new FakeDocument();
+    const element = document.createElement("div");
+
+    applyDomTheme(element, {
+      fg: "#111111",
+      accent: "#222222",
+    });
+
+    expect(element.style.toJSON()).toMatchObject({
+      "--faux-ui-color-fg": "#111111",
+      "--faux-ui-color-accent": "#222222",
+    });
   });
 
   it("renders a text node into an absolute-positioned DOM model", () => {
@@ -816,6 +858,54 @@ describe("dom renderer", () => {
         handlers: ["handler:blur-child"],
       },
     ]);
+  });
+
+  it("renders and updates a stateful DOM app through the renderer helper", async () => {
+    const app = createStatefulApp({
+      initialState: 0,
+      initialViewState: { focusedNodeLabel: "none" },
+      reduce(state: number, action: "increment") {
+        return action === "increment" ? state + 1 : state;
+      },
+      render({ state, viewState }) {
+        return createElement(
+          VIEW_TYPE,
+          {
+            focusable: true,
+            onClick: "increment",
+            onPress: "increment",
+          },
+          createElement(
+            TEXT_TYPE,
+            null,
+            `${String(state)}:${viewState.focusedNodeLabel}`,
+          ),
+        );
+      },
+    });
+
+    const document = new FakeDocument();
+    const container = document.createElement("div");
+    const mounted = renderStatefulDomApp({
+      app,
+      container,
+      document,
+      constraints: {},
+      measureText: ({ text }) => ({ width: text.length, height: 1 }),
+      mapAction(token) {
+        return token === "increment" ? "increment" : undefined;
+      },
+    });
+
+    container.emit("mousedown", { clientX: 0, clientY: 0 });
+    container.emit("click", { clientX: 0, clientY: 0 });
+    await waitForDeferredRerender();
+
+    expect(app.getState()).toBe(1);
+    expect(app.getViewState().focusedNodeLabel).not.toBe("none");
+    expect(container.children[0]?.children[0]?.textContent).toContain("1:");
+
+    mounted.unmount();
   });
 });
 
