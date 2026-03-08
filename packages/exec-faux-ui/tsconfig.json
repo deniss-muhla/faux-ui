@@ -5,5 +5,12 @@
     "outDir": "dist",
     "tsBuildInfoFile": "dist/.tsbuildinfo"
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts"],
+  "references": [
+    { "path": "../core" },
+    { "path": "../devtools" },
+    { "path": "../dom" },
+    { "path": "../schema" },
+    { "path": "../tui" }
+  ]
 }

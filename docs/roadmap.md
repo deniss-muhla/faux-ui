@@ -89,7 +89,7 @@ Delivered so far:
 
 ### 4. Add visual and interaction regression coverage
 
-Status: not implemented
+Status: partially implemented
 
 Goal:
 
@@ -101,11 +101,16 @@ Why this matters:
 
 The core engine already has strong unit coverage. The next quality step is verifying full-runtime behavior at the projection layer while DOM and interaction semantics are still being finalized.
 
+Delivered so far:
+
+- DOM now has a dedicated Playwright snapshot lane for browser-rendered projection regressions
+- DOM and TUI runtime tests now cover manual scroll offset normalization and clamping in addition to event-driven scroll updates
+
 ## Mid-Term Milestones
 
 ### 5. Finish the execution CLI
 
-Status: placeholder
+Status: partially implemented
 
 Goal:
 
@@ -116,6 +121,12 @@ Goal:
 Why this matters:
 
 `exec-faux-ui` is the natural entry point for demos, testing, and automation, but it currently stops at status output.
+
+Delivered so far:
+
+- `exec-faux-ui` now loads readable JSON documents or compact FUI arrays from a file path or stdin
+- the CLI supports `--target dom|tui`, automatic or explicit format selection, and size constraints
+- inspect-oriented modes now expose semantic layout dumps and visible render-tree JSON for debugging workflows
 
 ### 6. Finish the scaffold CLI
 

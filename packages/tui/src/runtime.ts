@@ -2,6 +2,7 @@ import {
   buildRenderTree,
   collectDispatchActions,
   dispatchBindingAtPoint,
+  layoutNode,
   resolveDispatchResult,
   type BindingHandlerResolver,
   type BindingName,
@@ -121,6 +122,7 @@ export function mountTuiRoot<THandler>(
   let currentRoot = root;
   let currentOptions = cloneRuntimeOptions(options);
   let currentScrollOffsets = cloneScrollOffsets(options.scrollOffsets);
+  sanitizeStoredScrollOffsets();
   let focusedNodeId: number | null = null;
   let focusableNodeIds = collectFocusableNodeIds(currentRoot);
 
@@ -138,6 +140,7 @@ export function mountTuiRoot<THandler>(
       }
 
       focusableNodeIds = collectFocusableNodeIds(currentRoot);
+      sanitizeStoredScrollOffsets();
       if (focusedNodeId !== null && !focusableNodeIds.includes(focusedNodeId)) {
         focusedNodeId = null;
       }
@@ -177,6 +180,7 @@ export function mountTuiRoot<THandler>(
     },
     setScrollOffset(nodeId, offset) {
       currentScrollOffsets.set(nodeId, normalizeScrollOffset(offset));
+      sanitizeStoredScrollOffsets();
     },
     getScrollOffset(nodeId) {
       const offset = currentScrollOffsets.get(nodeId);
@@ -442,6 +446,58 @@ export function mountTuiRoot<THandler>(
 
     currentScrollOffsets.set(scrollable.nodeId, nextOffset);
   }
+
+  function sanitizeStoredScrollOffsets(): void {
+    if (currentScrollOffsets.size === 0) {
+      return;
+    }
+
+    const measurer = createTuiTextMeasurer();
+    layoutNode(currentRoot, currentOptions.constraints, {
+      measureText: (request: TextLayoutRequest) => measurer.measure(request),
+    });
+
+    const next = new Map<NodeId, ScrollOffset>();
+    for (const [nodeId, offset] of currentScrollOffsets) {
+      next.set(nodeId, clampStoredScrollOffset(nodeId, offset));
+    }
+
+    currentScrollOffsets = next;
+  }
+
+  function clampStoredScrollOffset(
+    nodeId: NodeId,
+    offset: ScrollOffset,
+  ): ScrollOffset {
+    const normalized = normalizeScrollOffset(offset);
+    const node = findSemanticNodeById(currentRoot, nodeId);
+
+    if (node === null || node.kind !== "view") {
+      return normalized;
+    }
+
+    const viewportSize = node.layout.cachedSize;
+    const contentSize = node.layout.contentSize ?? viewportSize;
+
+    if (viewportSize === undefined || contentSize === undefined) {
+      return normalized;
+    }
+
+    const scroll = node.spec.scroll;
+    const maxX =
+      scroll === "x" || scroll === "both"
+        ? Math.max(0, contentSize.width - viewportSize.width)
+        : 0;
+    const maxY =
+      scroll === "y" || scroll === "both"
+        ? Math.max(0, contentSize.height - viewportSize.height)
+        : 0;
+
+    return {
+      x: clampAxis(normalized.x, maxX),
+      y: clampAxis(normalized.y, maxY),
+    };
+  }
 }
 
 function cloneRuntimeOptions<THandler>(
@@ -502,6 +558,21 @@ function visitNode(node: UINode, visitor: (node: UINode) => void): void {
   for (const child of node.children) {
     visitNode(child, visitor);
   }
+}
+
+function findSemanticNodeById(root: UINode, nodeId: NodeId): UINode | null {
+  if (root.id === nodeId) {
+    return root;
+  }
+
+  for (const child of root.children) {
+    const match = findSemanticNodeById(child, nodeId);
+    if (match !== null) {
+      return match;
+    }
+  }
+
+  return null;
 }
 
 function resolveFocusableNodeId(path: RenderTreeNode[] | null): number | null {

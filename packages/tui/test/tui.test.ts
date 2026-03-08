@@ -277,4 +277,32 @@ describe("tui renderer", () => {
     expect(runtime.render().toString()).toBe("two");
     expect(dispatched).toEqual([["scroll-root"]]);
   });
+
+  it("normalizes and clamps manual TUI scroll offsets", () => {
+    const root = createViewNode({
+      spec: { rows: ["auto", "auto"], scroll: "y" },
+    });
+    appendChild(
+      root,
+      createTextNode({ spec: { text: "one", wrap: false, style: null } }),
+    );
+    appendChild(
+      root,
+      createTextNode({ spec: { text: "two", wrap: false, style: null } }),
+    );
+
+    const runtime = mountTuiRoot(root, {
+      constraints: { maxHeight: 1 },
+    });
+
+    runtime.setScrollOffset(root.id, { x: 2.7, y: 99.4 });
+
+    expect(runtime.getScrollOffset(root.id)).toEqual({ x: 0, y: 1 });
+    expect(runtime.render().toString()).toBe("two");
+
+    runtime.setScrollOffset(root.id, { x: -4, y: -2 });
+
+    expect(runtime.getScrollOffset(root.id)).toEqual({ x: 0, y: 0 });
+    expect(runtime.render().toString()).toBe("one");
+  });
 });

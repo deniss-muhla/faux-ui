@@ -16,6 +16,7 @@
     "clean": "rm -rf packages/*/dist coverage",
     "typecheck": "tsc -b tsconfig.json --pretty false",
     "test": "vitest run",
+    "test:visual": "playwright test",
     "test:watch": "vitest",
     "check": "bun run typecheck && bun run test"
   },

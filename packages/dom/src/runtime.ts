@@ -2,6 +2,7 @@ import {
   buildRenderTree,
   collectDispatchActions,
   dispatchBindingAtPoint,
+  layoutNode,
   resolveDispatchResult,
   type BindingHandlerResolver,
   type BindingName,
@@ -120,6 +121,7 @@ export function mountDomRoot<THandler>(
   let currentRoot = root;
   let currentOptions = cloneMountOptions(options);
   let currentScrollOffsets = cloneScrollOffsets(options.scrollOffsets);
+  sanitizeStoredScrollOffsets();
   let focusedNodeId: number | null = null;
   let hoveredPathNodeIds: NodeId[] = [];
   let elementNodeIds = new WeakMap<DomElementLike, NodeId>();
@@ -240,6 +242,7 @@ export function mountDomRoot<THandler>(
       }
 
       focusableNodeIds = collectFocusableNodeIds(currentRoot);
+      sanitizeStoredScrollOffsets();
       reconcileDetachedInteractionState(
         previousRoot,
         previousOptions,
@@ -280,7 +283,8 @@ export function mountDomRoot<THandler>(
       return focusedNodeId;
     },
     setScrollOffset(nodeId, offset) {
-      currentScrollOffsets.set(nodeId, { x: offset.x, y: offset.y });
+      currentScrollOffsets.set(nodeId, normalizeScrollOffset(offset));
+      sanitizeStoredScrollOffsets();
       rerenderInternal();
     },
     getScrollOffset(nodeId) {
@@ -795,6 +799,57 @@ export function mountDomRoot<THandler>(
 
     return nodeIds;
   }
+
+  function sanitizeStoredScrollOffsets(): void {
+    if (currentScrollOffsets.size === 0) {
+      return;
+    }
+
+    layoutNode(currentRoot, currentOptions.constraints, {
+      measureText: currentOptions.measureText,
+    });
+
+    const next = new Map<NodeId, ScrollOffset>();
+    for (const [nodeId, offset] of currentScrollOffsets) {
+      next.set(nodeId, clampStoredScrollOffset(nodeId, offset));
+    }
+
+    currentScrollOffsets = next;
+  }
+
+  function clampStoredScrollOffset(
+    nodeId: NodeId,
+    offset: ScrollOffset,
+  ): ScrollOffset {
+    const normalized = normalizeScrollOffset(offset);
+    const node = findNodeById(currentRoot, nodeId);
+
+    if (node === null || node.kind !== "view") {
+      return normalized;
+    }
+
+    const viewportSize = node.layout.cachedSize;
+    const contentSize = node.layout.contentSize ?? viewportSize;
+
+    if (viewportSize === undefined || contentSize === undefined) {
+      return normalized;
+    }
+
+    const scroll = node.spec.scroll;
+    const maxX =
+      scroll === "x" || scroll === "both"
+        ? Math.max(0, contentSize.width - viewportSize.width)
+        : 0;
+    const maxY =
+      scroll === "y" || scroll === "both"
+        ? Math.max(0, contentSize.height - viewportSize.height)
+        : 0;
+
+    return {
+      x: clampAxis(normalized.x, maxX),
+      y: clampAxis(normalized.y, maxY),
+    };
+  }
 }
 
 function cloneMountOptions<THandler>(
@@ -825,10 +880,17 @@ function cloneScrollOffsets(
   }
 
   for (const [nodeId, offset] of scrollOffsets) {
-    next.set(nodeId, { x: offset.x, y: offset.y });
+    next.set(nodeId, normalizeScrollOffset(offset));
   }
 
   return next;
+}
+
+function normalizeScrollOffset(offset: ScrollOffset): ScrollOffset {
+  return {
+    x: Math.max(0, Math.trunc(offset.x)),
+    y: Math.max(0, Math.trunc(offset.y)),
+  };
 }
 
 function resolveDocument<THandler>(
@@ -880,6 +942,21 @@ function visitNode(node: UINode, visitor: (node: UINode) => void): void {
   for (const child of node.children) {
     visitNode(child, visitor);
   }
+}
+
+function findNodeById(root: UINode, nodeId: NodeId): UINode | null {
+  if (root.id === nodeId) {
+    return root;
+  }
+
+  for (const child of root.children) {
+    const match = findNodeById(child, nodeId);
+    if (match !== null) {
+      return match;
+    }
+  }
+
+  return null;
 }
 
 function resolveFocusableNodeId(path: RenderTreeNode[] | null): number | null {

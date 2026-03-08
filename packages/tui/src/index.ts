@@ -18,6 +18,21 @@ export type {
   TuiRuntimeOptions,
   TuiScrollDelta,
 } from "./runtime.js";
+export {
+  consumeTerminalInput,
+  mountTerminalTuiHost,
+  resolveTerminalConstraints,
+} from "./terminal-host.js";
+export type {
+  MountedTerminalTuiHost,
+  TerminalControl,
+  TerminalHostIO,
+  TerminalInputParseResult,
+  TerminalInputStream,
+  TerminalOutputStream,
+  TerminalTuiHostConfig,
+  TerminalTuiHostOptions,
+} from "./terminal-host.js";
 export type { ScrollOffset } from "@faux-ui/core";
 export { createTuiTextMeasurer } from "./text-measurer.js";
 export type { TuiTextMeasurer } from "./text-measurer.js";

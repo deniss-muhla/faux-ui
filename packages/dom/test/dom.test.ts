@@ -267,6 +267,39 @@ describe("dom renderer", () => {
     });
   });
 
+  it("normalizes and clamps manual DOM scroll offsets", () => {
+    const root = createViewNode({
+      spec: { rows: ["auto", "auto"], scroll: "y" },
+    });
+    appendChild(
+      root,
+      createTextNode({ spec: { text: "one", wrap: false, style: null } }),
+    );
+    appendChild(
+      root,
+      createTextNode({ spec: { text: "two", wrap: false, style: null } }),
+    );
+
+    const document = new FakeDocument();
+    const container = document.createElement("div");
+    const mounted = mountDomRoot(root, {
+      container,
+      document,
+      constraints: { maxHeight: 1 },
+      measureText: ({ text }) => ({ width: text.length, height: 1 }),
+    });
+
+    mounted.setScrollOffset(root.id, { x: 2.7, y: 99.4 });
+
+    expect(mounted.getScrollOffset(root.id)).toEqual({ x: 0, y: 1 });
+    expect(container.children[0]?.children[0]?.textContent).toBe("two");
+
+    mounted.setScrollOffset(root.id, { x: -5, y: -3 });
+
+    expect(mounted.getScrollOffset(root.id)).toEqual({ x: 0, y: 0 });
+    expect(container.children[0]?.children[0]?.textContent).toBe("one");
+  });
+
   it("translates wheel input into managed DOM scroll updates", () => {
     const dispatched: Array<Array<string | number>> = [];
     const root = createViewNode({
