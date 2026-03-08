@@ -91,6 +91,7 @@ describe("dom renderer", () => {
 
     expect(model.styles.color).toBe("var(--faux-ui-color-focus)");
     expect(model.styles.backgroundColor).toBe("var(--faux-ui-color-accent)");
+    expect(model.styles.outline).toBe("none");
   });
 
   it("applies render-phase scroll offsets without changing layout size", () => {

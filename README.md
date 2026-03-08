@@ -27,8 +27,10 @@ Packages:
 - `@faux-ui/mcp`
 - `create-faux-ui`
 - `exec-faux-ui`
-- `@faux-ui/example-dom`
-- `@faux-ui/example-tui`
+
+Apps:
+
+- `@faux-ui/example`
 
 ## Commands
 
@@ -41,12 +43,12 @@ bun run build
 
 ## Examples
 
-The monorepo now includes two stateful example apps that exercise the current action contract across renderers:
+The monorepo now includes one shared example app with two renderer targets that exercises the current action contract across DOM and TUI:
 
-- `bun run example:dom` starts a Vite-backed browser demo that mounts faux-ui into a styled DOM shell.
-- `bun run example:dom:build` produces a production browser bundle for the DOM example.
-- `bun run example:tui` launches an interactive terminal demo with the shared focus and dispatch flow.
-- `bun run example:tui:snapshot` renders the TUI example once in static mode for quick inspection.
+- `bun run example:dom` starts the browser target from `apps/example` and mounts the shared app into a styled DOM shell.
+- `bun run example:dom:build` produces a production browser bundle for the DOM target.
+- `bun run example:tui` launches the terminal target for the same shared example app.
+- `bun run example:tui:snapshot` renders the shared example once in static TUI mode for quick inspection.
 
 ## Current Scope
 
@@ -68,6 +70,6 @@ The current implementation includes:
 - browser-level Playwright visual regression coverage for DOM projection output
 - an execution CLI that renders schema documents to DOM or TUI targets, exposes binding/layout/render-tree/HTML inspect modes, can log live interactive dispatch events, and can launch an interactive terminal session on TTYs
 - a scaffold CLI that generates JSX, JSON, and hybrid starters for DOM or TUI authoring flows with binding-inspection scripts and drag-token examples
-- DOM and TUI example applications that exercise the application-owned action contract with shared state-update patterns across renderer targets
+- a single first-party example application under `apps/example` that projects the same state model and action tokens to DOM and TUI targets
 
 The main remaining MVP gaps are broader tooling on top of the current inspection surfaces and richer authoring workflows around the shared semantic model.

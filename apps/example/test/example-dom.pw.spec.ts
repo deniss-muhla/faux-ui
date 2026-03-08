@@ -24,16 +24,21 @@ test.describe("example-dom", () => {
       .filter({ hasText: "Priority" })
       .first();
 
-    await expect(page.locator("#focus-indicator")).toHaveText("none");
+    await expect(page.getByText("Focused node")).toBeVisible();
+    await expect(page.getByText("none", { exact: true })).toBeVisible();
     await expect(backlogLane).toBeVisible();
 
-    await backlogLane.click();
+    await page.keyboard.press("Tab");
+    await expect(page.getByText(/^node\s+\d+$/)).toBeVisible();
 
-    await expect(page.locator("#focus-indicator")).not.toHaveText("none");
+    await backlogLane.focus();
+    await page.keyboard.press("Enter");
+
     await expect(actionRouterTask).toBeVisible();
     await expect(page.getByText("Lane changed to Backlog.")).toBeVisible();
 
-    await actionRouterTask.click();
+    await actionRouterTask.focus();
+    await page.keyboard.press("Enter");
     await expect(page.getByText("Task focused: Action router.")).toBeVisible();
 
     await priorityToggle.focus();
@@ -42,7 +47,7 @@ test.describe("example-dom", () => {
     await expect(page.getByText("Priority mode is now rush.")).toBeVisible();
 
     await page.keyboard.press("Tab");
-    await expect(page.locator("#focus-indicator")).not.toHaveText("none");
+    await expect(page.getByText(/^node\s+\d+$/)).toBeVisible();
 
     expect(pageErrors).toEqual([]);
   });

@@ -4,7 +4,7 @@ export default defineConfig({
   testDir: ".",
   testMatch: [
     "packages/dom/test/**/*.pw.spec.ts",
-    "packages/example-dom/test/**/*.pw.spec.ts",
+    "apps/example/test/**/*.pw.spec.ts",
   ],
   fullyParallel: true,
   reporter: "list",
@@ -15,8 +15,7 @@ export default defineConfig({
     baseURL: "http://127.0.0.1:4173",
   },
   webServer: {
-    command:
-      "bun run --cwd packages/example-dom dev --host 127.0.0.1 --port 4173 --strictPort",
+    command: "bun run --cwd apps/example dev:dom",
     url: "http://127.0.0.1:4173",
     reuseExistingServer: true,
     timeout: 30000,

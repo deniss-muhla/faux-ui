@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { appendEventEntries, createEventEntries } from "../src/log.js";
 
-describe("example-dom log helpers", () => {
+describe("example log helpers", () => {
   it("keeps duplicate messages uniquely keyed", () => {
     const events = createEventEntries(["Lane changed to Active."]);
     const next = appendEventEntries(events, "Lane changed to Active.", 10);

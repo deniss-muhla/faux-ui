@@ -1,12 +1,15 @@
 {
-  "name": "@faux-ui/example-dom",
+  "name": "@faux-ui/example",
   "private": true,
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
+    "dev:dom": "vite",
+    "build:dom": "vite build",
+    "preview:dom": "vite preview",
+    "start:tui": "bun run src/tui.tsx",
+    "dev:tui": "bun --watch src/tui.tsx",
+    "snapshot:tui": "bun run src/tui.tsx --static",
     "typecheck": "tsc -p tsconfig.json --pretty false"
   },
   "dependencies": {

@@ -95,6 +95,10 @@ function buildViewNode(
     overflow: "hidden",
   };
 
+  if (node.node.spec.focusable) {
+    styles.outline = "none";
+  }
+
   const style = mergeStyleValues(
     node.node.spec.style,
     options.hoveredNodeIds?.has(node.nodeId) ? node.node.spec.styleHover : null,
