@@ -67,7 +67,7 @@ The current implementation includes:
 - a DOM renderer with absolute-positioned model projection, delegated DOM measurement adapters, live mounting, browser-style input routing, focus tracking, drag-aware pointer dispatch, runtime scroll management, and snapshots
 - browser-level Playwright visual regression coverage for DOM projection output
 - an execution CLI that renders schema documents to DOM or TUI targets, exposes binding/layout/render-tree inspect modes, can log live interactive dispatch events, and can launch an interactive terminal session on TTYs
-- a scaffold CLI that generates starter projects for JSX, JSON, and hybrid authoring flows with binding-inspection scripts and drag-token examples
+- a scaffold CLI that generates JSX, JSON, and hybrid starters for DOM or TUI authoring flows with binding-inspection scripts and drag-token examples
 - DOM and TUI example applications that exercise the application-owned action contract with shared state-update patterns across renderer targets
 
-The main remaining MVP gaps are broader exec/scaffold workflows and deeper tooling on top of the current inspection surfaces.
+The main remaining MVP gaps are broader tooling on top of the current inspection surfaces and richer authoring workflows around the shared semantic model.

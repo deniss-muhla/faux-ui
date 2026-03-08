@@ -136,7 +136,7 @@ Delivered so far:
 
 ### 6. Finish the scaffold CLI
 
-Status: partially implemented
+Status: implemented
 
 Goal:
 
@@ -153,6 +153,7 @@ Delivered so far:
 - `create-faux-ui` now generates starter projects for `jsx`, `json`, and `hybrid` entry modes
 - generated projects include package-manager-aware metadata for Bun, npm, or pnpm workflows
 - JSX starters now include bound drag tokens in the sample app, while JSON starters include ready-to-inspect schema documents and binding-inspection scripts for `exec-faux-ui`
+- JSX and hybrid starters now accept `--renderer dom|tui`, keeping the TUI runtime as the default while enabling a Vite-backed DOM starter when browser output is needed
 
 ### 7. Add first-party example apps
 

@@ -20,7 +20,24 @@ describe("create-faux-ui", () => {
 
     const packageJson = plan.files.find((file) => file.path === "package.json");
     expect(packageJson?.content).toContain("@faux-ui/reconciler");
+    expect(packageJson?.content).toContain("@faux-ui/tui");
     expect(packageJson?.content).toContain('"start": "tsx src/app.tsx"');
+  });
+
+  it("builds a DOM JSX starter plan with browser entry files", () => {
+    const plan = buildScaffoldPlan(
+      baseOptions({ template: "jsx", renderer: "dom" }),
+    );
+
+    expect(plan.files.map((file) => file.path)).toContain("index.html");
+    expect(plan.files.map((file) => file.path)).toContain("src/main.tsx");
+    expect(plan.files.map((file) => file.path)).toContain("src/styles.css");
+    expect(plan.files.map((file) => file.path)).not.toContain("src/app.tsx");
+
+    const packageJson = plan.files.find((file) => file.path === "package.json");
+    expect(packageJson?.content).toContain("@faux-ui/dom");
+    expect(packageJson?.content).toContain('"start": "vite"');
+    expect(packageJson?.content).toContain('"build": "vite build"');
   });
 
   it("builds a JSON starter plan with exec-faux-ui scripts", () => {
@@ -38,7 +55,15 @@ describe("create-faux-ui", () => {
   it("writes the scaffold to disk and prints next steps", () => {
     const cwd = mkdtempSync(join(tmpdir(), "create-faux-ui-"));
     const output = run(
-      ["demo-hybrid", "--template", "hybrid", "--pm", "pnpm"],
+      [
+        "demo-hybrid",
+        "--template",
+        "hybrid",
+        "--renderer",
+        "dom",
+        "--pm",
+        "pnpm",
+      ],
       cwd,
     );
 
@@ -51,19 +76,22 @@ describe("create-faux-ui", () => {
       "utf8",
     );
     const appSource = readFileSync(
-      join(cwd, "demo-hybrid", "src", "app.tsx"),
+      join(cwd, "demo-hybrid", "src", "main.tsx"),
       "utf8",
     );
     const documentSource = readFileSync(
       join(cwd, "demo-hybrid", "src", "document.json"),
       "utf8",
     );
+    const indexHtml = readFileSync(join(cwd, "demo-hybrid", "index.html"), "utf8");
 
     expect(packageJson).toContain('"packageManager": "pnpm@9"');
-    expect(appSource).toContain("onDragStart");
-    expect(appSource).toContain("mountTerminalTuiHost");
+    expect(packageJson).toContain('"start": "vite"');
+    expect(appSource).toContain("mountDomRoot");
+    expect(appSource).toContain("increment-count");
     expect(documentSource).toContain("drag-root-start");
     expect(documentSource).toContain("--inspect bindings");
+    expect(indexHtml).toContain("faux-ui DOM starter");
   });
 
   it("refuses to scaffold into a non-empty directory", () => {
@@ -83,6 +111,7 @@ function baseOptions(
   return {
     name: "demo-app",
     template: "jsx",
+    renderer: "tui",
     packageManager: "bun",
     cwd: tmpdir(),
     ...overrides,
