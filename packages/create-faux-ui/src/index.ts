@@ -73,13 +73,10 @@ export function buildScaffoldPlan(options: ScaffoldOptions): ScaffoldPlan {
       });
       break;
     case "hybrid":
-      files.push(
-        ...buildJsxFiles(options),
-        {
-          path: "src/document.json",
-          content: `${JSON.stringify(buildDocumentSpec(options.name), null, 2)}\n`,
-        },
-      );
+      files.push(...buildJsxFiles(options), {
+        path: "src/document.json",
+        content: `${JSON.stringify(buildDocumentSpec(options.name), null, 2)}\n`,
+      });
       break;
   }
 
@@ -256,9 +253,7 @@ function buildPackageJson(options: ScaffoldOptions): Record<string, unknown> {
   return packageJson;
 }
 
-function buildTsconfig(
-  renderer: ScaffoldRenderer,
-): Record<string, unknown> {
+function buildTsconfig(renderer: ScaffoldRenderer): Record<string, unknown> {
   const compilerOptions: Record<string, unknown> = {
     target: "ES2023",
     module: "NodeNext",
@@ -413,26 +408,26 @@ function buildDomApp(name: string): string {
     'import "./styles.css";',
     "",
     `const appName = ${JSON.stringify(name)};`,
-    "const host = document.querySelector<HTMLDivElement>(\"#app\");",
+    'const host = document.querySelector<HTMLDivElement>("#app");',
     "if (host === null) {",
     '  throw new Error("Expected #app to exist.");',
     "}",
     "",
-    "host.style.setProperty(\"--faux-ui-color-fg\", \"#1f2937\");",
-    "host.style.setProperty(\"--faux-ui-color-muted\", \"#4b5563\");",
-    "host.style.setProperty(\"--faux-ui-color-accent\", \"#0f766e\");",
-    "host.style.setProperty(\"--faux-ui-color-success\", \"#166534\");",
-    "host.style.setProperty(\"--faux-ui-color-warning\", \"#b45309\");",
-    "host.style.setProperty(\"--faux-ui-color-danger\", \"#b91c1c\");",
-    "host.style.setProperty(\"--faux-ui-color-bg\", \"#fffdf7\");",
-    "host.style.setProperty(\"--faux-ui-color-bgAlt\", \"#f3efe1\");",
-    "host.style.setProperty(\"--faux-ui-color-border\", \"#d6cfc3\");",
-    "host.style.setProperty(\"--faux-ui-color-focus\", \"#d7f4f0\");",
-    "host.style.setProperty(\"--faux-ui-color-selection\", \"#e7f5ef\");",
-    "host.style.setProperty(\"--faux-ui-color-inverse\", \"#fffaf2\");",
+    'host.style.setProperty("--faux-ui-color-fg", "#1f2937");',
+    'host.style.setProperty("--faux-ui-color-muted", "#4b5563");',
+    'host.style.setProperty("--faux-ui-color-accent", "#0f766e");',
+    'host.style.setProperty("--faux-ui-color-success", "#166534");',
+    'host.style.setProperty("--faux-ui-color-warning", "#b45309");',
+    'host.style.setProperty("--faux-ui-color-danger", "#b91c1c");',
+    'host.style.setProperty("--faux-ui-color-bg", "#fffdf7");',
+    'host.style.setProperty("--faux-ui-color-bgAlt", "#f3efe1");',
+    'host.style.setProperty("--faux-ui-color-border", "#d6cfc3");',
+    'host.style.setProperty("--faux-ui-color-focus", "#d7f4f0");',
+    'host.style.setProperty("--faux-ui-color-selection", "#e7f5ef");',
+    'host.style.setProperty("--faux-ui-color-inverse", "#fffaf2");',
     "",
-    "const canvas = document.createElement(\"canvas\");",
-    "const context = canvas.getContext(\"2d\");",
+    'const canvas = document.createElement("canvas");',
+    'const context = canvas.getContext("2d");',
     "if (context === null) {",
     '  throw new Error("Expected a 2D canvas context.");',
     "}",
@@ -453,7 +448,7 @@ function buildDomApp(name: string): string {
     "let mounted: ReturnType<typeof mountDomRoot<() => void>> | null = null;",
     "",
     "renderApp();",
-    "window.addEventListener(\"resize\", () => {",
+    'window.addEventListener("resize", () => {',
     "  mounted?.update(undefined, { constraints: readConstraints() });",
     "});",
     "",
@@ -513,8 +508,8 @@ function buildDomStyles(): string {
   return [
     ":root {",
     '  font-family: "Segoe UI", sans-serif;',
-    '  color: #1f2937;',
-    '  background: linear-gradient(180deg, #f8f3e7 0%, #f2ecdf 100%);',
+    "  color: #1f2937;",
+    "  background: linear-gradient(180deg, #f8f3e7 0%, #f2ecdf 100%);",
     "}",
     "",
     "* {",

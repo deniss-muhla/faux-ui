@@ -83,7 +83,10 @@ describe("create-faux-ui", () => {
       join(cwd, "demo-hybrid", "src", "document.json"),
       "utf8",
     );
-    const indexHtml = readFileSync(join(cwd, "demo-hybrid", "index.html"), "utf8");
+    const indexHtml = readFileSync(
+      join(cwd, "demo-hybrid", "index.html"),
+      "utf8",
+    );
 
     expect(packageJson).toContain('"packageManager": "pnpm@9"');
     expect(packageJson).toContain('"start": "vite"');

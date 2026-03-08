@@ -520,7 +520,9 @@ function renderDomHtmlNode(node: DomRenderNode): string {
     )}</${node.tag}>`;
   }
 
-  const children = node.children.map((child) => renderDomHtmlNode(child)).join("");
+  const children = node.children
+    .map((child) => renderDomHtmlNode(child))
+    .join("");
   return `<${node.tag} style="${escapeAttribute(style)}">${children}</${node.tag}>`;
 }
 
