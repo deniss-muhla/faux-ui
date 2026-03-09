@@ -1,7 +1,9 @@
 import type { Constraints, Size, TrackShorthand } from "./types.js";
 
 export type NodeId = number;
-export type BindingToken = string | number;
+export type ActionIdentifier = string;
+export type ActionHandler = (event: unknown) => void;
+export type BoundAction = ActionIdentifier | ActionHandler;
 export type ScrollAxis = "x" | "y" | "both";
 export type SemanticColor =
   | "fg"
@@ -23,21 +25,21 @@ export type StyleValue = {
 };
 
 export type BoundActions = {
-  focus?: BindingToken;
-  blur?: BindingToken;
-  keyDown?: BindingToken;
-  keyUp?: BindingToken;
-  press?: BindingToken;
-  click?: BindingToken;
-  mouseDown?: BindingToken;
-  mouseUp?: BindingToken;
-  mouseEnter?: BindingToken;
-  mouseLeave?: BindingToken;
-  mouseMove?: BindingToken;
-  dragStart?: BindingToken;
-  drag?: BindingToken;
-  dragEnd?: BindingToken;
-  scroll?: BindingToken;
+  focus?: BoundAction;
+  blur?: BoundAction;
+  keyDown?: BoundAction;
+  keyUp?: BoundAction;
+  press?: BoundAction;
+  click?: BoundAction;
+  mouseDown?: BoundAction;
+  mouseUp?: BoundAction;
+  mouseEnter?: BoundAction;
+  mouseLeave?: BoundAction;
+  mouseMove?: BoundAction;
+  dragStart?: BoundAction;
+  drag?: BoundAction;
+  dragEnd?: BoundAction;
+  scroll?: BoundAction;
 };
 
 export type Rect = {

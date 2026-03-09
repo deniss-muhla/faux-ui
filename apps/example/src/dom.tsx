@@ -2,31 +2,23 @@ import React from "react";
 
 import {
   applyDomTheme,
-  renderStatefulDomApp,
+  renderDom,
   type DomElementLike,
 } from "@faux-ui/dom";
-import { createStatefulApp } from "@faux-ui/reconciler";
 
-import { ExampleApp, createInitialState, reduceExampleAction, type ActionToken } from "./example-app.js";
+import {
+  ExampleApp,
+  createInitialState,
+  reduceExampleAction,
+  type ExampleAction,
+} from "./example-app.js";
 
 import "./styles.css";
 
 const host = requireElement<HTMLDivElement>("#surface");
-
-const app = createStatefulApp({
-  initialState: createInitialState(),
-  initialViewState: { focusedNodeLabel: "none" },
-  reduce: reduceExampleAction,
-  render({ state, viewState }) {
-    return (
-      <ExampleApp
-        state={state}
-        target="dom"
-        focusedNodeLabel={viewState.focusedNodeLabel}
-      />
-    );
-  },
-});
+let state = createInitialState();
+let focusedNodeLabel = "none";
+let mounted: ReturnType<typeof renderDom> | null = null;
 
 applyDomTheme(host as unknown as DomElementLike, {
   fg: "#182026",
@@ -43,15 +35,46 @@ applyDomTheme(host as unknown as DomElementLike, {
   inverse: "#fffdf8",
 });
 
-renderStatefulDomApp({
-  app,
+mounted = renderDom(renderView(), {
   container: host as unknown as DomElementLike,
-  readConstraints,
-  autoResize: true,
-  mapAction(token) {
-    return typeof token === "string" ? (token as ActionToken) : undefined;
+  constraints: readConstraints(),
+  onFocusChange(event) {
+    focusedNodeLabel =
+      event.nodeId === null ? "none" : `node ${String(event.nodeId)}`;
+    rerender();
   },
 });
+
+window.addEventListener("resize", () => {
+  rerender();
+});
+
+function renderView(): React.ReactNode {
+  return (
+    <ExampleApp
+      state={state}
+      target="dom"
+      focusedNodeLabel={focusedNodeLabel}
+      onAction={handleAction}
+    />
+  );
+}
+
+function handleAction(action: ExampleAction): void {
+  const nextState = reduceExampleAction(state, action);
+  if (Object.is(nextState, state)) {
+    return;
+  }
+
+  state = nextState;
+  rerender();
+}
+
+function rerender(): void {
+  mounted?.update(renderView(), {
+    constraints: readConstraints(),
+  });
+}
 
 function readConstraints(): { maxWidth: number; maxHeight: number } {
   return {

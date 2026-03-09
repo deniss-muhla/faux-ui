@@ -48,7 +48,7 @@ export type ExecutionMode = "auto" | "interactive" | "static";
 export interface BindingDumpNode {
   id: NodeId;
   kind: UINode["kind"];
-  bindings: Partial<Record<keyof BoundActions, string | number>>;
+  bindings: Partial<Record<keyof BoundActions, string | number | "[function]">>;
   children: BindingDumpNode[];
 }
 
@@ -567,15 +567,18 @@ function cloneBindings(bindings: ActionBindings): BoundActions {
 
 function cloneBoundActions(
   bindings: BoundActions | null,
-): Partial<Record<keyof BoundActions, string | number>> {
+): Partial<Record<keyof BoundActions, string | number | "[function]">> {
   if (bindings === null) {
     return {};
   }
 
-  const next: Partial<Record<keyof BoundActions, string | number>> = {};
+  const next: Partial<
+    Record<keyof BoundActions, string | number | "[function]">
+  > = {};
   for (const [name, token] of Object.entries(bindings)) {
     if (token !== undefined) {
-      next[name as keyof BoundActions] = token;
+      next[name as keyof BoundActions] =
+        typeof token === "function" ? "[function]" : token;
     }
   }
 
@@ -703,7 +706,10 @@ function startInteractiveTui(
               binding: event.binding,
               pointer: event.pointer,
               actions: event.result.actions.map((action) => ({
-                token: action.token,
+                token:
+                  typeof action.action === "string"
+                    ? action.action
+                    : "[function]",
                 nodeId: action.nodeId,
               })),
             });

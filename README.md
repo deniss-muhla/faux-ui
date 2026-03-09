@@ -52,9 +52,9 @@ The monorepo now includes one shared example app with two renderer targets that 
 
 The default path is now renderer-owned rather than app-owned root plumbing:
 
-- `@faux-ui/dom` exposes `renderDom()` for direct tree mounting plus `renderStatefulDomApp()` for reducer-driven browser apps.
-- `@faux-ui/tui` exposes `renderTui()` for direct terminal mounting plus `renderStatefulTuiApp()` and `renderStaticStatefulTuiApp()` for interactive and snapshot-style apps.
-- `@faux-ui/reconciler` still owns `View`, `Text`, and `createStatefulApp()`, but renderer packages now provide the common successful path on top of that shared React-side state controller.
+- `@faux-ui/dom` exposes `renderDom()` for direct tree mounting in the browser.
+- `@faux-ui/tui` exposes `renderTui()` for direct terminal mounting.
+- `@faux-ui/reconciler` owns `View`, `Text`, and the JSX bridge only. Application state, rerender scheduling, and action maps stay in user code.
 
 ## Current Scope
 

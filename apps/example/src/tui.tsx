@@ -3,51 +3,77 @@ import process from "node:process";
 import React from "react";
 
 import {
-  renderStatefulTuiApp,
-  renderStaticStatefulTuiApp,
+  renderToFrameBuffer,
+  renderTui,
 } from "@faux-ui/tui";
-import { createStatefulApp } from "@faux-ui/reconciler";
+import { createReconciler } from "@faux-ui/reconciler";
 
-import { ExampleApp, createInitialState, reduceExampleAction, type ActionToken } from "./example-app.js";
+import {
+  ExampleApp,
+  createInitialState,
+  reduceExampleAction,
+  type ExampleAction,
+} from "./example-app.js";
 
-const app = createStatefulApp({
-  initialState: createInitialState(),
-  initialViewState: { focusedNodeLabel: "none" },
-  reduce: reduceExampleAction,
-  render({ state, viewState }) {
-    return (
-      <ExampleApp
-        state={state}
-        target="tui"
-        focusedNodeLabel={viewState.focusedNodeLabel}
-      />
-    );
-  },
-});
+let state = createInitialState();
+let focusedNodeLabel = "none";
+let mounted: ReturnType<typeof renderTui> | null = null;
 
 const options = parseArgs(process.argv.slice(2));
 
 if (options.static) {
-  const runtime = renderStaticStatefulTuiApp({
-    app,
-    constraints: {
-      maxWidth: options.width,
-      maxHeight: options.height,
-    },
-    mapAction(token) {
-      return typeof token === "string" ? (token as ActionToken) : undefined;
-    },
-  });
-  process.stdout.write(`${runtime.render().toString()}\n`);
+  const reconciler = createReconciler();
+  const root = reconciler.createRoot();
+  root.render(renderView());
+  const mountedNode = root.getMountedNode();
+  if (mountedNode === null) {
+    throw new Error("Expected a mounted TUI example root node.");
+  }
+
+  process.stdout.write(
+    `${renderToFrameBuffer(mountedNode, {
+      constraints: {
+        maxWidth: options.width,
+        maxHeight: options.height,
+      },
+    }).toString()}\n`,
+  );
+  root.unmount();
   process.exit(0);
 }
 
-renderStatefulTuiApp({
-  app,
-  mapAction(token) {
-    return typeof token === "string" ? (token as ActionToken) : undefined;
+mounted = renderTui(renderView(), {
+  onFocusChange(event) {
+    focusedNodeLabel =
+      event.nodeId === null ? "none" : `node ${String(event.nodeId)}`;
+    rerender();
   },
 });
+
+function renderView(): React.ReactNode {
+  return (
+    <ExampleApp
+      state={state}
+      target="tui"
+      focusedNodeLabel={focusedNodeLabel}
+      onAction={handleAction}
+    />
+  );
+}
+
+function handleAction(action: ExampleAction): void {
+  const nextState = reduceExampleAction(state, action);
+  if (Object.is(nextState, state)) {
+    return;
+  }
+
+  state = nextState;
+  rerender();
+}
+
+function rerender(): void {
+  mounted?.update(renderView());
+}
 
 function parseArgs(args: string[]): {
   static: boolean;

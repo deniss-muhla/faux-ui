@@ -3,11 +3,7 @@ import { EventEmitter } from "node:events";
 import { createElement } from "react";
 import { describe, expect, it } from "vitest";
 
-import {
-  TEXT_TYPE,
-  VIEW_TYPE,
-  createStatefulApp,
-} from "../../reconciler/src/index.js";
+import { TEXT_TYPE, VIEW_TYPE } from "../../reconciler/src/index.js";
 import {
   appendChild,
   createTextNode,
@@ -16,7 +12,6 @@ import {
 import {
   consumeTerminalInput,
   mountTerminalTuiHost,
-  renderStatefulTuiApp,
   renderTui,
   resolveTerminalConstraints,
   resolveTerminalMouseSupport,
@@ -255,41 +250,44 @@ describe("terminal tui host", () => {
     expect(mounted.isRunning()).toBe(false);
   });
 
-  it("renders and updates a stateful TUI app through the renderer helper", () => {
+  it("renders and updates a TUI app through direct handlers", () => {
     const stdin = new MockInput();
     const stdout = new MockOutput();
-    const app = createStatefulApp({
-      initialState: 0,
-      initialViewState: { focusedNodeLabel: "none" },
-      reduce(state: number, action: "increment") {
-        return action === "increment" ? state + 1 : state;
-      },
-      render({ state, viewState }) {
-        return createElement(
-          VIEW_TYPE,
-          { focusable: true, onClick: "increment" },
-          createElement(
-            TEXT_TYPE,
-            null,
-            `${String(state)}:${viewState.focusedNodeLabel}`,
-          ),
-        );
-      },
-    });
+    let count = 0;
+    let focusedNodeLabel = "none";
+    let mounted: ReturnType<typeof renderTui> | null = null;
 
-    const mounted = renderStatefulTuiApp({
-      app,
+    const renderView = () =>
+      createElement(
+        VIEW_TYPE,
+        {
+          focusable: true,
+          onClick: () => {
+            count += 1;
+            rerender();
+          },
+        },
+        createElement(TEXT_TYPE, null, `${String(count)}:${focusedNodeLabel}`),
+      );
+
+    const rerender = () => {
+      mounted?.update(renderView());
+    };
+
+    mounted = renderTui(renderView(), {
       io: { stdin, stdout },
       environment: { TERM: "dumb" },
-      mapAction(token) {
-        return token === "increment" ? "increment" : undefined;
+      onFocusChange(event) {
+        focusedNodeLabel =
+          event.nodeId === null ? "none" : `node ${String(event.nodeId)}`;
+        rerender();
       },
     });
 
     stdin.emit("data", "\u001b[<0;1;1M\u001b[<0;1;1m");
 
-    expect(app.getState()).toBe(1);
-    expect(app.getViewState().focusedNodeLabel).not.toBe("none");
+    expect(count).toBe(1);
+    expect(focusedNodeLabel).not.toBe("none");
     expect(mounted.render().toString()).toContain("1:");
 
     mounted.unmount();

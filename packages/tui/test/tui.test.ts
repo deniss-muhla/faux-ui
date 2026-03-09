@@ -7,13 +7,12 @@ import {
   createViewNode,
   setNodeBindings,
 } from "../../core/src/index.js";
-import { TEXT_TYPE, createStatefulApp } from "../../reconciler/src/index.js";
+import { TEXT_TYPE } from "../../reconciler/src/index.js";
 import {
   FrameBuffer,
   createTuiTextMeasurer,
   dispatchTuiBinding,
   mountTuiRoot,
-  renderStaticStatefulTuiApp,
   renderToFrameBuffer,
   resolveTuiBinding,
   resolveTuiFocusTarget,
@@ -95,7 +94,7 @@ describe("tui renderer", () => {
       "press",
     );
 
-    expect(result.actions.map((action) => action.token)).toEqual([
+    expect(result.actions.map((action) => action.action)).toEqual([
       "leaf-press",
       "child-press",
       "root-press",
@@ -122,11 +121,11 @@ describe("tui renderer", () => {
       { constraints: ROOT_CONSTRAINTS },
       { x: 0, y: 0 },
       "press",
-      (token) => (token === "leaf-press" ? "submit" : undefined),
+      (action) => (action === "leaf-press" ? "submit" : undefined),
     );
 
     expect(execution.resolvedActions).toEqual([
-      expect.objectContaining({ token: "leaf-press", handler: "submit" }),
+      expect.objectContaining({ action: "leaf-press", handler: "submit" }),
     ]);
   });
 
@@ -189,7 +188,7 @@ describe("tui renderer", () => {
       onDispatch: ({ binding, result, execution }) => {
         dispatched.push({
           binding,
-          tokens: result.actions.map((action) => action.token),
+          tokens: result.actions.map((action) => action.action),
           handlers:
             execution?.resolvedActions.map((action) => action.handler) ?? [],
         });
@@ -270,29 +269,26 @@ describe("tui renderer", () => {
     ]);
   });
 
-  it("renders a static stateful TUI app through the renderer helper", () => {
-    const app = createStatefulApp({
-      initialState: 0,
-      initialViewState: { focusedNodeLabel: "none" },
-      reduce(state: number, action: "increment") {
-        return action === "increment" ? state + 1 : state;
+  it("renders direct handler bindings through the TUI runtime", () => {
+    let count = 0;
+    const runtime = mountTuiRoot(
+      createViewNode({
+        spec: { focusable: true },
+        bindings: {
+          press: () => {
+            count += 1;
+          },
+        },
+      }),
+      {
+        constraints: { maxWidth: 4, maxHeight: 1 },
       },
-      render({ state }) {
-        return createElement(TEXT_TYPE, null, String(state));
-      },
-    });
+    );
 
-    const mounted = renderStaticStatefulTuiApp({
-      app,
-      constraints: { maxWidth: 4, maxHeight: 1 },
-    });
+    runtime.focusNode(runtime.focusNext());
+    runtime.dispatchKeyDown("Enter");
 
-    expect(mounted.render().toString()).toContain("0");
-
-    app.dispatch("increment");
-
-    expect(mounted.render().toString()).toContain("1");
-    mounted.unmount();
+    expect(count).toBe(1);
   });
 
   it("cycles focus in tree order through the TUI runtime", () => {
@@ -344,7 +340,7 @@ describe("tui renderer", () => {
         dispatched.push({
           binding,
           pointer,
-          tokens: result.actions.map((action) => action.token),
+          tokens: result.actions.map((action) => action.action),
         });
       },
     });
@@ -498,7 +494,7 @@ describe("tui renderer", () => {
     const runtime = mountTuiRoot(root, {
       constraints: { maxWidth: 8, maxHeight: 1 },
       onDispatch: ({ result }) => {
-        dispatched.push(result.actions.map((action) => action.token));
+        dispatched.push(result.actions.map((action) => action.action));
       },
     });
 

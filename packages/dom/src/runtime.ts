@@ -3,10 +3,15 @@ import {
   collectDispatchActions,
   dispatchBindingAtPoint,
   layoutNode,
-  resolveDispatchResult,
-  type BindingHandlerResolver,
+  type ActivationEvent,
   type BindingName,
+  type DispatchAction,
   type DispatchExecution,
+  type DispatchHandlerResolver,
+  type EventTargetHandle,
+  type FocusEvent,
+  type KeyEvent,
+  type PointerEvent,
   type DispatchResult,
   type NodeId,
   type PointerButton,
@@ -15,6 +20,7 @@ import {
   type RenderHit,
   type RenderTree,
   type RenderTreeNode,
+  type ScrollEvent,
   type ScrollOffset,
   type UINode,
 } from "@faux-ui/core";
@@ -93,7 +99,7 @@ export interface DomFocusChangeEvent {
 export interface DomMountOptions<THandler = unknown> extends DomRenderOptions {
   container: DomElementLike;
   document?: DomDocumentLike;
-  resolveAction?: BindingHandlerResolver<THandler>;
+  resolveAction?: DispatchHandlerResolver<THandler>;
   onDispatch?: (event: DomDispatchEvent<THandler>) => void;
   onFocusChange?: (event: DomFocusChangeEvent) => void;
 }
@@ -488,6 +494,7 @@ export function mountDomRoot<THandler>(
       result,
       event,
       createPointerDispatchMeta(point, null, event),
+      { x: event.deltaX, y: event.deltaY },
     );
     return result;
   }
@@ -578,11 +585,21 @@ export function mountDomRoot<THandler>(
     result: DispatchResult,
     nativeEvent: unknown,
     pointer: PointerDispatchMeta | null = null,
+    scrollDelta: ScrollOffset | null = null,
   ): void {
-    const execution =
-      currentOptions.resolveAction === undefined
-        ? null
-        : resolveDispatchResult(binding, result, currentOptions.resolveAction);
+    const execution = resolveExecution(
+      binding,
+      result,
+      nativeEvent,
+      pointer,
+      scrollDelta,
+    );
+
+    for (const action of execution?.resolvedActions ?? []) {
+      if (typeof action.handler === "function") {
+        action.handler();
+      }
+    }
 
     currentOptions.onDispatch?.({
       binding,
@@ -698,7 +715,7 @@ export function mountDomRoot<THandler>(
         actions: [
           {
             binding,
-            token,
+            action: token,
             nodeId,
             currentTarget: hit.node,
             target: hit.node,
@@ -771,6 +788,161 @@ export function mountDomRoot<THandler>(
 
     currentScrollOffsets.set(scrollable.nodeId, nextOffset);
     return true;
+  }
+
+  function resolveExecution(
+    binding: BindingName,
+    result: DispatchResult,
+    nativeEvent: unknown,
+    pointer: PointerDispatchMeta | null,
+    scrollDelta: ScrollOffset | null,
+  ): DispatchExecution<THandler> | null {
+    const resolvedActions: DispatchExecution<THandler>["resolvedActions"] = [];
+
+    for (const dispatchAction of result.actions) {
+      const handler = resolveHandler(
+        dispatchAction,
+        result,
+        nativeEvent,
+        pointer,
+        scrollDelta,
+      );
+      if (handler === undefined) {
+        continue;
+      }
+
+      resolvedActions.push({
+        ...dispatchAction,
+        handler,
+      });
+    }
+
+    if (resolvedActions.length === 0) {
+      return currentOptions.resolveAction === undefined
+        ? null
+        : {
+            ...result,
+            binding,
+            target: result.hit?.node ?? null,
+            resolvedActions,
+          };
+    }
+
+    return {
+      ...result,
+      binding,
+      target: result.hit?.node ?? null,
+      resolvedActions,
+    };
+  }
+
+  function resolveHandler(
+    dispatchAction: DispatchAction,
+    result: DispatchResult,
+    nativeEvent: unknown,
+    pointer: PointerDispatchMeta | null,
+    scrollDelta: ScrollOffset | null,
+  ): THandler | undefined {
+    if (typeof dispatchAction.action === "function") {
+      const directHandler = dispatchAction.action;
+      return (() => {
+        directHandler(
+          createDispatchEventPayload(
+            dispatchAction,
+            nativeEvent,
+            pointer,
+            scrollDelta,
+          ),
+        );
+      }) as THandler;
+    }
+
+    return currentOptions.resolveAction?.(
+      dispatchAction.action,
+      dispatchAction,
+      result,
+    );
+  }
+
+  function createDispatchEventPayload(
+    dispatchAction: DispatchAction,
+    nativeEvent: unknown,
+    pointer: PointerDispatchMeta | null,
+    scrollDelta: ScrollOffset | null,
+  ): FocusEvent | KeyEvent | PointerEvent | ActivationEvent | ScrollEvent {
+    const base = {
+      currentTarget: toEventTargetHandle(dispatchAction.currentTarget),
+      target: toEventTargetHandle(dispatchAction.target),
+      nativeEvent,
+    };
+
+    if (
+      dispatchAction.binding === "focus" ||
+      dispatchAction.binding === "blur"
+    ) {
+      return base;
+    }
+
+    if (
+      dispatchAction.binding === "keyDown" ||
+      dispatchAction.binding === "keyUp"
+    ) {
+      return {
+        ...base,
+        key: isKeyboardEventLike(nativeEvent) ? nativeEvent.key : "",
+      };
+    }
+
+    const point = pointer?.point;
+    const button = pointer?.button ?? null;
+    const modifiers = pointer?.modifiers ?? emptyPointerModifiers();
+
+    if (dispatchAction.binding === "scroll") {
+      return {
+        ...base,
+        point,
+        button,
+        modifiers,
+        delta:
+          scrollDelta ??
+          (isWheelEventLike(nativeEvent)
+            ? { x: nativeEvent.deltaX, y: nativeEvent.deltaY }
+            : { x: 0, y: 0 }),
+      };
+    }
+
+    if (dispatchAction.binding === "press") {
+      return {
+        ...base,
+        key: isKeyboardEventLike(nativeEvent) ? nativeEvent.key : undefined,
+        point,
+        button,
+        modifiers,
+      };
+    }
+
+    return {
+      ...base,
+      point,
+      button,
+      modifiers,
+    };
+  }
+
+  function toEventTargetHandle(node: RenderTreeNode): EventTargetHandle {
+    return {
+      id: node.nodeId,
+      kind: node.kind,
+    };
+  }
+
+  function emptyPointerModifiers(): PointerModifiers {
+    return {
+      altKey: false,
+      ctrlKey: false,
+      metaKey: false,
+      shiftKey: false,
+    };
   }
 
   function reconcileDetachedInteractionState(
@@ -908,9 +1080,9 @@ export function mountDomRoot<THandler>(
     nativeEvent: unknown,
   ): void {
     const hit = findHitByNodeId(tree, nodeId);
-    const token = hit?.node.node.bindings?.[binding];
+    const action = hit?.node.node.bindings?.[binding];
 
-    if (hit === null || token === undefined) {
+    if (hit === null || action === undefined) {
       return;
     }
 
@@ -921,7 +1093,7 @@ export function mountDomRoot<THandler>(
         actions: [
           {
             binding,
-            token,
+            action,
             nodeId,
             currentTarget: hit.node,
             target: hit.node,

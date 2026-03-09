@@ -7,7 +7,7 @@ import { appendEventEntries, createEventEntries, type EventEntry } from "./log.j
 export type ExampleTarget = "dom" | "tui";
 export type LaneId = "backlog" | "active" | "shipped";
 export type Priority = "calm" | "rush";
-export type ActionToken =
+export type ExampleAction =
   | `lane:${LaneId}`
   | `task:${number}`
   | "task:advance"
@@ -89,7 +89,7 @@ const layoutProfile: LayoutProfile = {
   actionCardRows: [1, 1, 2],
   logTitle: "Event log",
   keyboardHint: "Tab moves focus. Enter and Space activate the same card.",
-  pointerHint: "Pointer dispatch follows the same token contract when available.",
+  pointerHint: "Pointer and keyboard events call app-owned handlers directly.",
 };
 
 const maxEventEntries = 10;
@@ -101,7 +101,7 @@ export function createInitialState(): AppState {
     priority: "calm",
     spotlight: true,
     events: createEventEntries([
-      "Shared example ready. DOM and TUI use the same action tokens.",
+      "Shared example ready. DOM and TUI call the same app-owned handlers.",
       "Look for INTERACTIVE cards. Hover and focus should stand out.",
     ]),
   };
@@ -109,9 +109,9 @@ export function createInitialState(): AppState {
 
 export function reduceExampleAction(
   current: AppState,
-  token: ActionToken,
+  action: ExampleAction,
 ): AppState {
-  switch (token) {
+  switch (action) {
     case "lane:backlog":
       return selectLane(current, "backlog");
     case "lane:active":
@@ -139,6 +139,7 @@ export function ExampleApp(props: {
   state: AppState;
   target: ExampleTarget;
   focusedNodeLabel: string;
+  onAction(action: ExampleAction): void;
 }): React.ReactNode {
   const layout = layoutProfile;
   const lane =
@@ -162,18 +163,20 @@ export function ExampleApp(props: {
         <ActionCard
           label="Priority"
           value={props.state.priority === "calm" ? "Calm orbit" : "Rush orbit"}
-          token="priority:toggle"
+          action="priority:toggle"
           active={props.state.priority === "rush"}
           tone="toggle"
           rows={layout.actionCardRows}
+          onAction={props.onAction}
         />
         <ActionCard
           label="Spotlight"
           value={props.state.spotlight ? "Focused" : "Ambient"}
-          token="spotlight:toggle"
+          action="spotlight:toggle"
           active={props.state.spotlight}
           tone="toggle"
           rows={layout.actionCardRows}
+          onAction={props.onAction}
         />
       </View>
 
@@ -184,10 +187,11 @@ export function ExampleApp(props: {
               key={entry.id}
               label={entry.label}
               value={entry.summary}
-              token={`lane:${entry.id}`}
+              action={`lane:${entry.id}`}
               active={entry.id === props.state.selectedLane}
               tone="lane"
               rows={layout.actionCardRows}
+              onAction={props.onAction}
             />
           ))}
         </View>
@@ -205,19 +209,21 @@ export function ExampleApp(props: {
               key={task.title}
               label={task.title}
               value={task.note}
-              token={`task:${index}`}
+              action={`task:${index}`}
               active={index === props.state.selectedTaskIndex}
               tone="task"
               rows={layout.actionCardRows}
+              onAction={props.onAction}
             />
           ))}
           <ActionCard
             label="Advance"
             value="Move to the next task card"
-            token="task:advance"
+            action="task:advance"
             active={false}
             tone="task"
             rows={layout.actionCardRows}
+            onAction={props.onAction}
           />
         </View>
 
@@ -236,7 +242,7 @@ export function ExampleApp(props: {
         <View rows={[...layout.footerBlockRows, ...layout.footerBlockRows]}>
           <Text style={{ color: "fg" }}>Application-owned handlers</Text>
           <Text style={{ color: "muted" }}>
-            DOM and TUI both resolve the same token set and then rerender the same app state.
+            DOM and TUI both call the same app-owned handlers and rerender the same app state.
           </Text>
           <Text style={{ color: "accent" }}>Focused node</Text>
           <Text style={{ color: "muted" }}>{props.focusedNodeLabel}</Text>
@@ -336,10 +342,11 @@ function labelForLane(laneId: LaneId): string {
 function ActionCard(props: {
   label: string;
   value: string;
-  token: ActionToken;
+  action: ExampleAction;
   active: boolean;
   tone: "lane" | "task" | "toggle";
   rows: Array<number | "1fr">;
+  onAction(action: ExampleAction): void;
 }): React.ReactNode {
   const metaLabel =
     props.tone === "toggle"
@@ -352,8 +359,8 @@ function ActionCard(props: {
     <View
       rows={props.rows}
       focusable
-      onClick={props.token}
-      onPress={props.token}
+      onClick={() => props.onAction(props.action)}
+      onPress={() => props.onAction(props.action)}
       style={{
         background: props.active ? "selection" : "bgAlt",
         color: props.active ? "fg" : "muted",

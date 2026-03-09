@@ -5,13 +5,18 @@ import {
   DefaultEventPriority,
 } from "react-reconciler/constants.js";
 import {
+  type ActionIdentifier,
+  type ActivationEvent,
+  type FocusEvent,
+  type KeyEvent,
+  type PointerEvent,
+  type ScrollEvent,
   createTextNode,
   createViewNode,
   replaceChildren,
   setNodeBindings,
   updateTextNode,
   updateViewNode,
-  type BindingToken,
   type BoundActions,
   type NodeId,
   type NormalizedTextSpec,
@@ -39,22 +44,26 @@ export interface UINodeHandle {
   readonly kind: "view" | "text";
 }
 
+export type EventBindingValue<TEvent = unknown> =
+  | ActionIdentifier
+  | ((event: TEvent) => void);
+
 export interface EventBindingProps {
-  onFocus?: BindingToken;
-  onBlur?: BindingToken;
-  onKeyDown?: BindingToken;
-  onKeyUp?: BindingToken;
-  onPress?: BindingToken;
-  onClick?: BindingToken;
-  onMouseDown?: BindingToken;
-  onMouseUp?: BindingToken;
-  onMouseEnter?: BindingToken;
-  onMouseLeave?: BindingToken;
-  onMouseMove?: BindingToken;
-  onDragStart?: BindingToken;
-  onDrag?: BindingToken;
-  onDragEnd?: BindingToken;
-  onScroll?: BindingToken;
+  onFocus?: EventBindingValue<FocusEvent>;
+  onBlur?: EventBindingValue<FocusEvent>;
+  onKeyDown?: EventBindingValue<KeyEvent>;
+  onKeyUp?: EventBindingValue<KeyEvent>;
+  onPress?: EventBindingValue<ActivationEvent>;
+  onClick?: EventBindingValue<PointerEvent>;
+  onMouseDown?: EventBindingValue<PointerEvent>;
+  onMouseUp?: EventBindingValue<PointerEvent>;
+  onMouseEnter?: EventBindingValue<PointerEvent>;
+  onMouseLeave?: EventBindingValue<PointerEvent>;
+  onMouseMove?: EventBindingValue<PointerEvent>;
+  onDragStart?: EventBindingValue<PointerEvent>;
+  onDrag?: EventBindingValue<PointerEvent>;
+  onDragEnd?: EventBindingValue<PointerEvent>;
+  onScroll?: EventBindingValue<ScrollEvent>;
 }
 
 export interface ViewProps extends EventBindingProps {
@@ -85,39 +94,6 @@ export interface FauxRoot {
 
 export interface FauxReconciler {
   createRoot(options?: RootOptions): FauxRoot;
-}
-
-export type StateUpdater<TState> = TState | ((current: TState) => TState);
-
-export interface AppRenderSnapshot<TState, TViewState> {
-  state: TState;
-  viewState: TViewState;
-}
-
-export interface StatefulAppOptions<TState, TAction, TViewState> {
-  initialState: TState;
-  initialViewState: TViewState;
-  reduce: (state: TState, action: TAction) => TState;
-  render: (snapshot: AppRenderSnapshot<TState, TViewState>) => ReactNode;
-  reconcilerOptions?: ReconcilerOptions;
-  rootOptions?: RootOptions;
-}
-
-export type StatefulAppListener<TState, TViewState> = (
-  root: UINode | null,
-  snapshot: AppRenderSnapshot<TState, TViewState>,
-) => void;
-
-export interface StatefulApp<TState, TAction, TViewState> {
-  getSnapshot(): AppRenderSnapshot<TState, TViewState>;
-  getState(): TState;
-  getViewState(): TViewState;
-  getMountedNode(): UINode | null;
-  dispatch(action: TAction): TState;
-  updateViewState(next: StateUpdater<TViewState>): TViewState;
-  createActionHandler(action: TAction): () => void;
-  subscribe(listener: StatefulAppListener<TState, TViewState>): () => void;
-  unmount(): void;
 }
 
 export const VIEW_TYPE = "view";
@@ -498,95 +474,6 @@ export function createReconciler(
   };
 }
 
-export function createStatefulApp<TState, TAction, TViewState>(
-  options: StatefulAppOptions<TState, TAction, TViewState>,
-): StatefulApp<TState, TAction, TViewState> {
-  const reconciler = createReconciler(options.reconcilerOptions);
-  const root = reconciler.createRoot(options.rootOptions);
-  const listeners = new Set<StatefulAppListener<TState, TViewState>>();
-  let snapshot: AppRenderSnapshot<TState, TViewState> = {
-    state: options.initialState,
-    viewState: options.initialViewState,
-  };
-
-  const dispatchAction = (action: TAction): TState => {
-    const nextState = options.reduce(snapshot.state, action);
-    if (Object.is(nextState, snapshot.state)) {
-      return snapshot.state;
-    }
-
-    snapshot = {
-      ...snapshot,
-      state: nextState,
-    };
-    renderCurrent();
-    return snapshot.state;
-  };
-
-  renderCurrent();
-
-  return {
-    getSnapshot() {
-      return snapshot;
-    },
-    getState() {
-      return snapshot.state;
-    },
-    getViewState() {
-      return snapshot.viewState;
-    },
-    getMountedNode() {
-      return root.getMountedNode();
-    },
-    dispatch(action) {
-      return dispatchAction(action);
-    },
-    updateViewState(next) {
-      const nextViewState =
-        typeof next === "function"
-          ? (next as (current: TViewState) => TViewState)(snapshot.viewState)
-          : next;
-
-      if (Object.is(nextViewState, snapshot.viewState)) {
-        return snapshot.viewState;
-      }
-
-      snapshot = {
-        ...snapshot,
-        viewState: nextViewState,
-      };
-      renderCurrent();
-      return snapshot.viewState;
-    },
-    createActionHandler(action) {
-      return () => {
-        void dispatchAction(action);
-      };
-    },
-    subscribe(listener) {
-      listeners.add(listener);
-      return () => {
-        listeners.delete(listener);
-      };
-    },
-    unmount() {
-      root.unmount();
-      const nextRoot = root.getMountedNode();
-      for (const listener of listeners) {
-        listener(nextRoot, snapshot);
-      }
-    },
-  };
-
-  function renderCurrent(): void {
-    root.render(options.render(snapshot));
-    const mountedNode = root.getMountedNode();
-    for (const listener of listeners) {
-      listener(mountedNode, snapshot);
-    }
-  }
-}
-
 function updateContainer(
   reconciler: ReturnType<typeof createInternalReconciler>,
   fiberRoot: unknown,
@@ -915,9 +802,9 @@ function readBindings(props: Props): BoundActions | null {
       continue;
     }
 
-    if (!isBindingToken(token)) {
+    if (!isBoundAction(token)) {
       throw new Error(
-        `${String(propName)} must be a non-empty string or non-negative integer binding token.`,
+        `${String(propName)} must be a non-empty string action identifier or event handler function.`,
       );
     }
 
@@ -983,12 +870,29 @@ function readExplicitBindings(value: unknown): BoundActions | null {
     throw new Error("bindings must be an object when provided.");
   }
 
-  return { ...(value as BoundActions) };
+  const next: BoundActions = {};
+  for (const [bindingName, action] of Object.entries(value as BoundActions)) {
+    if (action === undefined) {
+      continue;
+    }
+
+    if (!isBoundAction(action)) {
+      throw new Error(
+        `bindings.${bindingName} must be a non-empty string action identifier or event handler function.`,
+      );
+    }
+
+    next[bindingName as keyof BoundActions] = action;
+  }
+
+  return Object.keys(next).length === 0 ? null : next;
 }
 
-function isBindingToken(value: unknown): value is BindingToken {
+function isBoundAction(
+  value: unknown,
+): value is BoundActions[keyof BoundActions] {
   return (
-    (typeof value === "number" && Number.isInteger(value) && value >= 0) ||
-    (typeof value === "string" && value.length > 0)
+    (typeof value === "string" && value.length > 0) ||
+    typeof value === "function"
   );
 }

@@ -27,6 +27,7 @@ The following areas are now considered baseline, not roadmap targets:
 - DOM and TUI renderer helpers for the common mounting path
 - shared example layout across DOM and TUI
 - removal of renderer-driven text measurement from core semantics
+- removal of faux-ui-owned reducer and action-map helpers from the preferred JSX path
 
 Future work should treat those decisions as stable unless a deeper architectural problem appears.
 
@@ -34,7 +35,7 @@ Future work should treat those decisions as stable unless a deeper architectural
 
 ### 1. Remove binding tokens from the public model
 
-Status: not started
+Status: largely complete for JSX, remaining JSON-focused cleanup optional
 
 Goal:
 
@@ -53,6 +54,13 @@ Likely outcomes:
 - dispatch carries semantic action names and optional payload data instead of opaque binding tokens
 - JSX can stay close to ordinary React-style application structure
 - schema and runtime APIs become easier to explain because serialized UI no longer pretends to carry callbacks
+
+Current state:
+
+- JSX event props now accept direct application-owned handler functions
+- renderer helpers no longer own reducer state, view state, or token-to-action mapping helpers
+- the shared example now uses plain render/update loops in app code rather than `createStatefulApp()` or renderer-owned stateful wrappers
+- schema-authored documents still use semantic action identifiers, which remains the right place for any future entrypoint-level action map helper
 
 ### 2. Add a minimal design-system package
 

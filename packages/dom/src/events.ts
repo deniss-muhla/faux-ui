@@ -2,7 +2,7 @@ import {
   buildRenderTree,
   dispatchBindingAtPoint,
   resolveDispatchResult,
-  type BindingHandlerResolver,
+  type DispatchHandlerResolver,
   resolveFocusTargetAtPoint,
   type BindingName,
   type DispatchExecution,
@@ -32,7 +32,7 @@ export function resolveDomBinding<THandler>(
   options: DomInputOptions,
   point: DomPoint,
   binding: BindingName,
-  resolveHandler: BindingHandlerResolver<THandler>,
+  resolveHandler: DispatchHandlerResolver<THandler>,
 ): DispatchExecution<THandler> {
   return resolveDispatchResult(
     binding,

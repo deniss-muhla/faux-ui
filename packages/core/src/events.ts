@@ -5,7 +5,8 @@ import {
   type RenderTree,
   type RenderTreeNode,
 } from "./render-tree.js";
-import type { BindingToken, BoundActions } from "./ui-node.js";
+import type { ScrollOffset } from "./render-tree.js";
+import type { BoundAction, BoundActions } from "./ui-node.js";
 
 export type BindingName = keyof BoundActions;
 export type PointerButton = "primary" | "middle" | "secondary";
@@ -23,15 +24,49 @@ export interface PointerDispatchMeta {
   modifiers: PointerModifiers;
 }
 
-export type BindingHandlerResolver<THandler> = (
-  token: BindingToken,
-  action: DispatchAction,
+export interface EventTargetHandle {
+  id: number;
+  kind: "view" | "text";
+}
+
+export interface DispatchEventBase {
+  currentTarget: EventTargetHandle;
+  target: EventTargetHandle;
+  nativeEvent: unknown;
+}
+
+export interface FocusEvent extends DispatchEventBase {}
+
+export interface KeyEvent extends DispatchEventBase {
+  key: string;
+}
+
+export interface ActivationEvent extends DispatchEventBase {
+  key?: string;
+  point?: Point;
+  button: PointerButton | null;
+  modifiers: PointerModifiers;
+}
+
+export interface PointerEvent extends DispatchEventBase {
+  point?: Point;
+  button: PointerButton | null;
+  modifiers: PointerModifiers;
+}
+
+export interface ScrollEvent extends PointerEvent {
+  delta: ScrollOffset;
+}
+
+export type DispatchHandlerResolver<THandler> = (
+  action: BoundAction,
+  dispatchAction: DispatchAction,
   result: DispatchResult,
 ) => THandler | undefined;
 
 export interface DispatchAction {
   binding: BindingName;
-  token: BindingToken;
+  action: BoundAction;
   nodeId: number;
   currentTarget: RenderTreeNode;
   target: RenderTreeNode;
@@ -67,14 +102,14 @@ export function collectDispatchActions(
       continue;
     }
 
-    const token = currentTarget.node.bindings?.[binding];
-    if (token === undefined) {
+    const action = currentTarget.node.bindings?.[binding];
+    if (action === undefined) {
       continue;
     }
 
     actions.push({
       binding,
-      token,
+      action,
       nodeId: currentTarget.nodeId,
       currentTarget,
       target: hit.node,
@@ -100,12 +135,12 @@ export function dispatchBindingAtPoint(
 export function resolveDispatchResult<THandler>(
   binding: BindingName,
   result: DispatchResult,
-  resolveHandler: BindingHandlerResolver<THandler>,
+  resolveHandler: DispatchHandlerResolver<THandler>,
 ): DispatchExecution<THandler> {
   const resolvedActions: ResolvedDispatchAction<THandler>[] = [];
 
   for (const action of result.actions) {
-    const handler = resolveHandler(action.token, action, result);
+    const handler = resolveHandler(action.action, action, result);
     if (handler === undefined) {
       continue;
     }

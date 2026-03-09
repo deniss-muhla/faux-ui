@@ -1,12 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 
-import {
-  createReconciler,
-  createStatefulApp,
-  TEXT_TYPE,
-  VIEW_TYPE,
-} from "../src/index.js";
+import { createReconciler, TEXT_TYPE, VIEW_TYPE } from "../src/index.js";
 
 describe("reconciler skeleton", () => {
   it("renders a single text root", () => {
@@ -160,92 +155,32 @@ describe("reconciler skeleton", () => {
     }
   });
 
-  it("drives reducer state through a stateful app controller", () => {
-    const app = createStatefulApp({
-      initialState: 1,
-      initialViewState: { suffix: "A" },
-      reduce(state: number, action: "increment") {
-        return action === "increment" ? state + 1 : state;
-      },
-      render({ state, viewState }) {
-        return createElement(
-          TEXT_TYPE,
-          null,
-          `${String(state)}${viewState.suffix}`,
-        );
-      },
-    });
+  it("stores direct handler functions in host bindings", () => {
+    const onClick = vi.fn();
+    const onPress = vi.fn();
+    const reconciler = createReconciler();
+    const root = reconciler.createRoot();
 
-    expect(app.getState()).toBe(1);
-    expect(app.getMountedNode()?.kind).toBe("text");
+    root.render(
+      createElement(
+        VIEW_TYPE,
+        {
+          onClick,
+          focusable: true,
+        },
+        createElement(TEXT_TYPE, { onPress }, "A"),
+      ),
+    );
 
-    app.dispatch("increment");
-
-    const mounted = app.getMountedNode();
-    expect(app.getState()).toBe(2);
-    expect(mounted?.kind).toBe("text");
-    if (mounted?.kind === "text") {
-      expect(mounted.spec.text).toBe("2A");
+    const mounted = root.getMountedNode();
+    expect(mounted?.kind).toBe("view");
+    if (mounted?.kind === "view") {
+      expect(mounted.bindings?.click).toBe(onClick);
+      const child = mounted.children[0];
+      expect(child?.kind).toBe("text");
+      if (child?.kind === "text") {
+        expect(child.bindings?.press).toBe(onPress);
+      }
     }
-  });
-
-  it("updates view state independently of reducer state", () => {
-    const app = createStatefulApp({
-      initialState: 2,
-      initialViewState: { suffix: "A" },
-      reduce(state: number) {
-        return state;
-      },
-      render({ state, viewState }) {
-        return createElement(
-          TEXT_TYPE,
-          null,
-          `${String(state)}${viewState.suffix}`,
-        );
-      },
-    });
-
-    app.updateViewState((current) => ({
-      ...current,
-      suffix: "B",
-    }));
-
-    const mounted = app.getMountedNode();
-    expect(app.getViewState()).toEqual({ suffix: "B" });
-    expect(mounted?.kind).toBe("text");
-    if (mounted?.kind === "text") {
-      expect(mounted.spec.text).toBe("2B");
-    }
-  });
-
-  it("notifies subscribers after state changes and unmount", () => {
-    const listener = vi.fn();
-    const app = createStatefulApp({
-      initialState: 1,
-      initialViewState: { suffix: "A" },
-      reduce(state: number, action: "increment") {
-        return action === "increment" ? state + 1 : state;
-      },
-      render({ state, viewState }) {
-        return createElement(
-          TEXT_TYPE,
-          null,
-          `${String(state)}${viewState.suffix}`,
-        );
-      },
-    });
-
-    const unsubscribe = app.subscribe(listener);
-
-    app.dispatch("increment");
-    app.unmount();
-    unsubscribe();
-
-    expect(listener).toHaveBeenCalledTimes(2);
-    expect(listener.mock.calls[0]?.[1]).toEqual({
-      state: 2,
-      viewState: { suffix: "A" },
-    });
-    expect(listener.mock.calls[1]?.[0]).toBeNull();
   });
 });

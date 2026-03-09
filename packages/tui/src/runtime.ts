@@ -3,18 +3,24 @@ import {
   collectDispatchActions,
   dispatchBindingAtPoint,
   layoutNode,
-  resolveDispatchResult,
-  type BindingHandlerResolver,
+  type ActivationEvent,
   type BindingName,
+  type DispatchAction,
   type DispatchExecution,
+  type DispatchHandlerResolver,
   type DispatchResult,
+  type EventTargetHandle,
+  type FocusEvent,
+  type KeyEvent,
   type NodeId,
   type PointerButton,
   type PointerDispatchMeta,
+  type PointerEvent,
   type PointerModifiers,
   type RenderHit,
   type RenderTree,
   type RenderTreeNode,
+  type ScrollEvent,
   type ScrollOffset,
   type UINode,
 } from "@faux-ui/core";
@@ -80,7 +86,7 @@ export interface TuiFocusChangeEvent {
 }
 
 export interface TuiRuntimeOptions<THandler = unknown> extends RenderOptions {
-  resolveAction?: BindingHandlerResolver<THandler>;
+  resolveAction?: DispatchHandlerResolver<THandler>;
   onDispatch?: (event: TuiDispatchEvent<THandler>) => void;
   onFocusChange?: (event: TuiFocusChangeEvent) => void;
 }
@@ -360,7 +366,13 @@ export function mountTuiRoot<THandler>(
   ): DispatchResult {
     const result = dispatchBindingAtPoint(buildInputTree(), point, "scroll");
     applyScrollDelta(result.hit, delta);
-    notifyDispatch("scroll", result, nativeEvent ?? { point, delta }, pointer);
+    notifyDispatch(
+      "scroll",
+      result,
+      nativeEvent ?? { point, delta },
+      pointer,
+      delta,
+    );
     return result;
   }
 
@@ -463,11 +475,21 @@ export function mountTuiRoot<THandler>(
     result: DispatchResult,
     nativeEvent: unknown,
     pointer: PointerDispatchMeta | null = null,
+    scrollDelta: ScrollOffset | null = null,
   ): void {
-    const execution =
-      currentOptions.resolveAction === undefined
-        ? null
-        : resolveDispatchResult(binding, result, currentOptions.resolveAction);
+    const execution = resolveExecution(
+      binding,
+      result,
+      nativeEvent,
+      pointer,
+      scrollDelta,
+    );
+
+    for (const action of execution?.resolvedActions ?? []) {
+      if (typeof action.handler === "function") {
+        action.handler();
+      }
+    }
 
     currentOptions.onDispatch?.({
       binding,
@@ -560,7 +582,7 @@ export function mountTuiRoot<THandler>(
         actions: [
           {
             binding,
-            token,
+            action: token,
             nodeId,
             currentTarget: hit.node,
             target: hit.node,
@@ -627,6 +649,156 @@ export function mountTuiRoot<THandler>(
     }
 
     currentScrollOffsets = next;
+  }
+
+  function resolveExecution(
+    binding: BindingName,
+    result: DispatchResult,
+    nativeEvent: unknown,
+    pointer: PointerDispatchMeta | null,
+    scrollDelta: ScrollOffset | null,
+  ): DispatchExecution<THandler> | null {
+    const resolvedActions: DispatchExecution<THandler>["resolvedActions"] = [];
+
+    for (const dispatchAction of result.actions) {
+      const handler = resolveHandler(
+        dispatchAction,
+        result,
+        nativeEvent,
+        pointer,
+        scrollDelta,
+      );
+      if (handler === undefined) {
+        continue;
+      }
+
+      resolvedActions.push({
+        ...dispatchAction,
+        handler,
+      });
+    }
+
+    if (resolvedActions.length === 0) {
+      return currentOptions.resolveAction === undefined
+        ? null
+        : {
+            ...result,
+            binding,
+            target: result.hit?.node ?? null,
+            resolvedActions,
+          };
+    }
+
+    return {
+      ...result,
+      binding,
+      target: result.hit?.node ?? null,
+      resolvedActions,
+    };
+  }
+
+  function resolveHandler(
+    dispatchAction: DispatchAction,
+    result: DispatchResult,
+    nativeEvent: unknown,
+    pointer: PointerDispatchMeta | null,
+    scrollDelta: ScrollOffset | null,
+  ): THandler | undefined {
+    if (typeof dispatchAction.action === "function") {
+      const directHandler = dispatchAction.action;
+      return (() => {
+        directHandler(
+          createDispatchEventPayload(
+            dispatchAction,
+            nativeEvent,
+            pointer,
+            scrollDelta,
+          ),
+        );
+      }) as THandler;
+    }
+
+    return currentOptions.resolveAction?.(
+      dispatchAction.action,
+      dispatchAction,
+      result,
+    );
+  }
+
+  function createDispatchEventPayload(
+    dispatchAction: DispatchAction,
+    nativeEvent: unknown,
+    pointer: PointerDispatchMeta | null,
+    scrollDelta: ScrollOffset | null,
+  ): FocusEvent | KeyEvent | PointerEvent | ActivationEvent | ScrollEvent {
+    const base = {
+      currentTarget: toEventTargetHandle(dispatchAction.currentTarget),
+      target: toEventTargetHandle(dispatchAction.target),
+      nativeEvent,
+    };
+
+    if (
+      dispatchAction.binding === "focus" ||
+      dispatchAction.binding === "blur"
+    ) {
+      return base;
+    }
+
+    if (
+      dispatchAction.binding === "keyDown" ||
+      dispatchAction.binding === "keyUp"
+    ) {
+      return {
+        ...base,
+        key: readKey(nativeEvent),
+      };
+    }
+
+    const point = pointer?.point;
+    const button = pointer?.button ?? null;
+    const modifiers = pointer?.modifiers ?? emptyPointerModifiers();
+
+    if (dispatchAction.binding === "scroll") {
+      return {
+        ...base,
+        point,
+        button,
+        modifiers,
+        delta: scrollDelta ?? { x: 0, y: 0 },
+      };
+    }
+
+    if (dispatchAction.binding === "press") {
+      return {
+        ...base,
+        key: readKey(nativeEvent) || undefined,
+        point,
+        button,
+        modifiers,
+      };
+    }
+
+    return {
+      ...base,
+      point,
+      button,
+      modifiers,
+    };
+  }
+
+  function toEventTargetHandle(node: RenderTreeNode): EventTargetHandle {
+    return {
+      id: node.nodeId,
+      kind: node.kind,
+    };
+  }
+
+  function readKey(nativeEvent: unknown): string {
+    return typeof nativeEvent === "object" &&
+      nativeEvent !== null &&
+      "key" in nativeEvent
+      ? String((nativeEvent as { key: unknown }).key ?? "")
+      : "";
   }
 
   function clampStoredScrollOffset(

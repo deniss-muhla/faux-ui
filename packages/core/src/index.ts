@@ -7,7 +7,9 @@ export type {
   TrackShorthand,
 } from "./types.js";
 export type {
-  BindingToken,
+  ActionHandler,
+  ActionIdentifier,
+  BoundAction,
   BoundActions,
   LayoutComputation,
   LayoutState,
@@ -42,15 +44,22 @@ export {
 export { resolveTracks } from "./resolveTracks.js";
 export { layoutNode } from "./layout.js";
 export type {
-  BindingHandlerResolver,
   BindingName,
+  DispatchEventBase,
   DispatchAction,
   DispatchExecution,
+  DispatchHandlerResolver,
   DispatchResult,
+  EventTargetHandle,
+  FocusEvent,
+  KeyEvent,
   PointerButton,
   PointerDispatchMeta,
+  PointerEvent,
   PointerModifiers,
   ResolvedDispatchAction,
+  ScrollEvent,
+  ActivationEvent,
 } from "./events.js";
 export {
   collectDispatchActions,

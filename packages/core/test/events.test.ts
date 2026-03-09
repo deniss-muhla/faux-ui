@@ -35,7 +35,7 @@ describe("render-tree events", () => {
     const hit = hitTestRenderTree(tree, { x: 0, y: 0 });
     const actions = collectDispatchActions(hit, "click");
 
-    expect(actions.map((action) => action.token)).toEqual([
+    expect(actions.map((action) => action.action)).toEqual([
       "leaf-click",
       "child-click",
       "root-click",
@@ -81,7 +81,7 @@ describe("render-tree events", () => {
     const result = dispatchBindingAtPoint(tree, { x: 0, y: 0 }, "click");
 
     expect(result.hit?.node.nodeId).toBe(leaf.id);
-    expect(result.actions.map((action) => action.token)).toEqual([
+    expect(result.actions.map((action) => action.action)).toEqual([
       "leaf",
       "root",
     ]);
@@ -99,8 +99,8 @@ describe("render-tree events", () => {
       constraints: ROOT_CONSTRAINTS,
     });
     const result = dispatchBindingAtPoint(tree, { x: 0, y: 0 }, "click");
-    const execution = resolveDispatchResult("click", result, (token) => {
-      if (token === "leaf") {
+    const execution = resolveDispatchResult("click", result, (action) => {
+      if (action === "leaf") {
         return "open-leaf";
       }
 
@@ -111,7 +111,7 @@ describe("render-tree events", () => {
     expect(execution.target?.nodeId).toBe(leaf.id);
     expect(execution.resolvedActions).toEqual([
       expect.objectContaining({
-        token: "leaf",
+        action: "leaf",
         handler: "open-leaf",
       }),
     ]);

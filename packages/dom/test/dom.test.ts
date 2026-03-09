@@ -3,24 +3,19 @@ import { describe, expect, it } from "vitest";
 
 import {
   appendChild,
-  type BindingToken,
   createTextNode,
   createViewNode,
   setNodeBindings,
 } from "../../core/src/index.js";
-import {
-  TEXT_TYPE,
-  VIEW_TYPE,
-  createStatefulApp,
-} from "../../reconciler/src/index.js";
+import { TEXT_TYPE, VIEW_TYPE } from "../../reconciler/src/index.js";
 import {
   applyDomTheme,
   createBrowserDomTextMeasurer,
   dispatchDomBinding,
-  renderStatefulDomApp,
   resolveDomBinding,
   resolveDomFocusTarget,
   createDomTextMeasurer,
+  renderDom,
   renderToDomModel,
   mountDomRoot,
 } from "../src/index.js";
@@ -186,7 +181,7 @@ describe("dom renderer", () => {
 
     const result = dispatchDomBinding(root, options, { x: 0, y: 0 }, "click");
 
-    expect(result.actions.map((action) => action.token)).toEqual([
+    expect(result.actions.map((action) => action.action)).toEqual([
       "leaf",
       "child",
       "root",
@@ -212,11 +207,11 @@ describe("dom renderer", () => {
       },
       { x: 0, y: 0 },
       "click",
-      (token: BindingToken) => (token === "leaf" ? "open-leaf" : undefined),
+      (action) => (action === "leaf" ? "open-leaf" : undefined),
     );
 
     expect(execution.resolvedActions).toEqual([
-      expect.objectContaining({ token: "leaf", handler: "open-leaf" }),
+      expect.objectContaining({ action: "leaf", handler: "open-leaf" }),
     ]);
   });
 
@@ -380,7 +375,7 @@ describe("dom renderer", () => {
       constraints: SCROLL_CONSTRAINTS,
       measureText: ({ text }) => ({ width: text.length, height: 1 }),
       onDispatch: ({ result }) => {
-        dispatched.push(result.actions.map((action) => action.token));
+        dispatched.push(result.actions.map((action) => action.action));
       },
     });
 
@@ -480,7 +475,7 @@ describe("dom renderer", () => {
       onDispatch: ({ binding, result }) => {
         dispatched.push({
           binding,
-          tokens: result.actions.map((action) => action.token),
+          tokens: result.actions.map((action) => action.action),
         });
       },
       onFocusChange: (event) => {
@@ -543,7 +538,7 @@ describe("dom renderer", () => {
       onDispatch: ({ binding, result }) => {
         dispatched.push({
           binding,
-          tokens: result.actions.map((action) => action.token),
+          tokens: result.actions.map((action) => action.action),
         });
       },
       onFocusChange: (event) => {
@@ -610,7 +605,7 @@ describe("dom renderer", () => {
       onDispatch: ({ binding, result }) => {
         dispatched.push({
           binding,
-          tokens: result.actions.map((action) => action.token),
+          tokens: result.actions.map((action) => action.action),
         });
       },
     });
@@ -661,7 +656,7 @@ describe("dom renderer", () => {
         dispatched.push({
           binding,
           pointer,
-          tokens: result.actions.map((action) => action.token),
+          tokens: result.actions.map((action) => action.action),
         });
       },
     });
@@ -811,12 +806,12 @@ describe("dom renderer", () => {
       document,
       constraints: ROOT_CONSTRAINTS,
       measureText: ({ text }) => ({ width: text.length, height: 1 }),
-      resolveAction: (token: BindingToken) =>
-        typeof token === "string" ? `handler:${token}` : undefined,
+      resolveAction: (action) =>
+        typeof action === "string" ? `handler:${action}` : undefined,
       onDispatch: ({ binding, result, execution }) => {
         dispatched.push({
           binding,
-          tokens: result.actions.map((action) => action.token),
+          tokens: result.actions.map((action) => action.action),
           handlers:
             execution?.resolvedActions.map((action) => action.handler) ?? [],
         });
@@ -870,40 +865,43 @@ describe("dom renderer", () => {
     ]);
   });
 
-  it("renders and updates a stateful DOM app through the renderer helper", async () => {
-    const app = createStatefulApp({
-      initialState: 0,
-      initialViewState: { focusedNodeLabel: "none" },
-      reduce(state: number, action: "increment") {
-        return action === "increment" ? state + 1 : state;
-      },
-      render({ state, viewState }) {
-        return createElement(
-          VIEW_TYPE,
-          {
-            focusable: true,
-            onClick: "increment",
-            onPress: "increment",
-          },
-          createElement(
-            TEXT_TYPE,
-            null,
-            `${String(state)}:${viewState.focusedNodeLabel}`,
-          ),
-        );
-      },
-    });
-
+  it("renders and updates a DOM app through direct handlers", async () => {
+    let count = 0;
+    let focusedNodeLabel = "none";
     const document = new FakeDocument();
     const container = document.createElement("div");
-    const mounted = renderStatefulDomApp({
-      app,
+    let mounted: ReturnType<typeof renderDom> | null = null;
+
+    const renderView = () =>
+      createElement(
+        VIEW_TYPE,
+        {
+          focusable: true,
+          onClick: () => {
+            count += 1;
+            rerender();
+          },
+          onPress: () => {
+            count += 1;
+            rerender();
+          },
+        },
+        createElement(TEXT_TYPE, null, `${String(count)}:${focusedNodeLabel}`),
+      );
+
+    const rerender = () => {
+      mounted?.update(renderView());
+    };
+
+    mounted = renderDom(renderView(), {
       container,
       document,
       constraints: ROOT_CONSTRAINTS,
       measureText: ({ text }) => ({ width: text.length, height: 1 }),
-      mapAction(token) {
-        return token === "increment" ? "increment" : undefined;
+      onFocusChange(event) {
+        focusedNodeLabel =
+          event.nodeId === null ? "none" : `node ${String(event.nodeId)}`;
+        rerender();
       },
     });
 
@@ -911,8 +909,8 @@ describe("dom renderer", () => {
     container.emit("click", { clientX: 0, clientY: 0 });
     await waitForDeferredRerender();
 
-    expect(app.getState()).toBe(1);
-    expect(app.getViewState().focusedNodeLabel).not.toBe("none");
+    expect(count).toBe(1);
+    expect(focusedNodeLabel).not.toBe("none");
     expect(container.children[0]?.children[0]?.textContent).toContain("1:");
 
     mounted.unmount();
