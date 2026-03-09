@@ -19,7 +19,7 @@ describe("reconciler skeleton", () => {
     expect(mounted?.kind).toBe("text");
     if (mounted?.kind === "text") {
       expect(mounted.spec.text).toBe("Hello");
-      expect(mounted.spec.wrap).toBe(false);
+      expect(mounted.spec.wrap).toBeUndefined();
     }
   });
 
@@ -51,7 +51,7 @@ describe("reconciler skeleton", () => {
       const child = mounted.children[0];
       if (child?.kind === "text") {
         expect(child.spec.text).toBe("AB");
-        expect(child.spec.wrap).toBe(true);
+        expect(child.spec.wrap).toBeUndefined();
       }
     }
   });
@@ -155,7 +155,7 @@ describe("reconciler skeleton", () => {
           press: "submit-child",
           dragEnd: "drag-child-end",
         });
-        expect(child.spec.wrap).toBe(true);
+        expect(child.spec.wrap).toBeUndefined();
       }
     }
   });

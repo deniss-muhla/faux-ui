@@ -1,16 +1,15 @@
 import {
   buildRenderTree,
-  type Constraints,
+  type BoundedConstraints,
   type RenderTreeNode,
   type ScrollOffset,
-  type TextLayoutRequest,
   type UINode,
 } from "@faux-ui/core";
 import { FrameBuffer } from "./frame-buffer.js";
 import { createTuiTextMeasurer } from "./text-measurer.js";
 
 export interface RenderOptions {
-  constraints: Constraints;
+  constraints: BoundedConstraints;
   scrollOffsets?: ReadonlyMap<number, ScrollOffset>;
 }
 
@@ -24,14 +23,10 @@ export function renderToFrameBuffer(
     options.scrollOffsets === undefined
       ? {
           constraints: options.constraints,
-          measureText: (request: TextLayoutRequest) =>
-            measurer.measure(request),
         }
       : {
           constraints: options.constraints,
           scrollOffsets: options.scrollOffsets,
-          measureText: (request: TextLayoutRequest) =>
-            measurer.measure(request),
         },
   );
 
@@ -62,11 +57,7 @@ function paintTextNode(
   buffer: FrameBuffer,
   measurer: ReturnType<typeof createTuiTextMeasurer>,
 ): void {
-  const lines = measurer.lines({
-    text: node.node.spec.text,
-    wrap: node.node.spec.wrap,
-    maxWidth: node.frame.width,
-  });
+  const lines = measurer.lines(node.node.spec.text);
 
   const startLine = Math.max(0, node.clipRect.y - node.frame.y);
   const endLine = Math.min(

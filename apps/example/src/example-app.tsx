@@ -77,35 +77,19 @@ const fallbackTask: TaskDefinition = {
   note: "Pick a lane to load an example task card.",
 };
 
-const layoutProfiles: Record<ExampleTarget, LayoutProfile> = {
-  dom: {
-    rootRows: [76, "1fr", 92],
-    headerColumns: ["1fr", 208, 208],
-    mainColumns: [248, "1fr", 288],
-    footerColumns: ["1fr", 288],
-    laneRows: [96, 96, 96],
-    detailLeadRows: [26, 40, 76],
-    detailCardRows: [24, 28, 48],
-    footerBlockRows: [28, 24],
-    actionCardRows: [20, 24, 44],
-    logTitle: "Dispatch log",
-    keyboardHint: "Tab, Shift+Tab, Enter, and Space stay in sync.",
-    pointerHint: "Mouse hover and click resolve the same app-owned tokens.",
-  },
-  tui: {
-    rootRows: [5, "1fr", 5],
-    headerColumns: [34, 24, 24],
-    mainColumns: [28, "1fr", 30],
-    footerColumns: ["1fr", 42],
-    laneRows: [6, 6, 6],
-    detailLeadRows: [1, 2, 4],
-    detailCardRows: [1, 1, 2],
-    footerBlockRows: [1, 1],
-    actionCardRows: [1, 1, 2],
-    logTitle: "Event log",
-    keyboardHint: "Tab moves focus. Enter and Space activate the same card.",
-    pointerHint: "Pointer dispatch follows the same token contract when available.",
-  },
+const layoutProfile: LayoutProfile = {
+  rootRows: [5, "1fr", 5],
+  headerColumns: [34, 24, 24],
+  mainColumns: [28, "1fr", 30],
+  footerColumns: ["1fr", 42],
+  laneRows: [6, 6, 6],
+  detailLeadRows: [1, 2, 4],
+  detailCardRows: [1, 1, 2],
+  footerBlockRows: [1, 1],
+  actionCardRows: [1, 1, 2],
+  logTitle: "Event log",
+  keyboardHint: "Tab moves focus. Enter and Space activate the same card.",
+  pointerHint: "Pointer dispatch follows the same token contract when available.",
 };
 
 const maxEventEntries = 10;
@@ -156,7 +140,7 @@ export function ExampleApp(props: {
   target: ExampleTarget;
   focusedNodeLabel: string;
 }): React.ReactNode {
-  const layout = layoutProfiles[props.target];
+  const layout = layoutProfile;
   const lane =
     lanes.find((entry) => entry.id === props.state.selectedLane) ?? lanes[0] ?? null;
   const tasks = visibleTasks(props.state);
@@ -214,7 +198,7 @@ export function ExampleApp(props: {
           <View rows={layout.detailCardRows} style={{ background: props.state.spotlight ? "selection" : "bgAlt" }}>
             <Text style={{ color: "fg" }}>{currentTask.title}</Text>
             <Text style={{ color: "accent" }}>SELECTED TASK</Text>
-            <Text wrap style={{ color: "muted" }}>{currentTask.note}</Text>
+            <Text style={{ color: "muted" }}>{currentTask.note}</Text>
           </View>
           {tasks.map((task, index) => (
             <ActionCard
@@ -242,7 +226,7 @@ export function ExampleApp(props: {
           {props.state.events.map((entry) => (
             <View key={entry.id} rows={[layout.footerBlockRows[0] ?? 1, layout.footerBlockRows[1] ?? 1]} style={{ background: "bg" }}>
               <Text style={{ color: "warning" }}>EVENT</Text>
-              <Text wrap style={{ color: "muted" }}>{entry.message}</Text>
+              <Text style={{ color: "muted" }}>{entry.message}</Text>
             </View>
           ))}
         </View>
@@ -379,7 +363,7 @@ function ActionCard(props: {
     >
       <Text style={{ color: props.active ? "accent" : "warning" }}>{metaLabel}</Text>
       <Text style={{ color: "fg" }}>{props.label}</Text>
-      <Text wrap style={{ color: props.active ? "accent" : "muted" }}>{props.value}</Text>
+      <Text style={{ color: props.active ? "accent" : "muted" }}>{props.value}</Text>
     </View>
   );
 }

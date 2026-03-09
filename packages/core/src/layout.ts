@@ -9,6 +9,7 @@ import {
   type ViewNode,
 } from "./ui-node.js";
 import {
+  normalizeResolvedSize,
   clampSize,
   normalizeTrackList,
   type Constraints,
@@ -16,29 +17,14 @@ import {
   type TrackShorthand,
 } from "./types.js";
 
-export interface TextLayoutRequest {
-  text: string;
-  wrap: boolean;
-  maxWidth: number | undefined;
-}
-
-export interface LayoutContext {
-  measureText(request: TextLayoutRequest): Size;
-}
-
-export function layoutNode(
-  node: UINode,
-  constraints: Constraints,
-  context: LayoutContext,
-): Size {
-  const computation = computeLayout(node, constraints, context);
+export function layoutNode(node: UINode, constraints: Constraints): Size {
+  const computation = computeLayout(node, constraints);
   return computation.size;
 }
 
 export function computeLayout(
   node: UINode,
   constraints: Constraints,
-  context: LayoutContext,
 ): LayoutComputation {
   if (canReuseLayout(node, constraints)) {
     const contentSize =
@@ -70,8 +56,8 @@ export function computeLayout(
 
   const computation =
     node.kind === "text"
-      ? computeTextLayout(node, constraints, context)
-      : computeViewLayout(node, constraints, context);
+      ? computeTextLayout(node, constraints)
+      : computeViewLayout(node, constraints);
 
   const nextComputation = withOptionalLayoutFields({
     constraints,
@@ -107,13 +93,8 @@ function canReuseLayout(node: UINode, constraints: Constraints): boolean {
 function computeTextLayout(
   node: TextNode,
   constraints: Constraints,
-  context: LayoutContext,
 ): LayoutComputation {
-  const measured = context.measureText({
-    text: node.spec.text,
-    wrap: node.spec.wrap,
-    maxWidth: constraints.maxWidth,
-  });
+  const measured = measureTextContent(node.spec.text);
 
   return withOptionalLayoutFields({
     constraints,
@@ -131,7 +112,6 @@ function computeTextLayout(
 function computeViewLayout(
   node: ViewNode,
   constraints: Constraints,
-  context: LayoutContext,
 ): LayoutComputation {
   const { rows, columns } = normalizeViewTracks(
     node.spec.rows,
@@ -159,7 +139,7 @@ function computeViewLayout(
           continue;
         }
 
-        const childSize = layoutNode(child, {}, context);
+        const childSize = layoutNode(child, {});
         maxWidth = Math.max(maxWidth, childSize.width);
       }
       return maxWidth;
@@ -177,7 +157,7 @@ function computeViewLayout(
           continue;
         }
 
-        const childSize = layoutNode(child, {}, context);
+        const childSize = layoutNode(child, {});
         maxHeight = Math.max(maxHeight, childSize.height);
       }
       return maxHeight;
@@ -185,6 +165,8 @@ function computeViewLayout(
   );
 
   const childFrames: Rect[] = [];
+  let bubbledContentWidth = columnSizes.reduce((sum, size) => sum + size, 0);
+  let bubbledContentHeight = rowSizes.reduce((sum, size) => sum + size, 0);
   let offsetY = 0;
   for (let rowIndex = 0; rowIndex < rowSizes.length; rowIndex += 1) {
     const rowHeight = rowSizes[rowIndex] ?? 0;
@@ -199,14 +181,12 @@ function computeViewLayout(
       if (childIndex !== undefined) {
         const child = node.children[childIndex];
         if (child !== undefined) {
-          const childSize = layoutNode(
-            child,
-            {
-              maxWidth: columnWidth,
-              maxHeight: rowHeight,
-            },
-            context,
-          );
+          const childComputation = computeLayout(child, {
+            maxWidth: columnWidth,
+            maxHeight: rowHeight,
+          });
+          const childSize = childComputation.size;
+          const childContentSize = childComputation.contentSize ?? childSize;
 
           childFrames[childIndex] = {
             x: offsetX,
@@ -214,6 +194,15 @@ function computeViewLayout(
             width: Math.min(childSize.width, columnWidth),
             height: Math.min(childSize.height, rowHeight),
           };
+
+          bubbledContentWidth = Math.max(
+            bubbledContentWidth,
+            offsetX + childContentSize.width,
+          );
+          bubbledContentHeight = Math.max(
+            bubbledContentHeight,
+            offsetY + childContentSize.height,
+          );
         }
       }
       offsetX += columnWidth;
@@ -222,8 +211,8 @@ function computeViewLayout(
   }
 
   const contentSize = {
-    width: columnSizes.reduce((sum, size) => sum + size, 0),
-    height: rowSizes.reduce((sum, size) => sum + size, 0),
+    width: bubbledContentWidth,
+    height: bubbledContentHeight,
   };
 
   return withOptionalLayoutFields({
@@ -335,5 +324,19 @@ function cloneSize(size: Size): Size {
   return {
     width: size.width,
     height: size.height,
+  };
+}
+
+function measureTextContent(text: string): Size {
+  const lines = text.split("\n");
+  let width = 0;
+
+  for (const line of lines) {
+    width = Math.max(width, line.length);
+  }
+
+  return {
+    width: normalizeResolvedSize(width),
+    height: normalizeResolvedSize(lines.length),
   };
 }

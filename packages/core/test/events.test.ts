@@ -11,8 +11,9 @@ import {
   hitTestRenderTree,
   resolveFocusTarget,
   resolveFocusTargetAtPoint,
-  type TextLayoutRequest,
 } from "../src/index.js";
+
+const ROOT_CONSTRAINTS = { maxWidth: 8, maxHeight: 4 };
 
 describe("render-tree events", () => {
   it("collects bubbling actions from the hit path", () => {
@@ -29,11 +30,7 @@ describe("render-tree events", () => {
     appendChild(root, focusable);
 
     const tree = buildRenderTree(root, {
-      constraints: {},
-      measureText: ({ text }: TextLayoutRequest) => ({
-        width: text.length,
-        height: 1,
-      }),
+      constraints: ROOT_CONSTRAINTS,
     });
     const hit = hitTestRenderTree(tree, { x: 0, y: 0 });
     const actions = collectDispatchActions(hit, "click");
@@ -60,11 +57,7 @@ describe("render-tree events", () => {
     appendChild(root, child);
 
     const tree = buildRenderTree(root, {
-      constraints: {},
-      measureText: ({ text }: TextLayoutRequest) => ({
-        width: text.length,
-        height: 1,
-      }),
+      constraints: ROOT_CONSTRAINTS,
     });
     const hit = hitTestRenderTree(tree, { x: 0, y: 0 });
 
@@ -83,11 +76,7 @@ describe("render-tree events", () => {
     appendChild(root, leaf);
 
     const tree = buildRenderTree(root, {
-      constraints: {},
-      measureText: ({ text }: TextLayoutRequest) => ({
-        width: text.length,
-        height: 1,
-      }),
+      constraints: ROOT_CONSTRAINTS,
     });
     const result = dispatchBindingAtPoint(tree, { x: 0, y: 0 }, "click");
 
@@ -107,11 +96,7 @@ describe("render-tree events", () => {
     appendChild(root, leaf);
 
     const tree = buildRenderTree(root, {
-      constraints: {},
-      measureText: ({ text }: TextLayoutRequest) => ({
-        width: text.length,
-        height: 1,
-      }),
+      constraints: ROOT_CONSTRAINTS,
     });
     const result = dispatchBindingAtPoint(tree, { x: 0, y: 0 }, "click");
     const execution = resolveDispatchResult("click", result, (token) => {

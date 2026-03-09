@@ -8,6 +8,11 @@ export type Constraints = {
   maxHeight?: number;
 };
 
+export type BoundedConstraints = {
+  maxWidth: number;
+  maxHeight: number;
+};
+
 export interface LayoutNode {
   layout(constraints: Constraints): Size;
 }
@@ -32,6 +37,23 @@ export type TrackShorthand = number | "auto" | `${number}fr`;
 
 export function clampSize(size: number, max?: number): number {
   return max === undefined ? size : Math.min(size, max);
+}
+
+export function assertBoundedConstraints(
+  constraints: Constraints,
+  label = "constraints",
+): BoundedConstraints {
+  if (
+    constraints.maxWidth === undefined ||
+    constraints.maxHeight === undefined
+  ) {
+    throw new Error(`${label} must include explicit maxWidth and maxHeight.`);
+  }
+
+  return {
+    maxWidth: normalizeResolvedSize(constraints.maxWidth),
+    maxHeight: normalizeResolvedSize(constraints.maxHeight),
+  };
 }
 
 export function normalizeTrack(track: Track | TrackShorthand): Track {

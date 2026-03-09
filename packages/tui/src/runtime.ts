@@ -16,12 +16,10 @@ import {
   type RenderTree,
   type RenderTreeNode,
   type ScrollOffset,
-  type TextLayoutRequest,
   type UINode,
 } from "@faux-ui/core";
 
 import { renderToFrameBuffer, type RenderOptions } from "./render.js";
-import { createTuiTextMeasurer } from "./text-measurer.js";
 import type { TuiPoint } from "./events.js";
 import type { FrameBuffer } from "./frame-buffer.js";
 
@@ -574,20 +572,15 @@ export function mountTuiRoot<THandler>(
   }
 
   function buildInputTree(): RenderTree {
-    const measurer = createTuiTextMeasurer();
     return buildRenderTree(
       currentRoot,
       currentScrollOffsets.size === 0
         ? {
             constraints: currentOptions.constraints,
-            measureText: (request: TextLayoutRequest) =>
-              measurer.measure(request),
           }
         : {
             constraints: currentOptions.constraints,
             scrollOffsets: currentScrollOffsets,
-            measureText: (request: TextLayoutRequest) =>
-              measurer.measure(request),
           },
     );
   }
@@ -626,10 +619,7 @@ export function mountTuiRoot<THandler>(
       return;
     }
 
-    const measurer = createTuiTextMeasurer();
-    layoutNode(currentRoot, currentOptions.constraints, {
-      measureText: (request: TextLayoutRequest) => measurer.measure(request),
-    });
+    layoutNode(currentRoot, currentOptions.constraints);
 
     const next = new Map<NodeId, ScrollOffset>();
     for (const [nodeId, offset] of currentScrollOffsets) {

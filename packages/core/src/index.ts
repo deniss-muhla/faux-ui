@@ -1,4 +1,5 @@
 export type {
+  BoundedConstraints,
   Constraints,
   LayoutNode,
   Size,
@@ -32,13 +33,13 @@ export type {
   ScrollOffset,
 } from "./render-tree.js";
 export {
+  assertBoundedConstraints,
   clampSize,
   normalizeResolvedSize,
   normalizeTrack,
   normalizeTrackList,
 } from "./types.js";
 export { resolveTracks } from "./resolveTracks.js";
-export type { LayoutContext, TextLayoutRequest } from "./layout.js";
 export { layoutNode } from "./layout.js";
 export type {
   BindingHandlerResolver,

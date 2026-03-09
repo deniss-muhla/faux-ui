@@ -8,6 +8,8 @@ import {
 import { mountDomRoot } from "../src/runtime.js";
 import { FakeDocument } from "./support/fake-dom.js";
 
+const ROOT_CONSTRAINTS = { maxWidth: 8, maxHeight: 3 };
+
 describe("dom runtime pointer coordinates", () => {
   it("measures pointer input from the rendered root origin", () => {
     const root = createViewNode({ spec: { rows: [1, 1, 1] } });
@@ -40,7 +42,7 @@ describe("dom runtime pointer coordinates", () => {
     const mounted = mountDomRoot(root, {
       container,
       document,
-      constraints: { maxHeight: 3 },
+      constraints: ROOT_CONSTRAINTS,
       measureText: ({ text }) => ({ width: text.length, height: 1 }),
     });
 

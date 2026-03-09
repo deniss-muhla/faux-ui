@@ -80,7 +80,7 @@ export type NormalizedViewSpec = {
 
 export type NormalizedTextSpec = {
   text: string;
-  wrap: boolean;
+  wrap?: boolean;
   style: StyleValue | null;
 };
 
@@ -283,13 +283,6 @@ export function updateTextNode(node: TextNode, patch: TextSpecPatch): boolean {
     paintChanged = true;
   }
 
-  if (patch.wrap !== undefined && node.spec.wrap !== patch.wrap) {
-    node.spec.wrap = patch.wrap;
-    changed = true;
-    intrinsicChanged = true;
-    paintChanged = true;
-  }
-
   if (
     patch.style !== undefined &&
     !sameStyle(node.spec.style, patch.style ?? null)
@@ -442,7 +435,6 @@ function normalizeViewSpec(
 function normalizeTextSpec(spec: NormalizedTextSpec): NormalizedTextSpec {
   return {
     text: spec.text,
-    wrap: spec.wrap,
     style: cloneStyle(spec.style ?? null),
   };
 }

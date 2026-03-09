@@ -56,11 +56,9 @@ function buildDomInputTree(root: UINode, options: DomInputOptions) {
     options.scrollOffsets === undefined
       ? {
           constraints: options.constraints,
-          measureText: options.measureText,
         }
       : {
           constraints: options.constraints,
-          measureText: options.measureText,
           scrollOffsets: options.scrollOffsets,
         },
   );

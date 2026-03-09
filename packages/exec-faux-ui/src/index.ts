@@ -12,12 +12,13 @@ import { pathToFileURL } from "node:url";
 
 import {
   appendChild,
+  assertBoundedConstraints,
   buildRenderTree,
   createTextNode,
   createViewNode,
   layoutNode,
+  type BoundedConstraints,
   type BoundActions,
-  type Constraints,
   type NodeId,
   type ScrollAxis,
   type StyleValue,
@@ -33,7 +34,6 @@ import {
   type ElementSpec,
 } from "@faux-ui/schema";
 import {
-  createTuiTextMeasurer,
   mountTerminalTuiHost,
   renderToFrameBuffer,
   type TerminalInputStream,
@@ -60,7 +60,7 @@ export interface ExecutionOptions {
   mode: ExecutionMode;
   eventLogPath: string | null;
   snapshotPath: string | null;
-  constraints: Constraints;
+  constraints: BoundedConstraints;
 }
 
 export interface ExecutionEventLogRecord {
@@ -95,12 +95,20 @@ export function executeDocumentText(
   options: Omit<ExecutionOptions, "entry" | "mode"> & { entry?: string },
 ): string {
   const document = parseDocumentText(sourceText, options.format);
+  const constraints = assertBoundedConstraints(
+    {
+      maxWidth: options.constraints.maxWidth ?? 80,
+      maxHeight: options.constraints.maxHeight ?? 24,
+    },
+    "execution constraints",
+  );
   return executeDocument(document, {
     ...options,
     entry: options.entry ?? "<memory>",
     mode: DEFAULT_MODE,
     eventLogPath: null,
     snapshotPath: null,
+    constraints,
   });
 }
 
@@ -279,8 +287,8 @@ function parseExecutionOptions(args: string[]):
       eventLogPath,
       snapshotPath,
       constraints: {
-        ...(maxWidth !== undefined ? { maxWidth } : {}),
-        ...(maxHeight !== undefined ? { maxHeight } : {}),
+        maxWidth: maxWidth ?? 80,
+        maxHeight: maxHeight ?? 24,
       },
     },
   };
@@ -293,16 +301,13 @@ function executeDocument(
   const root = buildNodeTree(document.root);
 
   if (options.inspect === "layout") {
-    layoutNode(root, options.constraints, {
-      measureText: measureText,
-    });
+    layoutNode(root, options.constraints);
     return formatLayoutDump(buildLayoutDump(root));
   }
 
   if (options.inspect === "render-tree") {
     const tree = buildRenderTree(root, {
       constraints: options.constraints,
-      measureText,
     });
     return JSON.stringify(serializeRenderNode(tree.root), null, 2);
   }
@@ -314,7 +319,6 @@ function executeDocument(
 
     const model = renderToDomModel(root, {
       constraints: options.constraints,
-      measureText,
     });
     return renderDomSnapshotHtml(model);
   }
@@ -331,7 +335,6 @@ function executeDocument(
 
   const model = renderToDomModel(root, {
     constraints: options.constraints,
-    measureText,
   });
   return JSON.stringify(serializeDomNode(model), null, 2);
 }
@@ -380,7 +383,6 @@ function buildNodeTree(spec: ElementSpec): UINode {
       ...(spec.key !== undefined ? { key: spec.key } : {}),
       spec: {
         text: spec.text,
-        wrap: spec.wrap ?? false,
         style: cloneStyle(spec.style),
       },
     });
@@ -661,16 +663,6 @@ function buildUsage(...preamble: string[]): string {
 
 function formatExecutionError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
-}
-
-const tuiTextMeasurer = createTuiTextMeasurer();
-
-function measureText(request: {
-  text: string;
-  wrap: boolean;
-  maxWidth: number | undefined;
-}): { width: number; height: number } {
-  return tuiTextMeasurer.measure(request);
 }
 
 export function shouldUseInteractiveTui(

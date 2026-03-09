@@ -1,16 +1,14 @@
 import {
   buildRenderTree,
-  type Constraints,
+  type BoundedConstraints,
   type RenderTreeNode,
   type SemanticColor,
   type ScrollOffset,
-  type TextLayoutRequest,
   type UINode,
 } from "@faux-ui/core";
 
 export interface DomRenderOptions {
-  constraints: Constraints;
-  measureText(request: TextLayoutRequest): { width: number; height: number };
+  constraints: BoundedConstraints;
   scrollOffsets?: ReadonlyMap<number, ScrollOffset>;
   hoveredNodeIds?: ReadonlySet<number>;
   focusedNodeId?: number | null;
@@ -34,11 +32,9 @@ export function renderToDomModel(
     options.scrollOffsets === undefined
       ? {
           constraints: options.constraints,
-          measureText: options.measureText,
         }
       : {
           constraints: options.constraints,
-          measureText: options.measureText,
           scrollOffsets: options.scrollOffsets,
         },
   );
@@ -62,12 +58,15 @@ function buildTextNode(
 ): DomRenderNode {
   const styles: Record<string, string> = {
     position: "absolute",
-    left: `${node.frame.x}px`,
-    top: `${node.frame.y}px`,
-    width: `${node.frame.width}px`,
-    height: `${node.frame.height}px`,
-    whiteSpace: node.node.spec.wrap ? "pre-wrap" : "pre",
+    left: cellWidth(node.frame.x),
+    top: cellHeight(node.frame.y),
+    width: cellWidth(node.frame.width),
+    height: cellHeight(node.frame.height),
+    whiteSpace: "pre",
     overflow: "hidden",
+    fontFamily: "var(--faux-ui-font-family, monospace)",
+    lineHeight: "var(--faux-ui-cell-height, 1em)",
+    fontVariantLigatures: "none",
   };
 
   applyStyle(styles, node.node.spec.style);
@@ -88,10 +87,10 @@ function buildViewNode(
 ): DomRenderNode {
   const styles: Record<string, string> = {
     position: "absolute",
-    left: `${node.frame.x}px`,
-    top: `${node.frame.y}px`,
-    width: `${node.frame.width}px`,
-    height: `${node.frame.height}px`,
+    left: cellWidth(node.frame.x),
+    top: cellHeight(node.frame.y),
+    width: cellWidth(node.frame.width),
+    height: cellHeight(node.frame.height),
     overflow: "hidden",
   };
 
@@ -144,4 +143,20 @@ function applyStyle(
 
 function toCssColor(color: SemanticColor): string {
   return `var(--faux-ui-color-${color})`;
+}
+
+function cellWidth(value: number): string {
+  if (value === 0) {
+    return "0px";
+  }
+
+  return `calc(var(--faux-ui-cell-width, 1ch) * ${String(value)})`;
+}
+
+function cellHeight(value: number): string {
+  if (value === 0) {
+    return "0px";
+  }
+
+  return `calc(var(--faux-ui-cell-height, 1em) * ${String(value)})`;
 }

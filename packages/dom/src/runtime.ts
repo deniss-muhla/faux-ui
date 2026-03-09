@@ -380,7 +380,6 @@ export function mountDomRoot<THandler>(
   function renderOptions(): DomRenderOptions {
     const base = {
       constraints: currentOptions.constraints,
-      measureText: currentOptions.measureText,
       ...(hoveredPathNodeIds.length > 0
         ? { hoveredNodeIds: new Set(hoveredPathNodeIds) }
         : {}),
@@ -671,11 +670,9 @@ export function mountDomRoot<THandler>(
       options.scrollOffsets === undefined
         ? {
             constraints: options.constraints,
-            measureText: options.measureText,
           }
         : {
             constraints: options.constraints,
-            measureText: options.measureText,
             scrollOffsets: options.scrollOffsets,
           },
     );
@@ -793,11 +790,9 @@ export function mountDomRoot<THandler>(
         previousOptions.scrollOffsets === undefined
           ? {
               constraints: previousOptions.constraints,
-              measureText: previousOptions.measureText,
             }
           : {
               constraints: previousOptions.constraints,
-              measureText: previousOptions.measureText,
               scrollOffsets: previousOptions.scrollOffsets,
             },
       );
@@ -832,11 +827,9 @@ export function mountDomRoot<THandler>(
         previousOptions.scrollOffsets === undefined
           ? {
               constraints: previousOptions.constraints,
-              measureText: previousOptions.measureText,
             }
           : {
               constraints: previousOptions.constraints,
-              measureText: previousOptions.measureText,
               scrollOffsets: previousOptions.scrollOffsets,
             },
       );
@@ -865,11 +858,9 @@ export function mountDomRoot<THandler>(
       options.scrollOffsets === undefined
         ? {
             constraints: options.constraints,
-            measureText: options.measureText,
           }
         : {
             constraints: options.constraints,
-            measureText: options.measureText,
             scrollOffsets: options.scrollOffsets,
           },
     );
@@ -956,9 +947,7 @@ export function mountDomRoot<THandler>(
       return;
     }
 
-    layoutNode(currentRoot, currentOptions.constraints, {
-      measureText: currentOptions.measureText,
-    });
+    layoutNode(currentRoot, currentOptions.constraints);
 
     const next = new Map<NodeId, ScrollOffset>();
     for (const [nodeId, offset] of currentScrollOffsets) {

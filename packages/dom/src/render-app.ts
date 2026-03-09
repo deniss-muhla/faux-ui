@@ -1,6 +1,10 @@
 import type { ReactNode } from "react";
 
-import type { BindingToken, UINode } from "@faux-ui/core";
+import {
+  assertBoundedConstraints,
+  type BindingToken,
+  type UINode,
+} from "@faux-ui/core";
 import {
   createReconciler,
   type FauxRoot,
@@ -14,7 +18,6 @@ import {
   type DomFocusChangeEvent,
   type MountedDomRoot,
 } from "./runtime.js";
-import { createBrowserDomTextMeasurer } from "./text-measurer.js";
 
 export interface MountedRenderedDomApp<THandler = unknown> {
   update(
@@ -42,15 +45,10 @@ export interface RenderStatefulDomAppOptions<
   THandler extends () => void = () => void,
 > extends Omit<
   DomMountOptions<THandler>,
-  | "resolveAction"
-  | "onDispatch"
-  | "onFocusChange"
-  | "measureText"
-  | "constraints"
+  "resolveAction" | "onDispatch" | "onFocusChange" | "constraints"
 > {
   app: StatefulApp<TState, TAction, DomAppViewState>;
   mapAction(token: BindingToken): TAction | undefined;
-  measureText?: DomMountOptions<THandler>["measureText"];
   constraints?: DomMountOptions<THandler>["constraints"];
   readConstraints?: () => NonNullable<DomMountOptions<THandler>["constraints"]>;
   autoResize?: boolean;
@@ -145,13 +143,10 @@ export function renderStatefulDomApp<
   let currentOptions = { ...options };
   let focusRenderQueued = false;
   let pendingFocusedNodeLabel = options.app.getViewState().focusedNodeLabel;
-  const measureText =
-    options.measureText ?? createBrowserDomTextMeasurer().measure;
 
   const runtime = mountDomRoot<THandler>(requireAppRoot(options.app, "DOM"), {
     ...options,
     constraints: resolveConstraints(options),
-    measureText,
     resolveAction(token) {
       const action = currentOptions.mapAction(token);
       return action === undefined
@@ -278,7 +273,12 @@ function requireAppRoot<TState, TAction>(
 function resolveConstraints<TState, TAction, THandler extends () => void>(
   options: RenderStatefulDomAppOptions<TState, TAction, THandler>,
 ): NonNullable<DomMountOptions<THandler>["constraints"]> {
-  return options.readConstraints?.() ?? options.constraints ?? {};
+  const constraints = options.readConstraints?.() ?? options.constraints;
+  if (constraints === undefined) {
+    throw new Error("DOM apps require explicit root constraints.");
+  }
+
+  return assertBoundedConstraints(constraints, "DOM root constraints");
 }
 
 function readGlobalWindow(): WindowLike | null {

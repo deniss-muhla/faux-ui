@@ -3,6 +3,8 @@ import { expect, test } from "@playwright/test";
 import { appendChild, createViewNode } from "../../core/src/index.js";
 import { renderToDomModel, type DomRenderNode } from "../src/index.js";
 
+const ROOT_CONSTRAINTS = { maxWidth: 12, maxHeight: 8 };
+
 test.describe("dom visual regression", () => {
   test("renders track layout and scroll clipping consistently", async ({
     page,
@@ -48,7 +50,7 @@ test.describe("dom visual regression", () => {
     appendChild(root, bottomRight);
 
     const model = renderToDomModel(root, {
-      constraints: {},
+      constraints: ROOT_CONSTRAINTS,
       measureText: () => ({ width: 0, height: 0 }),
       scrollOffsets: new Map([[scroller.id, { x: 0, y: 1 }]]),
     });
@@ -86,7 +88,7 @@ test.describe("dom visual regression", () => {
     appendChild(root, focused);
 
     const model = renderToDomModel(root, {
-      constraints: {},
+      constraints: ROOT_CONSTRAINTS,
       measureText: () => ({ width: 0, height: 0 }),
       hoveredNodeIds: new Set([hovered.id]),
       focusedNodeId: focused.id,

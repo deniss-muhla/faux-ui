@@ -28,6 +28,8 @@ import { FakeDocument } from "./support/fake-dom.js";
 
 const waitForDeferredRerender = () =>
   new Promise((resolve) => setTimeout(resolve, 0));
+const ROOT_CONSTRAINTS = { maxWidth: 8, maxHeight: 4 };
+const SCROLL_CONSTRAINTS = { maxWidth: 8, maxHeight: 1 };
 
 describe("dom renderer", () => {
   it("adapts a delegated DOM measurer", () => {
@@ -81,13 +83,13 @@ describe("dom renderer", () => {
       spec: { text: "Hi", wrap: false, style: null },
     });
     const model = renderToDomModel(root, {
-      constraints: {},
+      constraints: ROOT_CONSTRAINTS,
       measureText: ({ text }) => ({ width: text.length, height: 1 }),
     });
 
     expect(model.textContent).toBe("Hi");
     expect(model.styles.position).toBe("absolute");
-    expect(model.styles.width).toBe("2px");
+    expect(model.styles.width).toBe("calc(var(--faux-ui-cell-width, 1ch) * 2)");
   });
 
   it("renders child positions from core layout output", () => {
@@ -102,12 +104,14 @@ describe("dom renderer", () => {
     );
 
     const model = renderToDomModel(root, {
-      constraints: {},
+      constraints: ROOT_CONSTRAINTS,
       measureText: ({ text }) => ({ width: text.length, height: 1 }),
     });
 
     expect(model.children[0]?.styles.left).toBe("0px");
-    expect(model.children[1]?.styles.left).toBe("3px");
+    expect(model.children[1]?.styles.left).toBe(
+      "calc(var(--faux-ui-cell-width, 1ch) * 3)",
+    );
   });
 
   it("projects hover and focus styles into the DOM model", () => {
@@ -125,7 +129,7 @@ describe("dom renderer", () => {
     );
 
     const model = renderToDomModel(root, {
-      constraints: {},
+      constraints: ROOT_CONSTRAINTS,
       measureText: ({ text }) => ({ width: text.length, height: 1 }),
       hoveredNodeIds: new Set([root.id]),
       focusedNodeId: root.id,
@@ -150,12 +154,12 @@ describe("dom renderer", () => {
     );
 
     const model = renderToDomModel(root, {
-      constraints: { maxHeight: 1 },
+      constraints: SCROLL_CONSTRAINTS,
       measureText: ({ text }) => ({ width: text.length, height: 1 }),
       scrollOffsets: new Map([[root.id, { x: 0, y: 1 }]]),
     });
 
-    expect(root.layout.contentSize).toEqual({ width: 3, height: 2 });
+    expect(root.layout.contentSize).toEqual({ width: 8, height: 2 });
     expect(model.children).toHaveLength(1);
     expect(model.children[0]?.textContent).toBe("two");
     expect(model.children[0]?.styles.top).toBe("0px");
@@ -173,7 +177,7 @@ describe("dom renderer", () => {
     setNodeBindings(child, { click: "child" });
 
     const options = {
-      constraints: {},
+      constraints: ROOT_CONSTRAINTS,
       measureText: ({ text }: { text: string }) => ({
         width: text.length,
         height: 1,
@@ -203,7 +207,7 @@ describe("dom renderer", () => {
     const execution = resolveDomBinding(
       root,
       {
-        constraints: {},
+        constraints: ROOT_CONSTRAINTS,
         measureText: ({ text }) => ({ width: text.length, height: 1 }),
       },
       { x: 0, y: 0 },
@@ -228,7 +232,7 @@ describe("dom renderer", () => {
     );
 
     const model = renderToDomModel(root, {
-      constraints: {},
+      constraints: ROOT_CONSTRAINTS,
       measureText: ({ text }) => ({ width: text.length, height: 1 }),
     });
 
@@ -239,13 +243,16 @@ describe("dom renderer", () => {
             "children": [],
             "kind": "text",
             "styles": {
-              "height": "1px",
+              "fontFamily": "var(--faux-ui-font-family, monospace)",
+              "fontVariantLigatures": "none",
+              "height": "calc(var(--faux-ui-cell-height, 1em) * 1)",
               "left": "0px",
+              "lineHeight": "var(--faux-ui-cell-height, 1em)",
               "overflow": "hidden",
               "position": "absolute",
               "top": "0px",
               "whiteSpace": "pre",
-              "width": "4px",
+              "width": "calc(var(--faux-ui-cell-width, 1ch) * 4)",
             },
             "tag": "div",
             "textContent": "left",
@@ -254,13 +261,16 @@ describe("dom renderer", () => {
             "children": [],
             "kind": "text",
             "styles": {
-              "height": "1px",
-              "left": "4px",
+              "fontFamily": "var(--faux-ui-font-family, monospace)",
+              "fontVariantLigatures": "none",
+              "height": "calc(var(--faux-ui-cell-height, 1em) * 1)",
+              "left": "calc(var(--faux-ui-cell-width, 1ch) * 4)",
+              "lineHeight": "var(--faux-ui-cell-height, 1em)",
               "overflow": "hidden",
               "position": "absolute",
               "top": "0px",
               "whiteSpace": "pre",
-              "width": "1px",
+              "width": "calc(var(--faux-ui-cell-width, 1ch) * 1)",
             },
             "tag": "div",
             "textContent": "R",
@@ -268,12 +278,12 @@ describe("dom renderer", () => {
         ],
         "kind": "view",
         "styles": {
-          "height": "1px",
+          "height": "calc(var(--faux-ui-cell-height, 1em) * 4)",
           "left": "0px",
           "overflow": "hidden",
           "position": "absolute",
           "top": "0px",
-          "width": "8px",
+          "width": "calc(var(--faux-ui-cell-width, 1ch) * 8)",
         },
         "tag": "div",
       }
@@ -298,7 +308,7 @@ describe("dom renderer", () => {
     const mounted = mountDomRoot(root, {
       container,
       document,
-      constraints: { maxHeight: 1 },
+      constraints: SCROLL_CONSTRAINTS,
       measureText: ({ text }) => ({ width: text.length, height: 1 }),
     });
 
@@ -332,7 +342,7 @@ describe("dom renderer", () => {
     const mounted = mountDomRoot(root, {
       container,
       document,
-      constraints: { maxHeight: 1 },
+      constraints: SCROLL_CONSTRAINTS,
       measureText: ({ text }) => ({ width: text.length, height: 1 }),
     });
 
@@ -367,7 +377,7 @@ describe("dom renderer", () => {
     const mounted = mountDomRoot(root, {
       container,
       document,
-      constraints: { maxHeight: 1 },
+      constraints: SCROLL_CONSTRAINTS,
       measureText: ({ text }) => ({ width: text.length, height: 1 }),
       onDispatch: ({ result }) => {
         dispatched.push(result.actions.map((action) => action.token));
@@ -400,7 +410,7 @@ describe("dom renderer", () => {
     mountDomRoot(root, {
       container,
       document,
-      constraints: {},
+      constraints: ROOT_CONSTRAINTS,
       measureText: ({ text }) => ({ width: text.length, height: 1 }),
     });
 
@@ -465,7 +475,7 @@ describe("dom renderer", () => {
     const mounted = mountDomRoot(root, {
       container,
       document,
-      constraints: {},
+      constraints: ROOT_CONSTRAINTS,
       measureText: ({ text }) => ({ width: text.length, height: 1 }),
       onDispatch: ({ binding, result }) => {
         dispatched.push({
@@ -528,7 +538,7 @@ describe("dom renderer", () => {
     const mounted = mountDomRoot(root, {
       container,
       document,
-      constraints: {},
+      constraints: ROOT_CONSTRAINTS,
       measureText: ({ text }) => ({ width: text.length, height: 1 }),
       onDispatch: ({ binding, result }) => {
         dispatched.push({
@@ -595,7 +605,7 @@ describe("dom renderer", () => {
     mountDomRoot(root, {
       container,
       document,
-      constraints: {},
+      constraints: ROOT_CONSTRAINTS,
       measureText: ({ text }) => ({ width: text.length, height: 1 }),
       onDispatch: ({ binding, result }) => {
         dispatched.push({
@@ -645,7 +655,7 @@ describe("dom renderer", () => {
     mountDomRoot(root, {
       container,
       document,
-      constraints: {},
+      constraints: ROOT_CONSTRAINTS,
       measureText: ({ text }) => ({ width: text.length, height: 1 }),
       onDispatch: ({ binding, result, pointer }) => {
         dispatched.push({
@@ -799,7 +809,7 @@ describe("dom renderer", () => {
     const mounted = mountDomRoot<string>(root, {
       container,
       document,
-      constraints: {},
+      constraints: ROOT_CONSTRAINTS,
       measureText: ({ text }) => ({ width: text.length, height: 1 }),
       resolveAction: (token: BindingToken) =>
         typeof token === "string" ? `handler:${token}` : undefined,
@@ -890,7 +900,7 @@ describe("dom renderer", () => {
       app,
       container,
       document,
-      constraints: {},
+      constraints: ROOT_CONSTRAINTS,
       measureText: ({ text }) => ({ width: text.length, height: 1 }),
       mapAction(token) {
         return token === "increment" ? "increment" : undefined;

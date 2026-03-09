@@ -6,8 +6,9 @@ import {
   createTextNode,
   createViewNode,
   hitTestRenderTree,
-  type TextLayoutRequest,
 } from "../src/index.js";
+
+const ROOT_CONSTRAINTS = { maxWidth: 8, maxHeight: 4 };
 
 describe("render tree", () => {
   it("builds absolute frames from layout output", () => {
@@ -22,14 +23,10 @@ describe("render tree", () => {
     appendChild(root, right);
 
     const tree = buildRenderTree(root, {
-      constraints: {},
-      measureText: ({ text }: TextLayoutRequest) => ({
-        width: text.length,
-        height: 1,
-      }),
+      constraints: ROOT_CONSTRAINTS,
     });
 
-    expect(tree.size).toEqual({ width: 6, height: 1 });
+    expect(tree.size).toEqual({ width: 8, height: 4 });
     expect(tree.root.children.map((child) => child.frame)).toEqual([
       { x: 0, y: 0, width: 1, height: 1 },
       { x: 3, y: 0, width: 1, height: 1 },
@@ -50,12 +47,8 @@ describe("render tree", () => {
     appendChild(root, second);
 
     const tree = buildRenderTree(root, {
-      constraints: { maxHeight: 1 },
+      constraints: { maxWidth: 8, maxHeight: 1 },
       scrollOffsets: new Map([[root.id, { x: 0, y: 1 }]]),
-      measureText: ({ text }: TextLayoutRequest) => ({
-        width: text.length,
-        height: 1,
-      }),
     });
 
     expect(tree.root.children).toHaveLength(1);
@@ -80,11 +73,7 @@ describe("render tree", () => {
     appendChild(root, right);
 
     const tree = buildRenderTree(root, {
-      constraints: {},
-      measureText: ({ text }: TextLayoutRequest) => ({
-        width: text.length,
-        height: 1,
-      }),
+      constraints: ROOT_CONSTRAINTS,
     });
     const hit = hitTestRenderTree(tree, { x: 3, y: 0 });
 
@@ -105,11 +94,7 @@ describe("render tree", () => {
     );
 
     const tree = buildRenderTree(root, {
-      constraints: {},
-      measureText: ({ text }: TextLayoutRequest) => ({
-        width: text.length,
-        height: 1,
-      }),
+      constraints: ROOT_CONSTRAINTS,
     });
     const hit = hitTestRenderTree(tree, { x: 2, y: 0 });
 
@@ -124,25 +109,17 @@ describe("render tree", () => {
     });
     appendChild(root, child);
 
-    const measureText = ({ text }: TextLayoutRequest) => ({
-      width: text.length,
-      height: 1,
-    });
-
     const first = buildRenderTree(root, {
-      constraints: {},
-      measureText,
+      constraints: ROOT_CONSTRAINTS,
     });
     const second = buildRenderTree(root, {
-      constraints: {},
-      measureText,
+      constraints: ROOT_CONSTRAINTS,
     });
 
     expect(second).toBe(first);
 
     const third = buildRenderTree(root, {
-      constraints: {},
-      measureText,
+      constraints: ROOT_CONSTRAINTS,
       scrollOffsets: new Map([[root.id, { x: 1, y: 0 }]]),
     });
 

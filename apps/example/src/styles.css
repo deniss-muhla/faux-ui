@@ -1,6 +1,9 @@
 :root {
   color-scheme: light;
-  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+  font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  --faux-ui-font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  --faux-ui-cell-width: 1ch;
+  --faux-ui-cell-height: 1em;
   background:
     radial-gradient(circle at top left, rgba(255, 209, 102, 0.38), transparent 34%),
     radial-gradient(circle at right center, rgba(34, 211, 238, 0.22), transparent 32%),
@@ -42,7 +45,7 @@ body {
   margin: 0;
   font-size: clamp(2.5rem, 5vw, 4.4rem);
   line-height: 0.95;
-  font-family: "Space Grotesk", "IBM Plex Sans", sans-serif;
+  font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
 }
 
 .page-intro p {
@@ -87,6 +90,8 @@ body {
     inset 0 1px 0 rgba(255, 255, 255, 0.7);
   background:
     linear-gradient(155deg, rgba(255, 255, 255, 0.92), rgba(246, 241, 232, 0.92));
+  font-family: var(--faux-ui-font-family);
+  line-height: var(--faux-ui-cell-height);
 }
 
 #surface::before {

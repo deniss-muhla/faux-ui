@@ -1,6 +1,7 @@
 import process from "node:process";
 
 import type {
+  BoundedConstraints,
   Constraints,
   PointerButton,
   PointerDispatchMeta,
@@ -473,14 +474,11 @@ export function consumeTerminalInput(input: string): TerminalInputParseResult {
 export function resolveTerminalConstraints(
   constraints: Constraints | undefined,
   output: Pick<TerminalOutputStream, "columns" | "rows">,
-): Constraints {
-  const maxWidth = clampConstraint(constraints?.maxWidth, output.columns);
-  const maxHeight = clampConstraint(constraints?.maxHeight, output.rows);
+): BoundedConstraints {
+  const maxWidth = clampConstraint(constraints?.maxWidth, output.columns) ?? 80;
+  const maxHeight = clampConstraint(constraints?.maxHeight, output.rows) ?? 24;
 
-  return {
-    ...(maxWidth !== undefined ? { maxWidth } : {}),
-    ...(maxHeight !== undefined ? { maxHeight } : {}),
-  };
+  return { maxWidth, maxHeight };
 }
 
 export function resolveTerminalMouseSupport(

@@ -1,10 +1,10 @@
-# faux-ui Specification v1 Scaffold
+# faux-ui Specification
 
 ## Purpose
 
 faux-ui is a deterministic cross-renderer UI framework built around strict constraint algebra, explicit track resolution, and a hard separation between layout and rendering.
 
-This repository scaffold freezes the project shape and the core behavioral rules needed to begin implementation without importing hidden semantics from the DOM, CSS Grid, Flexbox, or existing TUI layout systems.
+This specification freezes the core behavioral rules without importing hidden semantics from the DOM, CSS Grid, Flexbox, or existing TUI layout systems.
 
 ## Baseline
 
@@ -17,6 +17,11 @@ This repository scaffold freezes the project shape and the core behavioral rules
 
 ## Core Philosophy
 
+- TUI is the canonical layout model.
+- DOM is an alternate renderer that must mirror TUI semantics 1:1.
+- Root containers are always explicitly bounded on both axes.
+- All layout units are virtual cell units: x = one character width, y = one character height.
+- Text never wraps automatically; it is clipped by the allocated frame.
 - No spanning
 - No gaps
 - No min constraints
@@ -45,14 +50,20 @@ type Constraints = {
   maxWidth?: number;
   maxHeight?: number;
 };
+
+type RootConstraints = {
+  maxWidth: number;
+  maxHeight: number;
+};
 ```
 
 Rules:
 
 - Constraints are max-only.
+- The root always receives explicit bounded constraints on both axes.
 - A child may choose any size less than or equal to the provided max.
-- `undefined` means the axis is unbounded.
-- Parents clamp returned child sizes to the provided max.
+- `undefined` means the axis is unbounded inside the tree.
+- Parents clamp returned child frame sizes to the provided max.
 
 Clamp rule:
 
@@ -196,7 +207,6 @@ Cross-axis alignment:
 ```ts
 type TextProps = {
   children: string;
-  wrap?: boolean;
   style?: {
     color?: SemanticColor;
     background?: SemanticColor;
@@ -204,15 +214,13 @@ type TextProps = {
 };
 ```
 
-Text measurement is delegated to the renderer:
+Frozen text rules:
 
-```ts
-interface TextMeasurer {
-  measure(text: string, maxWidth?: number): Size;
-}
-```
-
-The core engine does not assume fixed character widths or Unicode cell behavior.
+- Width is the longest newline-delimited line length in characters.
+- Height is the number of newline-delimited lines.
+- Renderers do not wrap text automatically.
+- If a frame is smaller than the intrinsic text extent, rendering is clipped.
+- Unicode box-drawing and pseudo-graphics are semantic content and must render the same in TUI and DOM.
 
 ## Scroll Model
 
@@ -220,12 +228,13 @@ Scroll is part of core semantics, but the offset itself is render-only state.
 
 Frozen behavior:
 
-1. A scroll-enabled view receives bounded constraints.
-2. It passes an unbounded constraint on the scroll axis to its child subtree.
-3. The subtree computes its full content size.
-4. The scroll container stores both viewport size and content size.
-5. Render applies clipping and scroll offset transforms.
-6. Scroll offset changes do not invalidate layout.
+1. A scroll-enabled view receives bounded frame constraints.
+2. It may pass an unbounded constraint on the scroll axis to its child subtree.
+3. Text nodes compute intrinsic content size from character counts and newline counts.
+4. Views bubble content size upward from child positions plus child intrinsic content extent.
+5. The scroll container stores both viewport size and content size.
+6. Render applies clipping and scroll offset transforms.
+7. Scroll offset changes do not invalidate layout.
 
 ## Trees and Internal Architecture
 

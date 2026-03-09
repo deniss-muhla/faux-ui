@@ -7,7 +7,8 @@ This document explains the current implementation architecture of faux-ui. It co
 faux-ui is organized around a small set of architectural constraints:
 
 - one semantic model shared across renderers
-- deterministic layout with no CSS-style negotiation
+- TUI-first semantics with DOM as a projection, not a source of layout truth
+- deterministic fixed-cell layout with no CSS-style negotiation
 - strict separation between layout and render phases
 - event dispatch based on a renderer-neutral render tree
 - renderer packages that stay thin by delegating semantics to `@faux-ui/core`
@@ -37,7 +38,7 @@ In practice, the runtime is centered on three progressively more concrete layers
 2. Semantic runtime state: the mutable `UINode` tree in `@faux-ui/core`.
 3. Render state: a visible-only render tree used for painting, clipping, hit testing, and event targeting.
 
-The architecture deliberately avoids pushing renderer-specific behavior into the semantic layer. DOM and TUI differ in measurement, painting, and native input plumbing, but they share the same layout, render-tree, and dispatch semantics.
+The architecture deliberately avoids pushing renderer-specific behavior into the semantic layer. DOM and TUI share the same fixed-cell layout, render-tree, and dispatch semantics. DOM differs only in projection and native input plumbing.
 
 ## Package Responsibilities
 
@@ -69,13 +70,12 @@ It now also provides a small React-facing app controller through `createStateful
 
 It provides:
 
-- text measurement adapters
 - DOM model projection from the render tree
 - a live mounting runtime for a host container
 - browser-style pointer, wheel, keyboard, and focus routing back into core dispatch helpers
-- higher-level DOM app helpers such as `renderDom()`, `renderStatefulDomApp()`, `createBrowserDomTextMeasurer()`, and `applyDomTheme()` for the common browser path
+- higher-level DOM app helpers such as `renderDom()`, `renderStatefulDomApp()`, and `applyDomTheme()` for the common browser path
 
-DOM remains a projection target, not the semantic authority.
+DOM remains a projection target, not the semantic authority. It renders the same text, cell coordinates, clipping, and pseudo-graphics as TUI using monospace metrics.
 
 ### `@faux-ui/tui`
 
@@ -83,7 +83,6 @@ DOM remains a projection target, not the semantic authority.
 
 It provides:
 
-- character-cell text measurement
 - framebuffer painting
 - coordinate-based input dispatch helpers for cell positions
 - higher-level TUI app helpers such as `renderTui()`, `renderStatefulTuiApp()`, and `renderStaticStatefulTuiApp()` for interactive and snapshot-style terminal flows
@@ -166,11 +165,13 @@ At this point the tree contains semantic information only: tracks, text content,
 
 The layout pipeline follows these rules:
 
-- text measurement is delegated through a renderer-supplied `measureText()` function
+- the root always starts with explicit bounded constraints
+- text extent is computed in core from character counts and newline counts
 - view tracks are normalized into a simple grid model
 - content and fixed tracks are resolved before fraction tracks
 - scrollable axes pass unbounded constraints into descendants while retaining bounded viewport size at the container
 - child placement is strictly index-based
+- each node tracks both an allocated frame size and an intrinsic content extent for scroll overflow
 - the resulting layout state is cached on each node
 
 For views, layout records more than final size. It also stores:
@@ -202,13 +203,13 @@ Renderers consume the shared render tree.
 
 For DOM:
 
-- `renderToDomModel()` projects the tree into absolute-positioned DOM model nodes
+- `renderToDomModel()` projects the tree into absolute-positioned DOM model nodes in cell units
 - `mountDomRoot()` turns that model into live elements inside a host container
 - `renderDom()` and `renderStatefulDomApp()` provide renderer-owned successful paths above raw root management
 
 For TUI:
 
-- `renderToFrameBuffer()` paints the tree into a framebuffer using character-cell measurement
+- `renderToFrameBuffer()` paints the tree into a framebuffer using the same fixed-cell coordinates used by layout
 - `renderTui()` and `renderStatefulTuiApp()` provide renderer-owned successful paths above raw host wiring
 
 The renderer packages stay narrow because core has already solved placement, clipping, and hit-test geometry.

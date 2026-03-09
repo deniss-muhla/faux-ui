@@ -9,11 +9,8 @@ import {
   type DispatchResult,
   type Point,
   type RenderTreeNode,
-  type TextLayoutRequest,
   type UINode,
 } from "@faux-ui/core";
-
-import { createTuiTextMeasurer } from "./text-measurer.js";
 import type { RenderOptions } from "./render.js";
 
 export type TuiInputOptions = RenderOptions;
@@ -53,21 +50,15 @@ export function resolveTuiFocusTarget(
 }
 
 function buildTuiInputTree(root: UINode, options: TuiInputOptions) {
-  const measurer = createTuiTextMeasurer();
-
   return buildRenderTree(
     root,
     options.scrollOffsets === undefined
       ? {
           constraints: options.constraints,
-          measureText: (request: TextLayoutRequest) =>
-            measurer.measure(request),
         }
       : {
           constraints: options.constraints,
           scrollOffsets: options.scrollOffsets,
-          measureText: (request: TextLayoutRequest) =>
-            measurer.measure(request),
         },
   );
 }

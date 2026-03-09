@@ -1,7 +1,12 @@
-import type { Size, TextLayoutRequest } from "@faux-ui/core";
+import type { Size } from "@faux-ui/core";
+
+export interface DomTextMeasureRequest {
+  text: string;
+  maxWidth?: number;
+}
 
 export interface DomMeasurementAdapter {
-  measureText(request: TextLayoutRequest): Size;
+  measureText(request: DomTextMeasureRequest): Size;
 }
 
 export interface DomCanvasTextMetricsLike {
@@ -30,7 +35,7 @@ export interface BrowserDomTextMeasurerOptions {
 }
 
 export interface DomTextMeasurer {
-  measure(request: TextLayoutRequest): Size;
+  measure(request: DomTextMeasureRequest): Size;
 }
 
 export function createDomTextMeasurer(

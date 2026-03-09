@@ -645,7 +645,6 @@ function createHostInstance(
       bindings: readBindings(props),
       spec: {
         text: "",
-        wrap: readWrap(props),
         style: readStyle(props),
       },
     });
@@ -840,7 +839,6 @@ function buildTextPatch(
   newProps: Props,
 ): Partial<NormalizedTextSpec> {
   return {
-    ...(oldProps.wrap !== newProps.wrap ? { wrap: readWrap(newProps) } : {}),
     ...(oldProps.style !== newProps.style
       ? { style: readStyle(newProps) }
       : {}),
@@ -897,10 +895,6 @@ function readNamedStyle(value: unknown): StyleValue | null {
 
 function readFocusable(props: Props): boolean {
   return props.focusable === true;
-}
-
-function readWrap(props: Props): boolean {
-  return props.wrap === true;
 }
 
 function readBindings(props: Props): BoundActions | null {

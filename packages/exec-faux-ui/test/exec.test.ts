@@ -42,6 +42,8 @@ class InteractiveStdout extends MockStdout {
   override isTTY = true;
 }
 
+const ROOT_CONSTRAINTS = { maxWidth: 8, maxHeight: 4 };
+
 describe("exec-faux-ui", () => {
   it("renders readable documents to the TUI target", () => {
     const output = executeDocumentText(
@@ -60,11 +62,11 @@ describe("exec-faux-ui", () => {
         target: "tui",
         format: "auto",
         inspect: null,
-        constraints: {},
+        constraints: ROOT_CONSTRAINTS,
       },
     );
 
-    expect(output).toBe("A  B  ");
+    expect(output).toBe("A  B    \n        \n        \n        ");
   });
 
   it("auto-detects compact documents for layout inspection", () => {
@@ -74,11 +76,11 @@ describe("exec-faux-ui", () => {
         target: "dom",
         format: "auto",
         inspect: "layout",
-        constraints: {},
+        constraints: ROOT_CONSTRAINTS,
       },
     );
 
-    expect(output).toContain("[view 2x1");
+    expect(output).toContain("[view 8x1");
     expect(output).toContain("[text 2x1");
   });
 
@@ -104,7 +106,7 @@ describe("exec-faux-ui", () => {
         target: "dom",
         format: "readable",
         inspect: "bindings",
-        constraints: {},
+        constraints: ROOT_CONSTRAINTS,
       },
     );
 
@@ -136,7 +138,7 @@ describe("exec-faux-ui", () => {
         target: "dom",
         format: "readable",
         inspect: "html",
-        constraints: {},
+        constraints: ROOT_CONSTRAINTS,
       },
     );
 
@@ -158,7 +160,7 @@ describe("exec-faux-ui", () => {
         target: "dom",
         format: "readable",
         inspect: null,
-        constraints: {},
+        constraints: ROOT_CONSTRAINTS,
       },
     );
 
@@ -167,7 +169,7 @@ describe("exec-faux-ui", () => {
       textContent: "Hi",
       styles: {
         position: "absolute",
-        width: "2px",
+        width: "calc(var(--faux-ui-cell-width, 1ch) * 2)",
       },
     });
   });

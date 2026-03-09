@@ -1,5 +1,9 @@
-import { layoutNode, type LayoutContext } from "./layout.js";
-import type { Constraints, Size } from "./types.js";
+import { layoutNode } from "./layout.js";
+import {
+  assertBoundedConstraints,
+  type BoundedConstraints,
+  type Size,
+} from "./types.js";
 import type { NodeId, Rect, TextNode, UINode, ViewNode } from "./ui-node.js";
 import { clearPaintDirtySubtree } from "./ui-node.js";
 
@@ -13,8 +17,8 @@ export interface ScrollOffset {
   y: number;
 }
 
-export interface RenderTreeOptions extends LayoutContext {
-  constraints: Constraints;
+export interface RenderTreeOptions {
+  constraints: BoundedConstraints;
   scrollOffsets?: ReadonlyMap<NodeId, ScrollOffset>;
 }
 
@@ -50,7 +54,7 @@ export interface RenderHit {
 }
 
 type RenderTreeCacheEntry = {
-  constraints: Constraints;
+  constraints: BoundedConstraints;
   scrollOffsets: ReadonlyMap<NodeId, ScrollOffset>;
   subtreeRevision: number;
   tree: RenderTree;
@@ -69,12 +73,17 @@ export function buildRenderTree(
     return cached.tree;
   }
 
-  const size = layoutNode(root, options.constraints, {
-    measureText: options.measureText,
-  });
-  const frame = { x: 0, y: 0, width: size.width, height: size.height };
+  const viewport = assertBoundedConstraints(
+    options.constraints,
+    "root constraints",
+  );
+  const size = layoutNode(root, viewport);
+  const frame =
+    root.kind === "view"
+      ? { x: 0, y: 0, width: viewport.maxWidth, height: viewport.maxHeight }
+      : { x: 0, y: 0, width: size.width, height: size.height };
   const tree = {
-    size,
+    size: { width: frame.width, height: frame.height },
     root: buildRenderNode(
       root,
       options.scrollOffsets ?? EMPTY_SCROLL_OFFSETS,
@@ -214,7 +223,10 @@ function canReuseRenderTree(
   );
 }
 
-function sameConstraints(left: Constraints, right: Constraints): boolean {
+function sameConstraints(
+  left: BoundedConstraints,
+  right: BoundedConstraints,
+): boolean {
   return left.maxWidth === right.maxWidth && left.maxHeight === right.maxHeight;
 }
 
@@ -241,14 +253,10 @@ function sameScrollOffsets(
   return true;
 }
 
-function cloneConstraints(constraints: Constraints): Constraints {
+function cloneConstraints(constraints: BoundedConstraints): BoundedConstraints {
   return {
-    ...(constraints.maxWidth !== undefined
-      ? { maxWidth: constraints.maxWidth }
-      : {}),
-    ...(constraints.maxHeight !== undefined
-      ? { maxHeight: constraints.maxHeight }
-      : {}),
+    maxWidth: constraints.maxWidth,
+    maxHeight: constraints.maxHeight,
   };
 }
 

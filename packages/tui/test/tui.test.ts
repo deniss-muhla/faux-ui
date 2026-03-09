@@ -19,23 +19,21 @@ import {
   resolveTuiFocusTarget,
 } from "../src/index.js";
 
-describe("tui renderer", () => {
-  it("measures wrapped text in character cells", () => {
-    const measurer = createTuiTextMeasurer();
-    const size = measurer.measure({
-      text: "hello world",
-      wrap: true,
-      maxWidth: 5,
-    });
+const ROOT_CONSTRAINTS = { maxWidth: 8, maxHeight: 4 };
 
-    expect(size).toEqual({ width: 5, height: 3 });
+describe("tui renderer", () => {
+  it("measures text by newline-delimited character cells", () => {
+    const measurer = createTuiTextMeasurer();
+    const size = measurer.measure("hello\nworld");
+
+    expect(size).toEqual({ width: 5, height: 2 });
   });
 
   it("renders a simple text node into a frame buffer", () => {
     const root = createTextNode({
       spec: { text: "Hi", wrap: false, style: null },
     });
-    const buffer = renderToFrameBuffer(root, { constraints: {} });
+    const buffer = renderToFrameBuffer(root, { constraints: ROOT_CONSTRAINTS });
 
     expect(buffer).toBeInstanceOf(FrameBuffer);
     expect(buffer.toString()).toBe("Hi");
@@ -52,9 +50,9 @@ describe("tui renderer", () => {
       createTextNode({ spec: { text: "B", wrap: false, style: null } }),
     );
 
-    const buffer = renderToFrameBuffer(root, { constraints: {} });
+    const buffer = renderToFrameBuffer(root, { constraints: ROOT_CONSTRAINTS });
 
-    expect(buffer.toString()).toBe("A  B  ");
+    expect(buffer.toString()).toBe("A  B    \n        \n        \n        ");
   });
 
   it("applies scroll offsets during rendering without changing layout size", () => {
@@ -71,12 +69,12 @@ describe("tui renderer", () => {
     );
 
     const buffer = renderToFrameBuffer(root, {
-      constraints: { maxHeight: 1 },
+      constraints: { maxWidth: 8, maxHeight: 1 },
       scrollOffsets: new Map([[root.id, { x: 0, y: 1 }]]),
     });
 
-    expect(root.layout.contentSize).toEqual({ width: 3, height: 2 });
-    expect(buffer.toString()).toBe("two");
+    expect(root.layout.contentSize).toEqual({ width: 8, height: 2 });
+    expect(buffer.toString()).toBe("two     ");
   });
 
   it("dispatches TUI bindings and resolves focus from cell coordinates", () => {
@@ -92,7 +90,7 @@ describe("tui renderer", () => {
 
     const result = dispatchTuiBinding(
       root,
-      { constraints: {} },
+      { constraints: ROOT_CONSTRAINTS },
       { x: 0, y: 0 },
       "press",
     );
@@ -103,7 +101,11 @@ describe("tui renderer", () => {
       "root-press",
     ]);
     expect(
-      resolveTuiFocusTarget(root, { constraints: {} }, { x: 0, y: 0 })?.nodeId,
+      resolveTuiFocusTarget(
+        root,
+        { constraints: ROOT_CONSTRAINTS },
+        { x: 0, y: 0 },
+      )?.nodeId,
     ).toBe(child.id);
   });
 
@@ -117,7 +119,7 @@ describe("tui renderer", () => {
 
     const execution = resolveTuiBinding(
       root,
-      { constraints: {} },
+      { constraints: ROOT_CONSTRAINTS },
       { x: 0, y: 0 },
       "press",
       (token) => (token === "leaf-press" ? "submit" : undefined),
@@ -139,9 +141,11 @@ describe("tui renderer", () => {
       createTextNode({ spec: { text: "R", wrap: false, style: null } }),
     );
 
-    const buffer = renderToFrameBuffer(root, { constraints: {} });
+    const buffer = renderToFrameBuffer(root, { constraints: ROOT_CONSTRAINTS });
 
-    expect(buffer.toString()).toMatchInlineSnapshot(`"leftR   "`);
+    expect(buffer.toString()).toMatchInlineSnapshot(
+      `"leftR   \n        \n        \n        "`,
+    );
   });
 
   it("routes pointer and keyboard input through the TUI runtime", () => {
@@ -179,7 +183,7 @@ describe("tui renderer", () => {
     appendChild(root, child);
 
     const runtime = mountTuiRoot<string>(root, {
-      constraints: {},
+      constraints: ROOT_CONSTRAINTS,
       resolveAction: (token) =>
         typeof token === "string" ? `handler:${token}` : undefined,
       onDispatch: ({ binding, result, execution }) => {
@@ -306,7 +310,7 @@ describe("tui renderer", () => {
     appendChild(root, first);
     appendChild(root, second);
 
-    const runtime = mountTuiRoot(root, { constraints: {} });
+    const runtime = mountTuiRoot(root, { constraints: ROOT_CONSTRAINTS });
 
     expect(runtime.focusNext()).toBe(first.id);
     expect(runtime.focusNext()).toBe(second.id);
@@ -335,7 +339,7 @@ describe("tui renderer", () => {
     );
 
     const runtime = mountTuiRoot(root, {
-      constraints: {},
+      constraints: ROOT_CONSTRAINTS,
       onDispatch: ({ binding, result, pointer }) => {
         dispatched.push({
           binding,
@@ -492,18 +496,18 @@ describe("tui renderer", () => {
     );
 
     const runtime = mountTuiRoot(root, {
-      constraints: { maxHeight: 1 },
+      constraints: { maxWidth: 8, maxHeight: 1 },
       onDispatch: ({ result }) => {
         dispatched.push(result.actions.map((action) => action.token));
       },
     });
 
-    expect(runtime.render().toString()).toBe("one");
+    expect(runtime.render().toString()).toBe("one     ");
 
     runtime.scrollAtPoint({ x: 0, y: 0 }, { x: 0, y: 1 });
 
     expect(runtime.getScrollOffset(root.id)).toEqual({ x: 0, y: 1 });
-    expect(runtime.render().toString()).toBe("two");
+    expect(runtime.render().toString()).toBe("two     ");
     expect(dispatched).toEqual([["scroll-root"]]);
   });
 
@@ -521,17 +525,17 @@ describe("tui renderer", () => {
     );
 
     const runtime = mountTuiRoot(root, {
-      constraints: { maxHeight: 1 },
+      constraints: { maxWidth: 8, maxHeight: 1 },
     });
 
     runtime.setScrollOffset(root.id, { x: 2.7, y: 99.4 });
 
     expect(runtime.getScrollOffset(root.id)).toEqual({ x: 0, y: 1 });
-    expect(runtime.render().toString()).toBe("two");
+    expect(runtime.render().toString()).toBe("two     ");
 
     runtime.setScrollOffset(root.id, { x: -4, y: -2 });
 
     expect(runtime.getScrollOffset(root.id)).toEqual({ x: 0, y: 0 });
-    expect(runtime.render().toString()).toBe("one");
+    expect(runtime.render().toString()).toBe("one     ");
   });
 });
