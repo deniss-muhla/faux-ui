@@ -61,6 +61,7 @@ Current state:
 - renderer helpers no longer own reducer state, view state, or token-to-action mapping helpers
 - the shared example now uses plain render/update loops in app code rather than `createStatefulApp()` or renderer-owned stateful wrappers
 - schema-authored documents still use semantic action identifiers, which remains the right place for any future entrypoint-level action map helper
+- TypeScript still accepts standard React intrinsic tags in faux-ui JSX files, so one remaining cleanup item is to make non-`View` and non-`Text` tags fail at compile time rather than only at runtime
 
 ### 2. Add a minimal design-system package
 
