@@ -38,6 +38,66 @@ describe("tui renderer", () => {
     expect(buffer.toString()).toBe("Hi");
   });
 
+  it("stores semantic colors in the frame buffer", () => {
+    const root = createViewNode({
+      spec: { style: { background: "accent", color: "inverse" } },
+    });
+    appendChild(
+      root,
+      createTextNode({
+        spec: { text: "Hi", wrap: false, style: { color: "warning" } },
+      }),
+    );
+
+    const buffer = renderToFrameBuffer(root, {
+      constraints: { maxWidth: 2, maxHeight: 1 },
+    });
+
+    expect(buffer.cells[0]).toMatchObject({
+      char: "H",
+      foreground: "#b45309",
+      background: "#0f766e",
+    });
+    expect(buffer.cells[1]).toMatchObject({
+      char: "i",
+      foreground: "#b45309",
+      background: "#0f766e",
+    });
+  });
+
+  it("applies hover and focus styles when rendering runtime state", () => {
+    const root = createViewNode({
+      spec: {
+        focusable: true,
+        style: { background: "bgAlt", color: "muted" },
+        styleHover: { background: "focus", color: "fg" },
+        styleFocus: { background: "accent", color: "inverse" },
+      },
+    });
+    appendChild(
+      root,
+      createTextNode({ spec: { text: "A", wrap: false, style: null } }),
+    );
+
+    const hovered = renderToFrameBuffer(root, {
+      constraints: { maxWidth: 1, maxHeight: 1 },
+      hoveredNodeIds: new Set([root.id]),
+    });
+    const focused = renderToFrameBuffer(root, {
+      constraints: { maxWidth: 1, maxHeight: 1 },
+      focusedNodeId: root.id,
+    });
+
+    expect(hovered.cells[0]).toMatchObject({
+      foreground: "#1f2937",
+      background: "#d7f4f0",
+    });
+    expect(focused.cells[0]).toMatchObject({
+      foreground: "#fffaf2",
+      background: "#0f766e",
+    });
+  });
+
   it("renders children using the core layout output", () => {
     const root = createViewNode({ spec: { columns: [3, 3] } });
     appendChild(

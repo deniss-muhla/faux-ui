@@ -21,9 +21,10 @@
     "test:watch": "vitest",
     "check": "bun run typecheck && bun run test",
     "example:dom": "bun run --cwd apps/example dev:dom",
-    "example:dom:build": "bun run --cwd apps/example build:dom",
-    "example:tui": "bun run --cwd apps/example start:tui",
-    "example:tui:snapshot": "bun run --cwd apps/example snapshot:tui"
+    "example:build": "bun run --cwd apps/example build",
+    "example:preview": "bun run --cwd apps/example preview",
+    "example:tui": "bun run --cwd apps/example dev:tui",
+    "example:tui:watch": "bun run --cwd apps/example dev:tui:watch"
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0",

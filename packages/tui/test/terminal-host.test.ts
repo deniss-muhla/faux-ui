@@ -12,7 +12,7 @@ import {
 import {
   consumeTerminalInput,
   mountTerminalTuiHost,
-  renderTui,
+  render,
   resolveTerminalConstraints,
   resolveTerminalMouseSupport,
   supportsTerminalMouse,
@@ -233,13 +233,15 @@ describe("terminal tui host", () => {
   it("renders a TUI app through the one-call render helper", () => {
     const stdin = new MockInput();
     const stdout = new MockOutput();
-    const mounted = renderTui(createElement(TEXT_TYPE, null, "A"), {
+    const mounted = render(createElement(TEXT_TYPE, null, "A"), {
       io: { stdin, stdout },
       environment: { TERM: "dumb" },
     });
 
     expect(mounted.isRunning()).toBe(true);
     expect(mounted.render().toString()).toContain("A");
+    expect(stdout.writes.join("")).toContain("38;2;31;41;55");
+    expect(stdout.writes.join("")).toContain("48;2;255;253;247");
 
     mounted.update(createElement(TEXT_TYPE, null, "B"));
 
@@ -255,7 +257,7 @@ describe("terminal tui host", () => {
     const stdout = new MockOutput();
     let count = 0;
     let focusedNodeLabel = "none";
-    let mounted: ReturnType<typeof renderTui> | null = null;
+    let mounted: ReturnType<typeof render> | null = null;
 
     const renderView = () =>
       createElement(
@@ -274,7 +276,7 @@ describe("terminal tui host", () => {
       mounted?.update(renderView());
     };
 
-    mounted = renderTui(renderView(), {
+    mounted = render(renderView(), {
       io: { stdin, stdout },
       environment: { TERM: "dumb" },
       onFocusChange(event) {

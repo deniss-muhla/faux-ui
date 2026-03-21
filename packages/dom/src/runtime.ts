@@ -33,6 +33,8 @@ type EventListener = (event: unknown) => void;
 export interface DomRectLike {
   left: number;
   top: number;
+  width: number;
+  height: number;
 }
 
 export interface DomStyleDeclarationLike {
@@ -416,7 +418,7 @@ export function mountDomRoot<THandler>(
     elementNodeIds.set(element, model.nodeId);
 
     for (const [name, value] of Object.entries(model.styles)) {
-      element.style.setProperty(name, value);
+      element.style.setProperty(toCssPropertyName(name), value);
     }
 
     if (model.kind === "text") {
@@ -1242,6 +1244,17 @@ function resolveDocument<THandler>(
 function applyContainerStyles(container: DomElementLike): void {
   container.style.setProperty("position", "relative");
   container.style.setProperty("overflow", "hidden");
+  container.style.setProperty("background-color", "var(--faux-ui-color-bg)");
+  container.style.setProperty("color", "var(--faux-ui-color-fg)");
+  container.style.setProperty(
+    "font-family",
+    "var(--faux-ui-font-family, monospace)",
+  );
+  container.style.setProperty("line-height", "var(--faux-ui-cell-height, 1em)");
+}
+
+function toCssPropertyName(name: string): string {
+  return name.replace(/[A-Z]/g, (character) => `-${character.toLowerCase()}`);
 }
 
 function pointFromPointerEvent(

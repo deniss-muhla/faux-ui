@@ -1,10 +1,10 @@
 {
-  "name": "@faux-ui/render-tui",
+  "name": "@faux-ui/app",
   "version": "0.1.0",
   "type": "module",
   "dependencies": {
-    "@faux-ui/core": "workspace:*",
-    "@faux-ui/reconciler": "workspace:*"
+    "@faux-ui/render-dom": "workspace:*",
+    "@faux-ui/render-tui": "workspace:*"
   },
   "peerDependencies": {
     "react": "^19.2.0"

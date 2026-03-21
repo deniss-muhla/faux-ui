@@ -19,9 +19,10 @@ This repository is an active Bun-based TypeScript monorepo with the first end-to
 Packages:
 
 - `@faux-ui/core`
+- `@faux-ui/app`
 - `@faux-ui/reconciler`
-- `@faux-ui/dom`
-- `@faux-ui/tui`
+- `@faux-ui/render-dom`
+- `@faux-ui/render-tui`
 - `@faux-ui/schema`
 - `@faux-ui/devtools`
 - `@faux-ui/mcp`
@@ -45,16 +46,17 @@ bun run build
 
 The monorepo now includes one shared example app with two renderer targets that exercises the current action contract across DOM and TUI:
 
-- `bun run example:dom` starts the browser target from `apps/example` and mounts the shared app into a styled DOM shell.
-- `bun run example:dom:build` produces a production browser bundle for the DOM target.
+- `bun run example:dom` starts the browser target from `apps/example` and mounts the shared app directly into `document.body`.
+- `bun run example:build` produces the browser bundle for the shared example app.
+- `bun run example:preview` serves the built browser bundle locally.
 - `bun run example:tui` launches the terminal target for the same shared example app.
-- `bun run example:tui:snapshot` renders the shared example once in static TUI mode for quick inspection.
+- `bun run example:tui:watch` reruns the terminal target on source changes while iterating on the TUI path.
 
-The default path is now renderer-owned rather than app-owned root plumbing:
+The default app path is now the public framework facade rather than direct renderer imports:
 
-- `@faux-ui/dom` exposes `renderDom()` for direct tree mounting in the browser.
-- `@faux-ui/tui` exposes `renderTui()` for direct terminal mounting.
-- `@faux-ui/reconciler` owns `View`, `Text`, and the JSX bridge only. Application state, rerender scheduling, and action maps stay in user code.
+- `@faux-ui/app` exposes `render()` and picks the browser or terminal runtime automatically.
+- `@faux-ui/render-dom` and `@faux-ui/render-tui` remain the renderer implementation packages.
+- `@faux-ui/reconciler` owns the JSX bridge. With `jsxImportSource: "@faux-ui/reconciler"`, faux-ui JSX can use `<view>` and `<text>` directly.
 
 ## Current Scope
 
@@ -70,9 +72,10 @@ The current implementation includes:
 - executable tests for deterministic track resolution
 - executable tests for `UINode` invalidation behavior
 - readable JSON validation plus compact-codec encode/decode support in `@faux-ui/schema`
-- an initial React reconciler bridge with `View` and `Text` JSX wrappers over the custom host config
-- a TUI renderer with character-cell text measurement, frame-buffer output, clipping, render-phase scroll offsets, runtime dispatch helpers, hover and drag transitions, shared pointer metadata, a concrete terminal host loop, and snapshots
-- a DOM renderer with absolute-positioned model projection, delegated DOM measurement adapters, live mounting, browser-style input routing, focus tracking, drag-aware pointer dispatch, runtime scroll management, and snapshots
+- an initial React reconciler bridge with lower-case `<view>` and `<text>` intrinsic JSX over the custom host config
+- a TUI renderer implementation package with character-cell text measurement, frame-buffer output, clipping, render-phase scroll offsets, runtime dispatch helpers, hover and drag transitions, shared pointer metadata, a concrete terminal host loop, and snapshots
+- a DOM renderer implementation package with absolute-positioned model projection, delegated DOM measurement adapters, live mounting, browser-style input routing, focus tracking, drag-aware pointer dispatch, runtime scroll management, and snapshots
+- an app facade package that auto-selects browser or terminal rendering for application code
 - DOM-side successful-path helpers for browser measurers, theme token installation, and stateful app mounting
 - browser-level Playwright visual regression coverage for DOM projection output
 - an execution CLI that renders schema documents to DOM or TUI targets, exposes binding/layout/render-tree/HTML inspect modes, can log live interactive dispatch events, and can launch an interactive terminal session on TTYs

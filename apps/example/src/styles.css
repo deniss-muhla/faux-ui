@@ -4,125 +4,21 @@
   --faux-ui-font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
   --faux-ui-cell-width: 1ch;
   --faux-ui-cell-height: 1em;
-  background:
-    radial-gradient(circle at top left, rgba(255, 209, 102, 0.38), transparent 34%),
-    radial-gradient(circle at right center, rgba(34, 211, 238, 0.22), transparent 32%),
-    linear-gradient(180deg, #f7f4ea 0%, #f2efe5 48%, #ebe6da 100%);
-  color: #1f2933;
 }
 
 * {
   box-sizing: border-box;
 }
 
+html,
 body {
   margin: 0;
-  min-height: 100vh;
+  width: 100%;
+  min-height: 100%;
 }
 
-.page-shell {
-  min-height: 100vh;
-  padding: 40px 24px 56px;
-  display: grid;
-  gap: 24px;
-}
-
-.page-intro {
-  max-width: 760px;
-}
-
-.eyebrow,
-.meta-label {
-  display: block;
-  margin: 0 0 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-  font-size: 11px;
-  color: #7a5d2d;
-}
-
-.page-intro h1 {
-  margin: 0;
-  font-size: clamp(2.5rem, 5vw, 4.4rem);
-  line-height: 0.95;
-  font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
-}
-
-.page-intro p {
-  margin: 14px 0 0;
-  max-width: 680px;
-  font-size: 1rem;
-  line-height: 1.6;
-  color: #425466;
-}
-
-.demo-shell {
-  display: grid;
-  gap: 14px;
-}
-
-.demo-meta {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-}
-
-.demo-meta p {
-  margin: 0;
-}
-
-#focus-indicator {
-  font-weight: 600;
-  color: #114b5f;
-}
-
-#surface {
+body {
   position: relative;
-  isolation: isolate;
-  width: min(100%, 1040px);
-  height: 620px;
+  min-height: 100vh;
   overflow: hidden;
-  border: 1px solid rgba(61, 56, 48, 0.14);
-  border-radius: 28px;
-  padding: 18px;
-  box-shadow:
-    0 24px 80px rgba(62, 52, 36, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.7);
-  background:
-    linear-gradient(155deg, rgba(255, 255, 255, 0.92), rgba(246, 241, 232, 0.92));
-  font-family: var(--faux-ui-font-family);
-  line-height: var(--faux-ui-cell-height);
-}
-
-#surface::before {
-  content: "";
-  position: absolute;
-  inset: 10px;
-  z-index: 0;
-  pointer-events: none;
-  border-radius: 22px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(244, 237, 226, 0.9));
-}
-
-#surface > div {
-  position: relative;
-  z-index: 1;
-}
-
-@media (max-width: 720px) {
-  .page-shell {
-    padding: 24px 16px 40px;
-  }
-
-  #surface {
-    height: 720px;
-    padding: 12px;
-    border-radius: 22px;
-  }
-
-  #surface::before {
-    inset: 6px;
-    border-radius: 18px;
-  }
 }

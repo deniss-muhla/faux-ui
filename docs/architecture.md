@@ -21,15 +21,18 @@ Those constraints are visible throughout the repository structure and in the mai
 ```mermaid
 flowchart LR
   A[JSX authoring] --> B[@faux-ui/reconciler]
+  A --> Q[@faux-ui/app]
   J[JSON authoring] --> K[@faux-ui/schema]
+  Q --> F[@faux-ui/render-dom]
+  Q --> G[@faux-ui/render-tui]
   B --> C[UINode tree]
   K --> C
   C --> D[layoutNode]
   D --> E[buildRenderTree]
-  E --> F[@faux-ui/dom]
-  E --> G[@faux-ui/tui]
+  E --> F
+  E --> G
   E --> H[event hit testing]
-  H --> I[binding tokens owned by the app]
+  H --> I[direct handlers owned by the app]
 ```
 
 In practice, the runtime is centered on three progressively more concrete layers:
@@ -53,6 +56,7 @@ It owns:
 - layout computation and layout cache reuse
 - render-tree construction and render-tree cache reuse
 - renderer-neutral hit testing and bubbling-oriented event dispatch
+- default semantic colors used by both DOM and TUI renderers
 
 No renderer package redefines these rules. That is the main architectural guardrail in the repository.
 
@@ -60,30 +64,47 @@ No renderer package redefines these rules. That is the main architectural guardr
 
 `@faux-ui/reconciler` is the current JSX bridge.
 
-It converts React host instances into `UINode` objects, exposes author-facing `View` and `Text` wrappers, and maps shorthand event props such as `onClick` and `onKeyDown` into core binding slots. JSX event props can now be either direct application-owned handler functions or semantic action identifiers. The reconciler does not perform layout, rendering, or app-state orchestration. Its job is to maintain the semantic tree and preserve the framework's authoring constraints, such as raw text only being legal inside `Text`.
+It converts React host instances into `UINode` objects, exposes the faux-ui intrinsic host types, and maps shorthand event props such as `onClick` and `onKeyDown` into core binding slots. JSX event props can now be either direct application-owned handler functions or semantic action identifiers. The reconciler does not perform layout, rendering, or app-state orchestration. Its job is to maintain the semantic tree and preserve the framework's authoring constraints, such as raw text only being legal inside `text`.
 
-### `@faux-ui/dom`
+The reconciler also provides a custom JSX import source (`@faux-ui/reconciler/jsx-runtime`) that restricts intrinsic elements to `view` and `text` at compile time, preventing accidental use of standard HTML tags in faux-ui JSX files.
 
-`@faux-ui/dom` turns the shared render tree into browser-shaped output.
+### `@faux-ui/app`
+
+`@faux-ui/app` is the public app-facing facade.
+
+It provides:
+
+- `render()` as the single app entrypoint
+- environment detection that chooses browser or terminal rendering
+- a boundary that keeps app code away from renderer-specific packages by default
+
+This package exists to reduce boilerplate without moving renderer-specific behavior into `@faux-ui/core`.
+
+### `@faux-ui/render-dom`
+
+`@faux-ui/render-dom` turns the shared render tree into browser-shaped output.
 
 It provides:
 
 - DOM model projection from the render tree
 - a live mounting runtime for a host container
 - browser-style pointer, wheel, keyboard, and focus routing back into core dispatch helpers
-- `renderDom()` and `applyDomTheme()` for the common browser path
+- `render()` for the common browser path, with auto-body mounting, auto-cell-constraint measurement, auto-resize via `ResizeObserver`, auto-installation of core default colors as CSS variables, and auto-rerender on React state changes via `onCommit`
+- `applyDomTheme()` for manual theme control
+- optional re-exports of `View`, `Text`, `ViewProps`, and `TextProps` for `createElement`-style usage, while normal JSX can use `<view>` and `<text>` directly
 
 DOM remains a projection target, not the semantic authority. It renders the same text, cell coordinates, clipping, and pseudo-graphics as TUI using monospace metrics.
 
-### `@faux-ui/tui`
+### `@faux-ui/render-tui`
 
-`@faux-ui/tui` turns the shared render tree into a character-cell framebuffer.
+`@faux-ui/render-tui` turns the shared render tree into a character-cell framebuffer.
 
 It provides:
 
 - framebuffer painting
 - coordinate-based input dispatch helpers for cell positions
-- `renderTui()` for the common interactive terminal path
+- `render()` for the common interactive terminal path, with auto-rerender on React state changes via `onCommit`
+- optional re-exports of `View`, `Text`, `ViewProps`, and `TextProps` for `createElement`-style usage, while normal JSX can use `<view>` and `<text>` directly
 
 Like DOM, it depends on the shared render tree instead of reimplementing layout or event semantics.
 
@@ -203,12 +224,12 @@ For DOM:
 
 - `renderToDomModel()` projects the tree into absolute-positioned DOM model nodes in cell units
 - `mountDomRoot()` turns that model into live elements inside a host container
-- `renderDom()` provides a renderer-owned successful path above raw root management
+- `render()` provides a renderer-owned successful path above raw root management
 
 For TUI:
 
 - `renderToFrameBuffer()` paints the tree into a framebuffer using the same fixed-cell coordinates used by layout
-- `renderTui()` provides a renderer-owned successful path above raw host wiring
+- `render()` provides a renderer-owned successful path above raw host wiring
 
 The renderer packages stay narrow because core has already solved placement, clipping, and hit-test geometry.
 

@@ -5,6 +5,7 @@
     { "path": "./packages/reconciler" },
     { "path": "./packages/dom" },
     { "path": "./packages/tui" },
+    { "path": "./packages/framework" },
     { "path": "./packages/schema" },
     { "path": "./packages/devtools" },
     { "path": "./packages/mcp" },

@@ -1,3 +1,4 @@
+import { defaultSemanticColors } from "@faux-ui/core";
 import type { DomElementLike } from "./runtime.js";
 
 export interface DomThemeValues {
@@ -16,18 +17,7 @@ export interface DomThemeValues {
 }
 
 export const defaultDomTheme: Required<DomThemeValues> = {
-  fg: "#1f2937",
-  muted: "#4b5563",
-  accent: "#0f766e",
-  success: "#166534",
-  warning: "#b45309",
-  danger: "#b91c1c",
-  bg: "#fffdf7",
-  bgAlt: "#f3efe1",
-  border: "#d6cfc3",
-  focus: "#d7f4f0",
-  selection: "#e7f5ef",
-  inverse: "#fffaf2",
+  ...defaultSemanticColors,
 };
 
 export function applyDomTheme(

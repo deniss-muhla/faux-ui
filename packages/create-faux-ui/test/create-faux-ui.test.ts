@@ -15,13 +15,13 @@ describe("create-faux-ui", () => {
   it("builds a JSX starter plan with a runnable app entrypoint", () => {
     const plan = buildScaffoldPlan(baseOptions({ template: "jsx" }));
 
-    expect(plan.files.map((file) => file.path)).toContain("src/app.tsx");
+    expect(plan.files.map((file) => file.path)).toContain("src/main.tsx");
     expect(plan.files.map((file) => file.path)).toContain("tsconfig.json");
 
     const packageJson = plan.files.find((file) => file.path === "package.json");
     expect(packageJson?.content).toContain("@faux-ui/reconciler");
-    expect(packageJson?.content).toContain("@faux-ui/tui");
-    expect(packageJson?.content).toContain('"start": "tsx src/app.tsx"');
+    expect(packageJson?.content).toContain("@faux-ui/app");
+    expect(packageJson?.content).toContain('"start": "tsx src/main.tsx"');
   });
 
   it("builds a DOM JSX starter plan with browser entry files", () => {
@@ -35,7 +35,7 @@ describe("create-faux-ui", () => {
     expect(plan.files.map((file) => file.path)).not.toContain("src/app.tsx");
 
     const packageJson = plan.files.find((file) => file.path === "package.json");
-    expect(packageJson?.content).toContain("@faux-ui/dom");
+    expect(packageJson?.content).toContain("@faux-ui/app");
     expect(packageJson?.content).toContain('"start": "vite"');
     expect(packageJson?.content).toContain('"build": "vite build"');
   });
@@ -90,11 +90,11 @@ describe("create-faux-ui", () => {
 
     expect(packageJson).toContain('"packageManager": "pnpm@9"');
     expect(packageJson).toContain('"start": "vite"');
-    expect(appSource).toContain("renderDom");
-    expect(appSource).toContain("increment-count");
+    expect(appSource).toContain("render(");
+    expect(appSource).toContain("useState");
     expect(documentSource).toContain("drag-root-start");
     expect(documentSource).toContain("--inspect bindings");
-    expect(indexHtml).toContain("faux-ui DOM starter");
+    expect(indexHtml).toContain("<title>");
   });
 
   it("refuses to scaffold into a non-empty directory", () => {

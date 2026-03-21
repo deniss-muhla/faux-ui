@@ -25,7 +25,7 @@ import {
   type UINode,
 } from "@faux-ui/core";
 import { formatLayoutDump, type LayoutDumpNode } from "@faux-ui/devtools";
-import { renderToDomModel, type DomRenderNode } from "@faux-ui/dom";
+import { renderToDomModel, type DomRenderNode } from "@faux-ui/render-dom";
 import {
   decodeCompactDocument,
   validateDocumentSpec,
@@ -38,7 +38,7 @@ import {
   renderToFrameBuffer,
   type TerminalInputStream,
   type TerminalOutputStream,
-} from "@faux-ui/tui";
+} from "@faux-ui/render-tui";
 
 export type ExecutionTarget = "dom" | "tui";
 export type ExecutionFormat = "auto" | "readable" | "compact";

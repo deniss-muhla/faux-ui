@@ -15,7 +15,7 @@ import {
   resolveDomBinding,
   resolveDomFocusTarget,
   createDomTextMeasurer,
-  renderDom,
+  render,
   renderToDomModel,
   mountDomRoot,
 } from "../src/index.js";
@@ -414,7 +414,7 @@ describe("dom renderer", () => {
 
     expect(container.children[0]?.style.toJSON()).toMatchObject({
       color: "var(--faux-ui-color-fg)",
-      backgroundColor: "var(--faux-ui-color-accent)",
+      "background-color": "var(--faux-ui-color-accent)",
     });
 
     container.emit("mousedown", { clientX: 0, clientY: 0 });
@@ -422,7 +422,7 @@ describe("dom renderer", () => {
 
     expect(container.children[0]?.style.toJSON()).toMatchObject({
       color: "var(--faux-ui-color-focus)",
-      backgroundColor: "var(--faux-ui-color-accent)",
+      "background-color": "var(--faux-ui-color-accent)",
     });
 
     container.emit("mouseleave", {});
@@ -432,7 +432,7 @@ describe("dom renderer", () => {
       color: "var(--faux-ui-color-focus)",
     });
     expect(
-      container.children[0]?.style.toJSON().backgroundColor,
+      container.children[0]?.style.toJSON()["background-color"],
     ).toBeUndefined();
   });
 
@@ -870,7 +870,7 @@ describe("dom renderer", () => {
     let focusedNodeLabel = "none";
     const document = new FakeDocument();
     const container = document.createElement("div");
-    let mounted: ReturnType<typeof renderDom> | null = null;
+    let mounted: ReturnType<typeof render> | null = null;
 
     const renderView = () =>
       createElement(
@@ -893,7 +893,7 @@ describe("dom renderer", () => {
       mounted?.update(renderView());
     };
 
-    mounted = renderDom(renderView(), {
+    mounted = render(renderView(), {
       container,
       document,
       constraints: ROOT_CONSTRAINTS,

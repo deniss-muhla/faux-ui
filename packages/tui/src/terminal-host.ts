@@ -378,7 +378,7 @@ export function mountTerminalTuiHost<THandler>(
     runtime.update(currentRoot, buildRuntimeOptions(currentOptions, io.stdout));
     const buffer = runtime.rerender();
     io.stdout.write(CLEAR_SCREEN);
-    io.stdout.write(buffer.toString());
+    io.stdout.write(buffer.toAnsiString());
     io.stdout.write("\u001b[J");
     return buffer;
   }

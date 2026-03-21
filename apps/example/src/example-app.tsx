@@ -1,10 +1,11 @@
-import React from "react";
+import { useReducer, type ReactNode } from "react";
 
-import { Text, View } from "@faux-ui/reconciler";
+import {
+  appendEventEntries,
+  createEventEntries,
+  type EventEntry,
+} from "./log.js";
 
-import { appendEventEntries, createEventEntries, type EventEntry } from "./log.js";
-
-export type ExampleTarget = "dom" | "tui";
 export type LaneId = "backlog" | "active" | "shipped";
 export type Priority = "calm" | "rush";
 export type ExampleAction =
@@ -68,7 +69,10 @@ export const tasksByLane: Record<LaneId, TaskDefinition[]> = {
   shipped: [
     { title: "Render tree", note: "Clip once and share it everywhere." },
     { title: "Layout cache", note: "Reuse work across stable constraints." },
-    { title: "Visual lane", note: "Snapshot DOM output before semantics drift." },
+    {
+      title: "Visual lane",
+      note: "Snapshot DOM output before semantics drift.",
+    },
   ],
 };
 
@@ -135,18 +139,23 @@ export function reduceExampleAction(
   }
 }
 
-export function ExampleApp(props: {
-  state: AppState;
-  target: ExampleTarget;
-  focusedNodeLabel: string;
-  onAction(action: ExampleAction): void;
-}): React.ReactNode {
+export function ExampleApp(): ReactNode {
+  const [state, handleAction] = useReducer(
+    reduceExampleAction,
+    undefined,
+    createInitialState,
+  );
+  const target = detectTarget();
   const layout = layoutProfile;
   const lane =
-    lanes.find((entry) => entry.id === props.state.selectedLane) ?? lanes[0] ?? null;
-  const tasks = visibleTasks(props.state);
-  const currentTask = tasks[props.state.selectedTaskIndex] ?? tasks[0] ?? fallbackTask;
-  const logRows = [layout.detailLeadRows[0] ?? 1, ...props.state.events.map(() => layout.detailCardRows[2] ?? 2)];
+    lanes.find((entry) => entry.id === state.selectedLane) ?? lanes[0] ?? null;
+  const tasks = visibleTasks(state);
+  const currentTask =
+    tasks[state.selectedTaskIndex] ?? tasks[0] ?? fallbackTask;
+  const logRows = [
+    layout.detailLeadRows[0] ?? 1,
+    ...state.events.map(() => layout.detailCardRows[2] ?? 2),
+  ];
   const detailRows = [
     ...layout.detailLeadRows,
     ...tasks.map(() => layout.detailCardRows[2] ?? 2),
@@ -154,66 +163,76 @@ export function ExampleApp(props: {
   ];
 
   return (
-    <View rows={layout.rootRows} style={{ background: "bg" }}>
-      <View columns={layout.headerColumns} style={{ background: "bgAlt" }}>
-        <View rows={layout.footerBlockRows} style={{ background: "accent" }}>
-          <Text style={{ color: "inverse" }}>shared faux-ui studio</Text>
-          <Text style={{ color: "inverse" }}>{lane?.summary ?? "Renderer-neutral example app"}</Text>
-        </View>
+    <view rows={layout.rootRows} style={{ background: "bg" }}>
+      <view columns={layout.headerColumns} style={{ background: "bgAlt" }}>
+        <view rows={layout.footerBlockRows} style={{ background: "accent" }}>
+          <text style={{ color: "inverse" }}>shared faux-ui studio</text>
+          <text style={{ color: "inverse" }}>
+            {lane?.summary ?? "Renderer-neutral example app"}
+          </text>
+        </view>
         <ActionCard
           label="Priority"
-          value={props.state.priority === "calm" ? "Calm orbit" : "Rush orbit"}
+          value={state.priority === "calm" ? "Calm orbit" : "Rush orbit"}
           action="priority:toggle"
-          active={props.state.priority === "rush"}
+          active={state.priority === "rush"}
           tone="toggle"
           rows={layout.actionCardRows}
-          onAction={props.onAction}
+          onAction={handleAction}
         />
         <ActionCard
           label="Spotlight"
-          value={props.state.spotlight ? "Focused" : "Ambient"}
+          value={state.spotlight ? "Focused" : "Ambient"}
           action="spotlight:toggle"
-          active={props.state.spotlight}
+          active={state.spotlight}
           tone="toggle"
           rows={layout.actionCardRows}
-          onAction={props.onAction}
+          onAction={handleAction}
         />
-      </View>
+      </view>
 
-      <View columns={layout.mainColumns} style={{ background: "bg" }}>
-        <View rows={layout.laneRows} style={{ background: props.state.spotlight ? "selection" : "bgAlt" }}>
+      <view columns={layout.mainColumns} style={{ background: "bg" }}>
+        <view
+          rows={layout.laneRows}
+          style={{ background: state.spotlight ? "selection" : "bgAlt" }}
+        >
           {lanes.map((entry) => (
             <ActionCard
               key={entry.id}
               label={entry.label}
               value={entry.summary}
               action={`lane:${entry.id}`}
-              active={entry.id === props.state.selectedLane}
+              active={entry.id === state.selectedLane}
               tone="lane"
               rows={layout.actionCardRows}
-              onAction={props.onAction}
+              onAction={handleAction}
             />
           ))}
-        </View>
+        </view>
 
-        <View rows={detailRows} style={{ background: "bg" }}>
-          <Text style={{ color: "muted" }}>Current focus</Text>
-          <Text style={{ color: "warning" }}>INTERACTIVE cards are actionable.</Text>
-          <View rows={layout.detailCardRows} style={{ background: props.state.spotlight ? "selection" : "bgAlt" }}>
-            <Text style={{ color: "fg" }}>{currentTask.title}</Text>
-            <Text style={{ color: "accent" }}>SELECTED TASK</Text>
-            <Text style={{ color: "muted" }}>{currentTask.note}</Text>
-          </View>
+        <view rows={detailRows} style={{ background: "bg" }}>
+          <text style={{ color: "muted" }}>Current focus</text>
+          <text style={{ color: "warning" }}>
+            INTERACTIVE cards are actionable.
+          </text>
+          <view
+            rows={layout.detailCardRows}
+            style={{ background: state.spotlight ? "selection" : "bgAlt" }}
+          >
+            <text style={{ color: "fg" }}>{currentTask.title}</text>
+            <text style={{ color: "accent" }}>SELECTED TASK</text>
+            <text style={{ color: "muted" }}>{currentTask.note}</text>
+          </view>
           {tasks.map((task, index) => (
             <ActionCard
               key={task.title}
               label={task.title}
               value={task.note}
               action={`task:${index}`}
-              active={index === props.state.selectedTaskIndex}
+              active={index === state.selectedTaskIndex}
               tone="task"
               rows={layout.actionCardRows}
-              onAction={props.onAction}
+              onAction={handleAction}
             />
           ))}
           <ActionCard
@@ -223,39 +242,56 @@ export function ExampleApp(props: {
             active={false}
             tone="task"
             rows={layout.actionCardRows}
-            onAction={props.onAction}
+            onAction={handleAction}
           />
-        </View>
+        </view>
 
-        <View rows={logRows} scroll="y" style={{ background: "bgAlt" }}>
-          <Text style={{ color: "accent" }}>{layout.logTitle}</Text>
-          {props.state.events.map((entry) => (
-            <View key={entry.id} rows={[layout.footerBlockRows[0] ?? 1, layout.footerBlockRows[1] ?? 1]} style={{ background: "bg" }}>
-              <Text style={{ color: "warning" }}>EVENT</Text>
-              <Text style={{ color: "muted" }}>{entry.message}</Text>
-            </View>
+        <view rows={logRows} scroll="y" style={{ background: "bgAlt" }}>
+          <text style={{ color: "accent" }}>{layout.logTitle}</text>
+          {state.events.map((entry) => (
+            <view
+              key={entry.id}
+              rows={[
+                layout.footerBlockRows[0] ?? 1,
+                layout.footerBlockRows[1] ?? 1,
+              ]}
+              style={{ background: "bg" }}
+            >
+              <text style={{ color: "warning" }}>EVENT</text>
+              <text style={{ color: "muted" }}>{entry.message}</text>
+            </view>
           ))}
-        </View>
-      </View>
+        </view>
+      </view>
 
-      <View columns={layout.footerColumns} style={{ background: "bgAlt" }}>
-        <View rows={[...layout.footerBlockRows, ...layout.footerBlockRows]}>
-          <Text style={{ color: "fg" }}>Application-owned handlers</Text>
-          <Text style={{ color: "muted" }}>
-            DOM and TUI both call the same app-owned handlers and rerender the same app state.
-          </Text>
-          <Text style={{ color: "accent" }}>Focused node</Text>
-          <Text style={{ color: "muted" }}>{props.focusedNodeLabel}</Text>
-        </View>
-        <View rows={[...layout.footerBlockRows, ...layout.footerBlockRows]} style={{ background: "selection" }}>
-          <Text style={{ color: "accent" }}>Keyboard</Text>
-          <Text style={{ color: "muted" }}>{layout.keyboardHint}</Text>
-          <Text style={{ color: "accent" }}>Pointer</Text>
-          <Text style={{ color: "muted" }}>{layout.pointerHint}</Text>
-        </View>
-      </View>
-    </View>
+      <view columns={layout.footerColumns} style={{ background: "bgAlt" }}>
+        <view rows={[...layout.footerBlockRows, ...layout.footerBlockRows]}>
+          <text style={{ color: "fg" }}>Application-owned handlers</text>
+          <text style={{ color: "muted" }}>
+            DOM and TUI both call the same app-owned handlers and rerender the
+            same app state.
+          </text>
+          <text style={{ color: "accent" }}>Target</text>
+          <text style={{ color: "muted" }}>{target.toUpperCase()}</text>
+        </view>
+        <view
+          rows={[...layout.footerBlockRows, ...layout.footerBlockRows]}
+          style={{ background: "selection" }}
+        >
+          <text style={{ color: "accent" }}>Keyboard</text>
+          <text style={{ color: "muted" }}>{layout.keyboardHint}</text>
+          <text style={{ color: "accent" }}>Pointer</text>
+          <text style={{ color: "muted" }}>{layout.pointerHint}</text>
+        </view>
+      </view>
+    </view>
   );
+}
+
+function detectTarget(): "dom" | "tui" {
+  return typeof globalThis === "object" && "document" in globalThis
+    ? "dom"
+    : "tui";
 }
 
 function selectLane(current: AppState, laneId: LaneId): AppState {
@@ -347,7 +383,7 @@ function ActionCard(props: {
   tone: "lane" | "task" | "toggle";
   rows: Array<number | "1fr">;
   onAction(action: ExampleAction): void;
-}): React.ReactNode {
+}): ReactNode {
   const metaLabel =
     props.tone === "toggle"
       ? "INTERACTIVE TOGGLE"
@@ -356,7 +392,7 @@ function ActionCard(props: {
         : "INTERACTIVE TASK";
 
   return (
-    <View
+    <view
       rows={props.rows}
       focusable
       onClick={() => props.onAction(props.action)}
@@ -368,9 +404,13 @@ function ActionCard(props: {
       styleHover={{ background: "focus", color: "fg" }}
       styleFocus={{ background: "accent", color: "inverse" }}
     >
-      <Text style={{ color: props.active ? "accent" : "warning" }}>{metaLabel}</Text>
-      <Text style={{ color: "fg" }}>{props.label}</Text>
-      <Text style={{ color: props.active ? "accent" : "muted" }}>{props.value}</Text>
-    </View>
+      <text style={{ color: props.active ? "accent" : "warning" }}>
+        {metaLabel}
+      </text>
+      <text style={{ color: "fg" }}>{props.label}</text>
+      <text style={{ color: props.active ? "accent" : "muted" }}>
+        {props.value}
+      </text>
+    </view>
   );
 }

@@ -25,6 +25,7 @@ export type {
   UINodeBase,
   ViewNode,
 } from "./ui-node.js";
+export { defaultSemanticColors } from "./ui-node.js";
 export type {
   Point,
   RenderHit,

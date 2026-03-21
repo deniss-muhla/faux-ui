@@ -77,15 +77,15 @@ function clampSize(size: number, max?: number): number {
 
 ```ts
 type Track =
-  | { type: 'fixed'; size: number }
-  | { type: 'content' }
-  | { type: 'fraction'; weight: number };
+  | { type: "fixed"; size: number }
+  | { type: "content" }
+  | { type: "fraction"; weight: number };
 ```
 
 Shorthand:
 
 ```ts
-type TrackShorthand = number | 'auto' | `${number}fr`;
+type TrackShorthand = number | "auto" | `${number}fr`;
 ```
 
 ## Deterministic Track Resolution
@@ -94,8 +94,8 @@ type TrackShorthand = number | 'auto' | `${number}fr`;
 function resolveTracks(
   tracks: Track[],
   maxSize: number | undefined,
-  measureContentTrack: (trackIndex: number) => number
-): number[]
+  measureContentTrack: (trackIndex: number) => number,
+): number[];
 ```
 
 Algorithm:
@@ -131,7 +131,7 @@ type ViewProps = {
   children?: ReactNode;
   rows?: TrackShorthand[];
   columns?: TrackShorthand[];
-  scroll?: 'x' | 'y' | 'both';
+  scroll?: "x" | "y" | "both";
   style?: {
     color?: SemanticColor;
     background?: SemanticColor;
@@ -168,7 +168,7 @@ Shared pointer payload:
 ```ts
 type PointerEvent = {
   point: { x: number; y: number };
-  button: 'primary' | 'middle' | 'secondary' | null;
+  button: "primary" | "middle" | "secondary" | null;
   modifiers: {
     altKey: boolean;
     ctrlKey: boolean;
@@ -309,9 +309,10 @@ The engine operates in integer logical units only.
 ## Public Monorepo Shape
 
 - `@faux-ui/core`
+- `@faux-ui/app`
 - `@faux-ui/reconciler`
-- `@faux-ui/dom`
-- `@faux-ui/tui`
+- `@faux-ui/render-dom`
+- `@faux-ui/render-tui`
 - `@faux-ui/schema`
 - `@faux-ui/devtools`
 - `@faux-ui/mcp`

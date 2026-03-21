@@ -5,9 +5,9 @@
   "dependencies": {
     "@faux-ui/core": "workspace:*",
     "@faux-ui/devtools": "workspace:*",
-    "@faux-ui/dom": "workspace:*",
+    "@faux-ui/render-dom": "workspace:*",
     "@faux-ui/schema": "workspace:*",
-    "@faux-ui/tui": "workspace:*"
+    "@faux-ui/render-tui": "workspace:*"
   },
   "bin": {
     "exec-faux-ui": "./dist/index.js"

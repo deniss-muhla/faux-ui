@@ -1,4 +1,4 @@
-import { createContext, createElement, type ReactNode } from "react";
+import { createContext, createElement, type Key, type ReactNode } from "react";
 import Reconciler from "react-reconciler";
 import {
   ConcurrentRoot,
@@ -67,6 +67,7 @@ export interface EventBindingProps {
 }
 
 export interface ViewProps extends EventBindingProps {
+  key?: Key | null;
   rows?: TrackShorthand[] | null;
   columns?: TrackShorthand[] | null;
   scroll?: ScrollAxis | null;
@@ -79,6 +80,7 @@ export interface ViewProps extends EventBindingProps {
 }
 
 export interface TextProps extends EventBindingProps {
+  key?: Key | null;
   wrap?: boolean;
   style?: StyleValue | null;
   bindings?: BoundActions | null;

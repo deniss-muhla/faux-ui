@@ -23,20 +23,27 @@ export interface MountedRenderedTuiApp<THandler = unknown> {
   getHost(): MountedTerminalTuiHost<THandler>;
 }
 
-export function renderTui(
+export function render(
   node: ReactNode,
   options?: TerminalTuiHostOptions,
 ): MountedRenderedTuiApp;
-export function renderTui<THandler>(
+export function render<THandler>(
   node: ReactNode,
   options?: TerminalTuiHostOptions<THandler>,
 ): MountedRenderedTuiApp<THandler>;
-export function renderTui<THandler>(
+export function render<THandler>(
   node: ReactNode,
   options: TerminalTuiHostOptions<THandler> = {},
 ): MountedRenderedTuiApp<THandler> {
   const reconciler = createReconciler();
-  const root = reconciler.createRoot();
+  let hostRef: MountedTerminalTuiHost<THandler> | null = null;
+  const root = reconciler.createRoot({
+    onCommit() {
+      if (hostRef !== null && hostRef.isRunning()) {
+        hostRef.update(requireRenderedRoot(root, "TUI"));
+      }
+    },
+  });
   let currentNode = node;
 
   root.render(currentNode);
@@ -44,6 +51,7 @@ export function renderTui<THandler>(
     requireRenderedRoot(root, "TUI"),
     options,
   );
+  hostRef = host;
   host.start();
 
   return {

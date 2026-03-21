@@ -5,14 +5,14 @@
   "type": "module",
   "scripts": {
     "dev:dom": "vite",
-    "build:dom": "vite build",
-    "preview:dom": "vite preview",
-    "start:tui": "bun run src/tui.tsx",
-    "dev:tui": "bun --watch src/tui.tsx",
-    "snapshot:tui": "bun run src/tui.tsx --static",
+    "build": "vite build",
+    "preview": "vite preview",
+    "dev:tui": "bun run src/main.tsx",
+    "dev:tui:watch": "bun --watch src/main.tsx",
     "typecheck": "tsc -p tsconfig.json --pretty false"
   },
   "dependencies": {
+    "@faux-ui/app": "workspace:*",
     "react": "^19.2.0"
   },
   "devDependencies": {

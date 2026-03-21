@@ -39,27 +39,29 @@ export function renderToDomModel(
         },
   );
 
-  return buildNode(tree.root, options);
+  return buildNode(tree.root, options, { x: 0, y: 0 });
 }
 
 function buildNode(
   node: RenderTreeNode,
   options: Pick<DomRenderOptions, "hoveredNodeIds" | "focusedNodeId">,
+  origin: { x: number; y: number },
 ): DomRenderNode {
   if (node.kind === "text") {
-    return buildTextNode(node);
+    return buildTextNode(node, origin);
   }
 
-  return buildViewNode(node, options);
+  return buildViewNode(node, options, origin);
 }
 
 function buildTextNode(
   node: Extract<RenderTreeNode, { kind: "text" }>,
+  origin: { x: number; y: number },
 ): DomRenderNode {
   const styles: Record<string, string> = {
     position: "absolute",
-    left: cellWidth(node.frame.x),
-    top: cellHeight(node.frame.y),
+    left: cellWidth(node.frame.x - origin.x),
+    top: cellHeight(node.frame.y - origin.y),
     width: cellWidth(node.frame.width),
     height: cellHeight(node.frame.height),
     whiteSpace: "pre",
@@ -84,11 +86,12 @@ function buildTextNode(
 function buildViewNode(
   node: Extract<RenderTreeNode, { kind: "view" }>,
   options: Pick<DomRenderOptions, "hoveredNodeIds" | "focusedNodeId">,
+  origin: { x: number; y: number },
 ): DomRenderNode {
   const styles: Record<string, string> = {
     position: "absolute",
-    left: cellWidth(node.frame.x),
-    top: cellHeight(node.frame.y),
+    left: cellWidth(node.frame.x - origin.x),
+    top: cellHeight(node.frame.y - origin.y),
     width: cellWidth(node.frame.width),
     height: cellHeight(node.frame.height),
     overflow: "hidden",
@@ -110,7 +113,9 @@ function buildViewNode(
     kind: "view",
     tag: "div",
     styles,
-    children: node.children.map((child) => buildNode(child, options)),
+    children: node.children.map((child) =>
+      buildNode(child, options, { x: node.frame.x, y: node.frame.y }),
+    ),
   };
 }
 

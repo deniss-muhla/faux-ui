@@ -1,5 +1,8 @@
 # faux-ui Agent Notes
 
+- Before 0.1 release, do not keep deprecated aliases or compatibility shims; keep the public API clean and singular.
+- Prefer one public facade package for app authoring. Keep DOM and TUI packages as internal renderer layers unless a task explicitly targets renderer internals.
+
 ## Purpose
 
 Use this file as the quick workspace instruction source when working in this repository.
@@ -15,7 +18,7 @@ Use this file as the quick workspace instruction source when working in this rep
 - Keep `@faux-ui/core` as the only source of semantic layout, render-tree, and dispatch rules.
 - Do not move renderer-specific behavior into core unless it is truly renderer-neutral.
 - Keep DOM and TUI packages as projections over shared core semantics.
-- Prefer small, verifiable changes that preserve the current package boundaries.
+- Prefer small, verifiable changes that preserve the current package boundaries unless the user explicitly asks to simplify the public surface.
 
 ## While Updating Docs
 

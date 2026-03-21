@@ -21,9 +21,11 @@ export type {
   DomWheelEventLike,
   MountedDomRoot,
 } from "./runtime.js";
-export { renderDom } from "./render-app.js";
-export type { MountedRenderedDomApp } from "./render-app.js";
+export { render } from "./render-app.js";
+export type { DomAppOptions, MountedRenderedDomApp } from "./render-app.js";
 export type { ScrollOffset } from "@faux-ui/core";
+export { View, Text } from "@faux-ui/reconciler";
+export type { ViewProps, TextProps } from "@faux-ui/reconciler";
 export {
   createBrowserDomTextMeasurer,
   createDomTextMeasurer,

@@ -324,10 +324,18 @@ export function mountTuiRoot<THandler>(
   }
 
   function renderOptions(): RenderOptions {
+    const base = {
+      constraints: currentOptions.constraints,
+      ...(hoveredPathNodeIds.length > 0
+        ? { hoveredNodeIds: new Set(hoveredPathNodeIds) }
+        : {}),
+      ...(focusedNodeId !== null ? { focusedNodeId } : {}),
+    } satisfies RenderOptions;
+
     return currentScrollOffsets.size === 0
-      ? { constraints: currentOptions.constraints }
+      ? base
       : {
-          constraints: currentOptions.constraints,
+          ...base,
           scrollOffsets: currentScrollOffsets,
         };
   }

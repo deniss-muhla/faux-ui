@@ -23,8 +23,15 @@
     "paths": {
       "@faux-ui/core": ["packages/core/src/index.ts"],
       "@faux-ui/reconciler": ["packages/reconciler/src/index.ts"],
-      "@faux-ui/dom": ["packages/dom/src/index.ts"],
-      "@faux-ui/tui": ["packages/tui/src/index.ts"],
+      "@faux-ui/reconciler/jsx-runtime": [
+        "packages/reconciler/src/jsx-runtime.ts"
+      ],
+      "@faux-ui/reconciler/jsx-dev-runtime": [
+        "packages/reconciler/src/jsx-dev-runtime.ts"
+      ],
+      "@faux-ui/app": ["packages/framework/src/index.ts"],
+      "@faux-ui/render-dom": ["packages/dom/src/index.ts"],
+      "@faux-ui/render-tui": ["packages/tui/src/index.ts"],
       "@faux-ui/schema": ["packages/schema/src/index.ts"],
       "@faux-ui/devtools": ["packages/devtools/src/index.ts"],
       "@faux-ui/mcp": ["packages/mcp/src/index.ts"]

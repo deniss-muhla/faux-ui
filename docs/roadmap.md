@@ -4,7 +4,7 @@ This document tracks delivery priorities for faux-ui. It is intentionally more c
 
 ## Current Position
 
-The project has completed its main priority reset.
+The project has completed its main priority reset and its first follow-up milestone.
 
 - TUI semantics are now the source of truth.
 - DOM follows the same fixed-cell layout and render-tree contract.
@@ -12,10 +12,16 @@ The project has completed its main priority reset.
 - text no longer wraps in core and no renderer is allowed to smuggle wrapping semantics back in.
 - layout flows from parent to child and propagates content extent upward for scroll.
 - the first-party example already mounts through renderer-owned helpers instead of hand-built runtime glue.
+- binding tokens are fully removed from the JSX authoring path; direct handler functions are the only supported model.
+- `@faux-ui/app` now exposes `render()` as the single public app entrypoint.
+- `@faux-ui/render-dom` and `@faux-ui/render-tui` are the renderer implementation packages underneath it.
+- both renderers now auto-rerender on React state changes via `onCommit`, eliminating manual `rerender()` calls.
+- DOM `render()` auto-resolves `document.body` as the container and auto-measures cell constraints, with `ResizeObserver`-driven resize.
+- `@faux-ui/core` exports `defaultSemanticColors` used by both renderers; DOM applies theme CSS custom properties automatically.
+- faux-ui JSX uses intrinsic `<view>` and `<text>` tags directly instead of imported renderer components.
+- a custom `jsxImportSource` (`@faux-ui/reconciler`) restricts JSX intrinsic elements to `view` and `text` at compile time.
 
-That work removed a large amount of accidental complexity from the semantic engine. The next problem is different: the low-level engine is now simpler than the author-facing UI layer above it.
-
-The roadmap therefore shifts from runtime cleanup to two follow-up goals: remove binding tokens from the public authoring model, then build a minimal design-system layer that can hold reusable UI concerns without polluting `@faux-ui/core` or renderer packages.
+The next focus is building a minimal design-system layer and a scroll container primitive.
 
 ## Completed Foundation
 
@@ -28,6 +34,11 @@ The following areas are now considered baseline, not roadmap targets:
 - shared example layout across DOM and TUI
 - removal of renderer-driven text measurement from core semantics
 - removal of faux-ui-owned reducer and action-map helpers from the preferred JSX path
+- compile-time JSX element restriction via a custom `jsxImportSource`
+- auto-rerender on React state changes (no manual `rerender()` calls)
+- auto-body mounting and auto-cell-constraint measurement in DOM `render()`
+- default semantic colors in `@faux-ui/core`, auto-applied by renderers
+- a single `@faux-ui/app` entrypoint for app rendering
 
 Future work should treat those decisions as stable unless a deeper architectural problem appears.
 
@@ -35,7 +46,7 @@ Future work should treat those decisions as stable unless a deeper architectural
 
 ### 1. Remove binding tokens from the public model
 
-Status: largely complete for JSX, remaining JSON-focused cleanup optional
+Status: **complete**
 
 Goal:
 
@@ -43,25 +54,24 @@ Goal:
 - keep JSX authoring aligned with normal application-owned state and handlers
 - support JSON rendering through semantic action identifiers plus an actions map at the entrypoint
 - keep any remaining token-like identifiers as internal renderer plumbing only if they are still needed
+- make non-`view` and non-`text` tags fail at compile time rather than only at runtime
+- eliminate manual rerender calls; React hooks (useState, useReducer) trigger automatic rerender
+- eliminate explicit container and constraint boilerplate; renderers auto-resolve defaults
+- provide default semantic colors from core so new apps render with a usable palette immediately
 
-Why this matters:
+Outcomes delivered:
 
-Binding tokens solved an early serialization problem, but they are now a conceptual blocker. They leak transport-oriented indirection into the public app model, especially in JSX, where most users will expect direct state ownership and direct event handling.
-
-Likely outcomes:
-
-- JSON entrypoints load a document plus an application-supplied actions map
-- dispatch carries semantic action names and optional payload data instead of opaque binding tokens
-- JSX can stay close to ordinary React-style application structure
-- schema and runtime APIs become easier to explain because serialized UI no longer pretends to carry callbacks
-
-Current state:
-
-- JSX event props now accept direct application-owned handler functions
+- JSX event props accept direct handler functions; no token-to-action mapping needed in JSX
 - renderer helpers no longer own reducer state, view state, or token-to-action mapping helpers
-- the shared example now uses plain render/update loops in app code rather than `createStatefulApp()` or renderer-owned stateful wrappers
+- DOM and TUI `render()` wire `onCommit` so React state changes auto-rerender the runtime
+- DOM `render()` mounts to `document.body` by default and auto-measures cell constraints via a probe element
+- DOM `render()` responds to container resize via `ResizeObserver`
+- `@faux-ui/core` exports `defaultSemanticColors`; `@faux-ui/render-dom` applies them as CSS custom properties automatically
+- `@faux-ui/app` is now the app-facing render package, while renderer internals stay in `@faux-ui/render-dom` and `@faux-ui/render-tui`
+- a custom `jsxImportSource` (`@faux-ui/reconciler`) restricts intrinsic elements to `view` and `text` at compile time
 - schema-authored documents still use semantic action identifiers, which remains the right place for any future entrypoint-level action map helper
-- TypeScript still accepts standard React intrinsic tags in faux-ui JSX files, so one remaining cleanup item is to make non-`View` and non-`Text` tags fail at compile time rather than only at runtime
+- `create-faux-ui` templates updated to use the simplified API
+- the example app uses `useReducer` internally, and DOM/TUI entry files are minimal (~5-10 lines)
 
 ### 2. Add a minimal design-system package
 
@@ -71,7 +81,7 @@ Goal:
 
 - introduce one package above core and the renderers for reusable UI building blocks
 - keep semantic layout, render-tree rules, and event dispatch in `@faux-ui/core`
-- keep renderer-specific host behavior in `@faux-ui/dom` and `@faux-ui/tui`
+- keep renderer-specific host behavior in `@faux-ui/render-dom` and `@faux-ui/render-tui`
 - move UI composition helpers, theme structure, and higher-level patterns out of example code
 
 Why this matters:
@@ -82,7 +92,12 @@ Likely outcomes:
 
 - a package such as `@faux-ui/design-system`
 - shared component primitives that compile down to plain reconciler `View` and `Text`
+- a separate hooks package for app-facing runtime helpers such as environment or renderer detection
 - a clear boundary between semantic engine, renderer projection, and reusable UI patterns
+
+Follow-up note:
+
+- temporary environment checks such as `detectTarget()` in app code should eventually move into a dedicated hooks package rather than living inside `@faux-ui/core`, `@faux-ui/app`, or renderer packages
 
 ### 3. Add a scroll container primitive above core
 
