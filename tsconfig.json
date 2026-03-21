@@ -3,9 +3,9 @@
   "references": [
     { "path": "./packages/core" },
     { "path": "./packages/reconciler" },
-    { "path": "./packages/dom" },
-    { "path": "./packages/tui" },
-    { "path": "./packages/framework" },
+    { "path": "./packages/render-dom" },
+    { "path": "./packages/render-tui" },
+    { "path": "./packages/app" },
     { "path": "./packages/schema" },
     { "path": "./packages/devtools" },
     { "path": "./packages/mcp" },

@@ -8,12 +8,9 @@ export default defineConfig({
       "@faux-ui/core": resolve(__dirname, "../../packages/core/src/index.ts"),
       "@faux-ui/render-dom": resolve(
         __dirname,
-        "../../packages/dom/src/index.ts",
+        "../../packages/render-dom/src/index.ts",
       ),
-      "@faux-ui/app": resolve(
-        __dirname,
-        "../../packages/framework/src/index.ts",
-      ),
+      "@faux-ui/app": resolve(__dirname, "../../packages/app/src/index.ts"),
       "@faux-ui/reconciler/jsx-runtime": resolve(
         __dirname,
         "../../packages/reconciler/src/jsx-runtime.ts",
@@ -28,7 +25,7 @@ export default defineConfig({
       ),
       "@faux-ui/render-tui": resolve(
         __dirname,
-        "../../packages/tui/src/index.ts",
+        "../../packages/render-tui/src/index.ts",
       ),
     },
   },

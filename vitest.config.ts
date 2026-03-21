@@ -5,11 +5,17 @@ export default defineConfig({
   resolve: {
     alias: {
       "@faux-ui/core": resolve(__dirname, "packages/core/src/index.ts"),
-      "@faux-ui/app": resolve(__dirname, "packages/framework/src/index.ts"),
+      "@faux-ui/app": resolve(__dirname, "packages/app/src/index.ts"),
       "@faux-ui/devtools": resolve(__dirname, "packages/devtools/src/index.ts"),
-      "@faux-ui/render-dom": resolve(__dirname, "packages/dom/src/index.ts"),
+      "@faux-ui/render-dom": resolve(
+        __dirname,
+        "packages/render-dom/src/index.ts",
+      ),
       "@faux-ui/schema": resolve(__dirname, "packages/schema/src/index.ts"),
-      "@faux-ui/render-tui": resolve(__dirname, "packages/tui/src/index.ts"),
+      "@faux-ui/render-tui": resolve(
+        __dirname,
+        "packages/render-tui/src/index.ts",
+      ),
       "@faux-ui/reconciler/jsx-runtime": resolve(
         __dirname,
         "packages/reconciler/src/jsx-runtime.ts",

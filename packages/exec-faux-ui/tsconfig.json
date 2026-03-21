@@ -9,8 +9,8 @@
   "references": [
     { "path": "../core" },
     { "path": "../devtools" },
-    { "path": "../dom" },
+    { "path": "../render-dom" },
     { "path": "../schema" },
-    { "path": "../tui" }
+    { "path": "../render-tui" }
   ]
 }

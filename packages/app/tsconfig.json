@@ -9,7 +9,7 @@
   "references": [
     { "path": "../core" },
     { "path": "../reconciler" },
-    { "path": "../dom" },
-    { "path": "../tui" }
+    { "path": "../render-dom" },
+    { "path": "../render-tui" }
   ]
 }

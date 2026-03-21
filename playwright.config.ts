@@ -3,7 +3,7 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: ".",
   testMatch: [
-    "packages/dom/test/**/*.pw.spec.ts",
+    "packages/render-dom/test/**/*.pw.spec.ts",
     "apps/example/test/**/*.pw.spec.ts",
   ],
   fullyParallel: true,
