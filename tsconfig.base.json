@@ -1,0 +1,40 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "target": "ES2023",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2023"],
+    "strict": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "composite": true,
+    "incremental": true,
+    "noEmitOnError": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "forceConsistentCasingInFileNames": true,
+    "paths": {
+      "@faux-ui/core": ["packages/core/src/index.ts"],
+      "@faux-ui/reconciler": ["packages/reconciler/src/index.ts"],
+      "@faux-ui/reconciler/jsx-runtime": [
+        "packages/reconciler/src/jsx-runtime.ts"
+      ],
+      "@faux-ui/reconciler/jsx-dev-runtime": [
+        "packages/reconciler/src/jsx-dev-runtime.ts"
+      ],
+      "@faux-ui/app": ["packages/app/src/index.ts"],
+      "@faux-ui/render-dom": ["packages/render-dom/src/index.ts"],
+      "@faux-ui/render-tui": ["packages/render-tui/src/index.ts"],
+      "@faux-ui/schema": ["packages/schema/src/index.ts"],
+      "@faux-ui/devtools": ["packages/devtools/src/index.ts"],
+      "@faux-ui/mcp": ["packages/mcp/src/index.ts"]
+    }
+  }
+}

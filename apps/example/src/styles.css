@@ -1,0 +1,24 @@
+:root {
+  color-scheme: light;
+  font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  --faux-ui-font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  --faux-ui-cell-width: 1ch;
+  --faux-ui-cell-height: 1em;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  min-height: 100%;
+}
+
+body {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+}
