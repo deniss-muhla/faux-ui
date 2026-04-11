@@ -20,6 +20,8 @@ The project has completed its main priority reset and its first follow-up milest
 - `@faux-ui/core` exports `defaultSemanticColors` used by both renderers; DOM applies theme CSS custom properties automatically.
 - faux-ui JSX uses intrinsic `<view>` and `<text>` tags directly instead of imported renderer components.
 - a custom `jsxImportSource` (`@faux-ui/reconciler`) restricts JSX intrinsic elements to `view` and `text` at compile time.
+- `@faux-ui/renderer` now owns the shared renderer-definition contract and React mounting helper.
+- platform detection no longer lives in `@faux-ui/app` or the example application; renderer definitions own it instead.
 
 The next focus is building a minimal design-system layer and a scroll container primitive.
 
@@ -68,6 +70,10 @@ Outcomes delivered:
 - DOM `render()` responds to container resize via `ResizeObserver`
 - `@faux-ui/core` exports `defaultSemanticColors`; `@faux-ui/render-dom` applies them as CSS custom properties automatically
 - `@faux-ui/app` is now the app-facing render package, while renderer internals stay in `@faux-ui/render-dom` and `@faux-ui/render-tui`
+- `@faux-ui/renderer` provides the neutral contract so new renderers can plug in without copying reconciler bootstrap logic
+- `create-faux-ui` now includes a contributor-facing renderer package template built around `@faux-ui/renderer`
+- `@faux-ui/render-inspect` now serves as a first-party proof-of-shape for that template by rendering the shared example app through a contract-only renderer package
+- `apps/example-renderer` now shows a contributor-owned HTML canvas renderer living outside `packages/render-*`
 - a custom `jsxImportSource` (`@faux-ui/reconciler`) restricts intrinsic elements to `view` and `text` at compile time
 - schema-authored documents still use semantic action identifiers, which remains the right place for any future entrypoint-level action map helper
 - `create-faux-ui` templates updated to use the simplified API
@@ -75,7 +81,7 @@ Outcomes delivered:
 
 ### 2. Add a minimal design-system package
 
-Status: not started
+Status: in progress
 
 Goal:
 
@@ -95,9 +101,16 @@ Likely outcomes:
 - a separate hooks package for app-facing runtime helpers such as environment or renderer detection
 - a clear boundary between semantic engine, renderer projection, and reusable UI patterns
 
+Initial slice now present:
+
+- `@faux-ui/foundation` owns the first component-facing theme contract plus a renderer-neutral scaffold shell
+- `@faux-ui/action` introduces the first button-like interactive primitive
+- `@faux-ui/surface` introduces a first tile-like surface primitive
+- `apps/design-system-gallery` provides a deterministic gallery app to exercise the new packages
+
 Follow-up note:
 
-- temporary environment checks such as `detectTarget()` in app code should eventually move into a dedicated hooks package rather than living inside `@faux-ui/core`, `@faux-ui/app`, or renderer packages
+- renderer detection now belongs to renderer definitions only; future app-facing renderer metadata should come from neutral renderer contracts rather than ad hoc environment checks in app code
 
 ### 3. Add a scroll container primitive above core
 
@@ -170,7 +183,7 @@ The framework needs enough input vocabulary to support practical apps, but not a
 
 ### 7. Establish a shared theme and semantic token story in the design system
 
-Status: not started
+Status: in progress
 
 Goal:
 
@@ -198,7 +211,7 @@ The example is the clearest proof of whether faux-ui is becoming pleasant to use
 
 ### 9. Expand regression coverage around the higher-level layer
 
-Status: not started
+Status: in progress
 
 Goal:
 

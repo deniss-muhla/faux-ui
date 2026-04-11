@@ -145,7 +145,6 @@ export function ExampleApp(): ReactNode {
     undefined,
     createInitialState,
   );
-  const target = detectTarget();
   const layout = layoutProfile;
   const lane =
     lanes.find((entry) => entry.id === state.selectedLane) ?? lanes[0] ?? null;
@@ -271,8 +270,10 @@ export function ExampleApp(): ReactNode {
             DOM and TUI both call the same app-owned handlers and rerender the
             same app state.
           </text>
-          <text style={{ color: "accent" }}>Target</text>
-          <text style={{ color: "muted" }}>{target.toUpperCase()}</text>
+          <text style={{ color: "accent" }}>Renderer contract</text>
+          <text style={{ color: "muted" }}>
+            Platform detection now lives only in renderer definitions.
+          </text>
         </view>
         <view
           rows={[...layout.footerBlockRows, ...layout.footerBlockRows]}
@@ -286,12 +287,6 @@ export function ExampleApp(): ReactNode {
       </view>
     </view>
   );
-}
-
-function detectTarget(): "dom" | "tui" {
-  return typeof globalThis === "object" && "document" in globalThis
-    ? "dom"
-    : "tui";
 }
 
 function selectLane(current: AppState, laneId: LaneId): AppState {

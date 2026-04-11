@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@faux-ui/app": "workspace:*",
+    "@faux-ui/render-inspect": "workspace:*",
     "react": "^19.2.0"
   },
   "devDependencies": {

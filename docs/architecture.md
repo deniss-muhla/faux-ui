@@ -75,10 +75,22 @@ The reconciler also provides a custom JSX import source (`@faux-ui/reconciler/js
 It provides:
 
 - `render()` as the single app entrypoint
-- environment detection that chooses browser or terminal rendering
+- renderer selection through registered renderer definitions rather than direct platform checks in app code
 - a boundary that keeps app code away from renderer-specific packages by default
 
 This package exists to reduce boilerplate without moving renderer-specific behavior into `@faux-ui/core`.
+
+### `@faux-ui/renderer`
+
+`@faux-ui/renderer` defines the neutral renderer contract.
+
+It provides:
+
+- a stable `RendererDefinition` shape for environment detection, render entry, and optional renderer-owned theme application
+- a shared `mountRendererApp()` helper that turns React commits into mounted faux-ui roots without duplicating renderer bootstrap code
+- selection helpers so `@faux-ui/app` can pick a renderer without embedding platform-specific checks itself
+
+This package is intentionally host-neutral. It knows how to orchestrate renderer definitions, not how any specific platform works.
 
 ### `@faux-ui/render-dom`
 
@@ -89,7 +101,8 @@ It provides:
 - DOM model projection from the render tree
 - a live mounting runtime for a host container
 - browser-style pointer, wheel, keyboard, and focus routing back into core dispatch helpers
-- `render()` for the common browser path, with auto-body mounting, auto-cell-constraint measurement, auto-resize via `ResizeObserver`, auto-installation of core default colors as CSS variables, and auto-rerender on React state changes via `onCommit`
+- a `domRenderer` definition that owns browser detection and browser-specific theme installation
+- `render()` for the common browser path, with auto-body mounting, auto-cell-constraint measurement, auto-resize via `ResizeObserver`, auto-installation of core default colors as CSS variables, and auto-rerender on React state changes via the shared renderer app helper
 - `applyDomTheme()` for manual theme control
 - optional re-exports of `View`, `Text`, `ViewProps`, and `TextProps` for `createElement`-style usage, while normal JSX can use `<view>` and `<text>` directly
 
@@ -103,10 +116,23 @@ It provides:
 
 - framebuffer painting
 - coordinate-based input dispatch helpers for cell positions
-- `render()` for the common interactive terminal path, with auto-rerender on React state changes via `onCommit`
+- a `tuiRenderer` definition that owns non-browser detection for the terminal path
+- `render()` for the common interactive terminal path, with auto-rerender on React state changes via the shared renderer app helper
 - optional re-exports of `View`, `Text`, `ViewProps`, and `TextProps` for `createElement`-style usage, while normal JSX can use `<view>` and `<text>` directly
 
 Like DOM, it depends on the shared render tree instead of reimplementing layout or event semantics.
+
+### `@faux-ui/render-inspect`
+
+`@faux-ui/render-inspect` is a first-party reference renderer built on the same neutral contract that external contributors use.
+
+It provides:
+
+- a deterministic text snapshot of the mounted `UINode` tree
+- an example theme-target helper that stores renderer-applied semantic tokens for tests and tooling
+- an exported capability and metadata object that shows one way to keep renderer-specific surface details close to the renderer package itself
+
+This package is intentionally simple. It exists to prove the contributor template shape against a real first-party package and a real first-party app.
 
 ### `@faux-ui/schema`
 
@@ -126,7 +152,7 @@ Several packages intentionally remain thin but already define architectural seam
 
 - `@faux-ui/devtools`: formatting helpers such as layout dumps for inspection and debugging
 - `@faux-ui/mcp`: command types for future model-context and inspection workflows
-- `create-faux-ui`: starter-project generator for JSX, JSON, and hybrid entry modes
+- `create-faux-ui`: starter generator for JSX apps, schema-authored documents, hybrid starters, and contributor-facing renderer package templates
 - `exec-faux-ui`: execution and inspection CLI for schema-authored documents and TUI demos
 
 These packages matter architecturally because they show the intended integration surface without forcing runtime concerns into the core engine yet.

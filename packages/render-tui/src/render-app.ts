@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import type { UINode } from "@faux-ui/core";
-import { createReconciler, type FauxRoot } from "@faux-ui/reconciler";
+import { mountRendererApp, type RendererDefinition } from "@faux-ui/renderer";
 
 import type { FrameBuffer } from "./frame-buffer.js";
 import {
@@ -23,6 +23,17 @@ export interface MountedRenderedTuiApp<THandler = unknown> {
   getHost(): MountedTerminalTuiHost<THandler>;
 }
 
+export const tuiRenderer: RendererDefinition<
+  TerminalTuiHostOptions,
+  MountedRenderedTuiApp
+> = {
+  name: "tui",
+  detect: isTuiEnvironment,
+  render(node, options) {
+    return render(node, options);
+  },
+};
+
 export function render(
   node: ReactNode,
   options?: TerminalTuiHostOptions,
@@ -35,49 +46,40 @@ export function render<THandler>(
   node: ReactNode,
   options: TerminalTuiHostOptions<THandler> = {},
 ): MountedRenderedTuiApp<THandler> {
-  const reconciler = createReconciler();
-  let hostRef: MountedTerminalTuiHost<THandler> | null = null;
-  const root = reconciler.createRoot({
-    onCommit() {
-      if (hostRef !== null && hostRef.isRunning()) {
-        hostRef.update(requireRenderedRoot(root, "TUI"));
-      }
+  const mounted = mountRendererApp<
+    TerminalTuiHostOptions<THandler>,
+    Partial<TerminalTuiHostOptions<THandler>>,
+    MountedTerminalTuiHost<THandler>,
+    FrameBuffer
+  >(node, options, {
+    targetName: "TUI",
+    mount(root, initialOptions) {
+      const host = mountTerminalTuiHost<THandler>(root, initialOptions);
+      host.start();
+      return host;
+    },
+    update(handle, root, nextOptions) {
+      handle.update(root, nextOptions);
+    },
+    rerender(handle) {
+      return handle.rerender();
+    },
+    unmount(handle) {
+      handle.stop();
+    },
+    shouldUpdateOnCommit(handle) {
+      return handle.isRunning();
     },
   });
-  let currentNode = node;
-
-  root.render(currentNode);
-  const host = mountTerminalTuiHost<THandler>(
-    requireRenderedRoot(root, "TUI"),
-    options,
-  );
-  hostRef = host;
-  host.start();
+  const host = mounted.getImplementationHandle();
 
   return {
-    update(nextNode, nextOptions) {
-      if (nextNode !== undefined) {
-        currentNode = nextNode;
-        root.render(currentNode);
-      }
-
-      host.update(requireRenderedRoot(root, "TUI"), nextOptions);
-    },
+    ...mounted,
     render() {
       return host.render();
     },
-    rerender() {
-      return host.rerender();
-    },
-    unmount() {
-      host.stop();
-      root.unmount();
-    },
     isRunning() {
       return host.isRunning();
-    },
-    getMountedNode() {
-      return root.getMountedNode();
     },
     getHost() {
       return host;
@@ -85,11 +87,6 @@ export function render<THandler>(
   };
 }
 
-function requireRenderedRoot(root: FauxRoot, target: string): UINode {
-  const mountedNode = root.getMountedNode();
-  if (mountedNode === null) {
-    throw new Error(`Expected a single mounted ${target} root node.`);
-  }
-
-  return mountedNode;
+function isTuiEnvironment(): boolean {
+  return typeof globalThis !== "object" || !("document" in globalThis);
 }

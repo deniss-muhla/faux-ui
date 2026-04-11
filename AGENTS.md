@@ -9,6 +9,7 @@ Use this file as the quick workspace instruction source when working in this rep
 
 ## Project Docs
 
+- Use [docs/improvements.md](docs/improvements.md) as place for unstructured small features and bugs fix-list. Remove them from list if fixed/implemented.
 - Use [docs/roadmap.md](docs/roadmap.md) as the default source of next implementation steps unless the user gives a different priority.
 - Use [docs/architecture.md](docs/architecture.md) to understand package boundaries, runtime layers, and the intended data flow.
 - Use [docs/spec.md](docs/spec.md) when behavior or semantics are unclear; the spec wins over convenience.
@@ -18,6 +19,8 @@ Use this file as the quick workspace instruction source when working in this rep
 - Keep `@faux-ui/core` as the only source of semantic layout, render-tree, and dispatch rules.
 - Do not move renderer-specific behavior into core unless it is truly renderer-neutral.
 - Keep DOM and TUI packages as projections over shared core semantics.
+- Keep all design-system packages implementation-agnostic. Do not export DOM-only, TUI-only, or renderer-specific helpers from the design-system layer.
+- Any design-system addition must compile down to shared faux-ui semantics and behave the same on all renderers.
 - Prefer small, verifiable changes that preserve the current package boundaries unless the user explicitly asks to simplify the public surface.
 
 ## While Updating Docs

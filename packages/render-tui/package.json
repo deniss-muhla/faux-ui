@@ -4,6 +4,7 @@
   "type": "module",
   "dependencies": {
     "@faux-ui/core": "workspace:*",
+    "@faux-ui/renderer": "workspace:*",
     "@faux-ui/reconciler": "workspace:*"
   },
   "peerDependencies": {

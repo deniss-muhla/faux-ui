@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist",
+    "tsBuildInfoFile": "dist/.tsbuildinfo",
+    "jsx": "react-jsx",
+    "jsxImportSource": "@faux-ui/reconciler",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["node", "vite/client"]
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx", "vite.config.ts"],
+  "references": [
+    { "path": "../../packages/reconciler" },
+    { "path": "../../packages/app" },
+    { "path": "../../design-system/foundation" },
+    { "path": "../../design-system/action" },
+    { "path": "../../design-system/surface" }
+  ]
+}

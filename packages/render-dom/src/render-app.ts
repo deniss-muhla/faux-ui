@@ -5,7 +5,11 @@ import {
   type BoundedConstraints,
   type UINode,
 } from "@faux-ui/core";
-import { createReconciler, type FauxRoot } from "@faux-ui/reconciler";
+import {
+  mountRendererApp,
+  type RendererDefinition,
+  type RendererThemeValues,
+} from "@faux-ui/renderer";
 
 import {
   mountDomRoot,
@@ -33,84 +37,81 @@ export interface MountedRenderedDomApp<THandler = unknown> {
   getRuntime(): MountedDomRoot<THandler>;
 }
 
+interface DomRendererHandle<THandler = unknown> {
+  runtime: MountedDomRoot<THandler>;
+  cleanupResize(): void;
+}
+
+export const domRenderer: RendererDefinition<
+  DomAppOptions,
+  MountedRenderedDomApp,
+  DomElementLike
+> = {
+  name: "dom",
+  detect: isDomEnvironment,
+  render(node, options) {
+    return render(node, options);
+  },
+  applyTheme(target, theme) {
+    applyThemeValues(target, theme);
+  },
+};
+
 export function render<THandler = unknown>(
   node: ReactNode,
   options?: DomAppOptions<THandler>,
 ): MountedRenderedDomApp<THandler> {
   const resolved = options ?? {};
-  const container = resolved.container ?? resolveDomDocument().body;
-  applyDefaultTheme(container);
+  const mounted = mountRendererApp<
+    DomAppOptions<THandler>,
+    Partial<Omit<DomMountOptions<THandler>, "container">>,
+    DomRendererHandle<THandler>,
+    void
+  >(node, resolved, {
+    targetName: "DOM",
+    mount(root, initialOptions) {
+      const container = initialOptions.container ?? resolveDomDocument().body;
+      applyThemeValues(container, defaultSemanticColors);
 
-  let constraints = resolved.constraints ?? measureCellConstraints(container);
-  let resizeCleanup: (() => void) | null = null;
+      let constraints =
+        initialOptions.constraints ?? measureCellConstraints(container);
+      const runtime = mountDomRoot<THandler>(root, {
+        ...stripDomAppOptions(initialOptions),
+        container,
+        constraints,
+      });
 
-  const reconciler = createReconciler();
-  let runtimeRef: MountedDomRoot<THandler> | null = null;
-  const root = reconciler.createRoot({
-    onCommit() {
-      if (runtimeRef !== null && root.getMountedNode() !== null) {
-        runtimeRef.update(root.getMountedNode()!);
-      }
+      const cleanupResize =
+        initialOptions.constraints === undefined
+          ? observeResize(container, () => {
+              constraints = measureCellConstraints(container);
+              runtime.update(root, { constraints });
+            })
+          : () => {};
+
+      return {
+        runtime,
+        cleanupResize,
+      };
+    },
+    update(handle, root, nextOptions) {
+      handle.runtime.update(root, nextOptions);
+    },
+    rerender(handle) {
+      handle.runtime.rerender();
+    },
+    unmount(handle) {
+      handle.cleanupResize();
+      handle.runtime.unmount();
     },
   });
 
-  root.render(node);
-  const runtime = mountDomRoot<THandler>(
-    requireRenderedRoot(root, "DOM"),
-    buildMountOptions(),
-  );
-  runtimeRef = runtime;
-
-  if (resolved.constraints === undefined) {
-    resizeCleanup = observeResize(container, () => {
-      constraints = measureCellConstraints(container);
-      runtime.update(requireRenderedRoot(root, "DOM"), { constraints });
-    });
-  }
-
   return {
-    update(nextNode, nextOptions) {
-      if (nextNode !== undefined) {
-        root.render(nextNode);
-      }
-
-      if (nextOptions !== undefined) {
-        runtime.update(requireRenderedRoot(root, "DOM"), nextOptions);
-      }
-    },
-    rerender() {
-      runtime.rerender();
-    },
-    unmount() {
-      resizeCleanup?.();
-      runtime.unmount();
-      root.unmount();
-    },
-    getMountedNode() {
-      return root.getMountedNode();
-    },
+    ...mounted,
     getRuntime() {
-      return runtime;
+      return mounted.getImplementationHandle().runtime;
     },
   };
-
-  function buildMountOptions(): DomMountOptions<THandler> {
-    const { container: _c, constraints: _k, ...rest } = resolved;
-    return {
-      ...rest,
-      container,
-      constraints,
-    };
-  }
-}
-
-function requireRenderedRoot(root: FauxRoot, target: string): UINode {
-  const mountedNode = root.getMountedNode();
-  if (mountedNode === null) {
-    throw new Error(`Expected a single mounted ${target} root node.`);
-  }
-
-  return mountedNode;
 }
 
 function resolveDomDocument(): DomDocumentLike & { body: DomElementLike } {
@@ -127,10 +128,28 @@ function resolveDomDocument(): DomDocumentLike & { body: DomElementLike } {
   return doc as DomDocumentLike & { body: DomElementLike };
 }
 
-function applyDefaultTheme(container: DomElementLike): void {
-  for (const [token, value] of Object.entries(defaultSemanticColors)) {
+function isDomEnvironment(): boolean {
+  return typeof globalThis === "object" && "document" in globalThis;
+}
+
+function applyThemeValues(
+  container: DomElementLike,
+  theme: RendererThemeValues,
+): void {
+  for (const [token, value] of Object.entries(theme)) {
+    if (value === undefined) {
+      continue;
+    }
+
     container.style.setProperty(`--faux-ui-color-${token}`, value);
   }
+}
+
+function stripDomAppOptions<THandler>(
+  options: DomAppOptions<THandler>,
+): Omit<DomMountOptions<THandler>, "container" | "constraints"> {
+  const { container: _container, constraints: _constraints, ...rest } = options;
+  return rest;
 }
 
 function measureCellConstraints(container: DomElementLike): BoundedConstraints {

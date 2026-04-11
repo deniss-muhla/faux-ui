@@ -29,9 +29,14 @@
       "@faux-ui/reconciler/jsx-dev-runtime": [
         "packages/reconciler/src/jsx-dev-runtime.ts"
       ],
+      "@faux-ui/renderer": ["packages/renderer/src/index.ts"],
       "@faux-ui/app": ["packages/app/src/index.ts"],
       "@faux-ui/render-dom": ["packages/render-dom/src/index.ts"],
+      "@faux-ui/render-inspect": ["packages/render-inspect/src/index.ts"],
       "@faux-ui/render-tui": ["packages/render-tui/src/index.ts"],
+      "@faux-ui/foundation": ["design-system/foundation/src/index.tsx"],
+      "@faux-ui/action": ["design-system/action/src/index.tsx"],
+      "@faux-ui/surface": ["design-system/surface/src/index.tsx"],
       "@faux-ui/schema": ["packages/schema/src/index.ts"],
       "@faux-ui/devtools": ["packages/devtools/src/index.ts"],
       "@faux-ui/mcp": ["packages/mcp/src/index.ts"]

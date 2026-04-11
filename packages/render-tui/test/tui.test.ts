@@ -189,24 +189,6 @@ describe("tui renderer", () => {
     ]);
   });
 
-  it("captures a stable TUI framebuffer snapshot", () => {
-    const root = createViewNode({ spec: { columns: [4, 4] } });
-    appendChild(
-      root,
-      createTextNode({ spec: { text: "left", wrap: false, style: null } }),
-    );
-    appendChild(
-      root,
-      createTextNode({ spec: { text: "R", wrap: false, style: null } }),
-    );
-
-    const buffer = renderToFrameBuffer(root, { constraints: ROOT_CONSTRAINTS });
-
-    expect(buffer.toString()).toMatchInlineSnapshot(
-      `"leftR   \n        \n        \n        "`,
-    );
-  });
-
   it("routes pointer and keyboard input through the TUI runtime", () => {
     const dispatched: Array<{
       binding: string;

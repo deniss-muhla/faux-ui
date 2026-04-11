@@ -22,6 +22,7 @@ Packages:
 - `@faux-ui/app`
 - `@faux-ui/reconciler`
 - `@faux-ui/render-dom`
+- `@faux-ui/render-inspect`
 - `@faux-ui/render-tui`
 - `@faux-ui/schema`
 - `@faux-ui/devtools`
@@ -32,6 +33,7 @@ Packages:
 Apps:
 
 - `@faux-ui/example`
+- `@faux-ui/example-renderer`
 
 ## Commands
 
@@ -51,12 +53,17 @@ The monorepo now includes one shared example app with two renderer targets that 
 - `bun run example:preview` serves the built browser bundle locally.
 - `bun run example:tui` launches the terminal target for the same shared example app.
 - `bun run example:tui:watch` reruns the terminal target on source changes while iterating on the TUI path.
+- `bun run example-renderer:dom` starts a contributor-owned canvas renderer example from `apps/example-renderer`.
+- `bun run example-renderer:build` builds that canvas renderer example.
+- `bun run example-renderer:preview` serves the built canvas renderer example locally.
 
 The default app path is now the public framework facade rather than direct renderer imports:
 
 - `@faux-ui/app` exposes `render()` and picks the browser or terminal runtime automatically.
 - `@faux-ui/render-dom` and `@faux-ui/render-tui` remain the renderer implementation packages.
+- `@faux-ui/render-inspect` is a first-party proof renderer that serializes the mounted tree for tests and contributor guidance.
 - `@faux-ui/reconciler` owns the JSX bridge. With `jsxImportSource: "@faux-ui/reconciler"`, faux-ui JSX can use `<view>` and `<text>` directly.
+- `create-faux-ui --template renderer` scaffolds a third-party renderer package starter around `@faux-ui/renderer`.
 
 ## Current Scope
 
@@ -75,11 +82,12 @@ The current implementation includes:
 - an initial React reconciler bridge with lower-case `<view>` and `<text>` intrinsic JSX over the custom host config
 - a TUI renderer implementation package with character-cell text measurement, frame-buffer output, clipping, render-phase scroll offsets, runtime dispatch helpers, hover and drag transitions, shared pointer metadata, a concrete terminal host loop, and snapshots
 - a DOM renderer implementation package with absolute-positioned model projection, delegated DOM measurement adapters, live mounting, browser-style input routing, focus tracking, drag-aware pointer dispatch, runtime scroll management, and snapshots
+- a first-party inspect renderer package that serializes mounted faux-ui trees as deterministic text snapshots and acts as a proof-of-shape for contributor-built renderers
 - an app facade package that auto-selects browser or terminal rendering for application code
 - DOM-side successful-path helpers for browser measurers, theme token installation, and stateful app mounting
 - browser-level Playwright visual regression coverage for DOM projection output
 - an execution CLI that renders schema documents to DOM or TUI targets, exposes binding/layout/render-tree/HTML inspect modes, can log live interactive dispatch events, and can launch an interactive terminal session on TTYs
-- a scaffold CLI that generates JSX, JSON, and hybrid starters for DOM or TUI authoring flows with binding-inspection scripts and drag-token examples
+- a scaffold CLI that generates JSX, JSON, hybrid, and renderer-package starters with binding-inspection scripts and drag-token examples where relevant
 - TUI-side successful-path helpers for interactive and static stateful apps above the raw runtime and terminal host layers
 - a single first-party example application under `apps/example` that projects the same state model and action tokens to DOM and TUI targets
 

@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "dependencies": {
+    "@faux-ui/renderer": "workspace:*",
     "@faux-ui/render-dom": "workspace:*",
     "@faux-ui/render-tui": "workspace:*"
   },
