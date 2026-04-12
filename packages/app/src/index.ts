@@ -23,6 +23,7 @@ import {
   UiRuntimeProvider,
   createUiRuntimeBridge,
   type UiRuntimeAdapter,
+  type UiRuntimeBridge,
 } from "@faux-ui/ui";
 
 export type RenderOptions<THandler = unknown> = DomAppOptions<THandler> &
@@ -51,62 +52,42 @@ export interface InjectedRendererOptions<
 export function render<THandler = unknown>(
   node: ReactNode,
   options?: BuiltInRenderOptions<THandler>,
-): MountedRenderedApp<THandler> {
+): MountedRenderedApp<THandler>;
+export function render<TRenderer extends RendererDefinition<any, any, any>>(
+  node: ReactNode,
+  options: InjectedRendererOptions<TRenderer>,
+): RendererMountedOf<TRenderer>;
+export function render(
+  node: ReactNode,
+  options?:
+    | BuiltInRenderOptions
+    | InjectedRendererOptions<RendererDefinition<any, any, any>>,
+): MountedRenderedApp | RendererMountedOf<RendererDefinition<any, any, any>> {
   const bridge = createUiRuntimeBridge();
-  const wrappedNode = createElement(UiRuntimeProvider, { bridge }, node);
-  const requestedRenderer = (options as { renderer?: unknown } | undefined)
-    ?.renderer;
+  const wrappedNode = wrapWithUiRuntimeProvider(node, bridge);
 
-  if (
-    requestedRenderer !== undefined &&
-    typeof requestedRenderer === "object"
-  ) {
-    const injected = options as unknown as InjectedRendererOptions<
-      RendererDefinition<any, any, any>
-    >;
-    if (injected.renderer.name === domRenderer.name) {
-      const mounted = renderBrowser(wrappedNode, {
-        ...(injected.rendererOptions as DomAppOptions<THandler>),
-        onStateChange: () => bridge.notify(),
-      });
-      bridge.attach(createRuntimeAdapter(mounted));
-      bridge.notify();
-      return mounted;
-    }
-
-    if (injected.renderer.name === tuiRenderer.name) {
-      const mounted = renderTerminal(wrappedNode, {
-        ...(injected.rendererOptions as TerminalTuiHostOptions<THandler>),
-        onStateChange: () => bridge.notify(),
-      });
-      bridge.attach(createRuntimeAdapter(mounted));
-      bridge.notify();
-      return mounted;
-    }
-
-    return injected.renderer.render(
-      wrappedNode,
-      injected.rendererOptions,
-    ) as MountedRenderedApp<THandler>;
+  if (isInjectedRendererOptions(options)) {
+    return renderInjectedRenderer(wrappedNode, bridge, options);
   }
 
   const { renderer, ...rendererOptions } = options ?? {};
-
   const selected = selectRenderer(builtInRenderers, renderer);
 
   if (selected.name === domRenderer.name) {
+    const domOptions = rendererOptions as DomAppOptions;
     const mounted = renderBrowser(wrappedNode, {
-      ...(rendererOptions as DomAppOptions<THandler>),
-      onStateChange: () => bridge.notify(),
+      ...domOptions,
+      onStateChange: composeStateChangeHandler(domOptions.onStateChange, bridge),
     });
     bridge.attach(createRuntimeAdapter(mounted));
     bridge.notify();
     return mounted;
   }
 
+  const tuiOptions = rendererOptions as TerminalTuiHostOptions;
   const mounted = renderTerminal(wrappedNode, {
-    ...(rendererOptions as TerminalTuiHostOptions<THandler>),
-    onStateChange: () => bridge.notify(),
+    ...tuiOptions,
+    onStateChange: composeStateChangeHandler(tuiOptions.onStateChange, bridge),
   });
   bridge.attach(createRuntimeAdapter(mounted));
   bridge.notify();
@@ -119,7 +100,44 @@ export function renderWithRenderer<
   node: ReactNode,
   options: InjectedRendererOptions<TRenderer>,
 ): RendererMountedOf<TRenderer> {
-  return options.renderer.render(node, options.rendererOptions);
+  const bridge = createUiRuntimeBridge();
+  return renderInjectedRenderer(
+    wrapWithUiRuntimeProvider(node, bridge),
+    bridge,
+    options,
+  );
+}
+
+function renderInjectedRenderer<
+  TRenderer extends RendererDefinition<any, any, any>,
+>(
+  wrappedNode: ReactNode,
+  bridge: UiRuntimeBridge,
+  options: InjectedRendererOptions<TRenderer>,
+): RendererMountedOf<TRenderer> {
+  if (options.renderer.name === domRenderer.name) {
+    const domOptions = (options.rendererOptions ?? {}) as DomAppOptions;
+    const mounted = renderBrowser(wrappedNode, {
+      ...domOptions,
+      onStateChange: composeStateChangeHandler(domOptions.onStateChange, bridge),
+    });
+    bridge.attach(createRuntimeAdapter(mounted));
+    bridge.notify();
+    return mounted as RendererMountedOf<TRenderer>;
+  }
+
+  if (options.renderer.name === tuiRenderer.name) {
+    const tuiOptions = (options.rendererOptions ?? {}) as TerminalTuiHostOptions;
+    const mounted = renderTerminal(wrappedNode, {
+      ...tuiOptions,
+      onStateChange: composeStateChangeHandler(tuiOptions.onStateChange, bridge),
+    });
+    bridge.attach(createRuntimeAdapter(mounted));
+    bridge.notify();
+    return mounted as RendererMountedOf<TRenderer>;
+  }
+
+  return options.renderer.render(wrappedNode, options.rendererOptions);
 }
 
 function createRuntimeAdapter<THandler>(
@@ -151,6 +169,36 @@ function createRuntimeAdapter<THandler>(
     setScrollOffset(nodeId: number, offset: ScrollOffset) {
       runtime.setScrollOffset(nodeId, offset);
     },
+  };
+}
+
+function isInjectedRendererOptions(
+  options:
+    | BuiltInRenderOptions
+    | InjectedRendererOptions<RendererDefinition<any, any, any>>
+    | undefined,
+): options is InjectedRendererOptions<RendererDefinition<any, any, any>> {
+  return (
+    options !== undefined &&
+    typeof options.renderer === "object" &&
+    options.renderer !== null
+  );
+}
+
+function wrapWithUiRuntimeProvider(
+  node: ReactNode,
+  bridge: UiRuntimeBridge,
+): ReactNode {
+  return createElement(UiRuntimeProvider, { bridge }, node);
+}
+
+function composeStateChangeHandler(
+  onStateChange: (() => void) | undefined,
+  bridge: UiRuntimeBridge,
+): () => void {
+  return () => {
+    bridge.notify();
+    onStateChange?.();
   };
 }
 

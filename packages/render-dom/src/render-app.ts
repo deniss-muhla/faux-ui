@@ -39,6 +39,8 @@ export interface MountedRenderedDomApp<THandler = unknown> {
 
 interface DomRendererHandle<THandler = unknown> {
   runtime: MountedDomRoot<THandler>;
+  currentRoot: UINode;
+  onStateChange: (() => void) | undefined;
   cleanupResize(): void;
 }
 
@@ -80,22 +82,31 @@ export function render<THandler = unknown>(
         container,
         constraints,
       });
+      let handle: DomRendererHandle<THandler>;
 
       const cleanupResize =
         initialOptions.constraints === undefined
           ? observeResize(container, () => {
               constraints = measureCellConstraints(container);
-              runtime.update(root, { constraints });
-              initialOptions.onStateChange?.();
+              runtime.update(handle.currentRoot, { constraints });
+              handle.onStateChange?.();
             })
           : () => {};
 
-      return {
+      handle = {
         runtime,
+        currentRoot: root,
+        onStateChange: initialOptions.onStateChange,
         cleanupResize,
       };
+
+      return handle;
     },
     update(handle, root, nextOptions) {
+      handle.currentRoot = root;
+      if (nextOptions?.onStateChange !== undefined) {
+        handle.onStateChange = nextOptions.onStateChange;
+      }
       handle.runtime.update(root, nextOptions);
     },
     rerender(handle) {

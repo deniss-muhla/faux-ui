@@ -357,8 +357,16 @@ export function mountDomRoot<THandler>(
       return focusedNodeId;
     },
     setScrollOffset(nodeId, offset) {
-      currentScrollOffsets.set(nodeId, normalizeScrollOffset(offset));
-      sanitizeStoredScrollOffsets();
+      const nextOffset = clampStoredScrollOffset(nodeId, offset);
+      const previousOffset = currentScrollOffsets.get(nodeId);
+      if (
+        previousOffset?.x === nextOffset.x &&
+        previousOffset?.y === nextOffset.y
+      ) {
+        return;
+      }
+
+      currentScrollOffsets.set(nodeId, nextOffset);
       rerenderInternal();
       currentOptions.onStateChange?.();
     },

@@ -350,6 +350,10 @@ describe("dom renderer", () => {
     expect(mounted.getScrollOffset(root.id)).toEqual({ x: 0, y: 1 });
     expect(container.children[0]?.children[0]?.textContent).toBe("two");
 
+    mounted.setScrollOffset(root.id, { x: 0, y: 1.2 });
+
+    expect(mounted.getScrollOffset(root.id)).toEqual({ x: 0, y: 1 });
+
     mounted.setScrollOffset(root.id, { x: -5, y: -3 });
 
     expect(mounted.getScrollOffset(root.id)).toEqual({ x: 0, y: 0 });
