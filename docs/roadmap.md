@@ -14,14 +14,18 @@ The project has completed its main priority reset and its first follow-up milest
 - the first-party example already mounts through renderer-owned helpers instead of hand-built runtime glue.
 - binding tokens are fully removed from the JSX authoring path; direct handler functions are the only supported model.
 - `@faux-ui/app` now exposes `render()` as the single public app entrypoint.
+- `@faux-ui/ui` now exposes the single public JSX runtime and primitive layer.
 - `@faux-ui/render-dom` and `@faux-ui/render-tui` are the renderer implementation packages underneath it.
+- named tracks are now optional first-class metadata on track arrays, divider chrome is reusable, and `Panel` has a scroll-aware body built on a small runtime bridge.
 - both renderers now auto-rerender on React state changes via `onCommit`, eliminating manual `rerender()` calls.
 - DOM `render()` auto-resolves `document.body` as the container and auto-measures cell constraints, with `ResizeObserver`-driven resize.
 - `@faux-ui/core` exports `defaultSemanticColors` used by both renderers; DOM applies theme CSS custom properties automatically.
 - faux-ui JSX uses intrinsic `<view>` and `<text>` tags directly instead of imported renderer components.
-- a custom `jsxImportSource` (`@faux-ui/reconciler`) restricts JSX intrinsic elements to `view` and `text` at compile time.
+- a custom `jsxImportSource` (`@faux-ui/ui`) restricts JSX intrinsic elements to `view` and `text` at compile time.
+- `@faux-ui/renderer` now owns the shared renderer-definition contract and React mounting helper.
+- platform detection no longer lives in `@faux-ui/app` or the example application; renderer definitions own it instead.
 
-The next focus is building a minimal design-system layer and a scroll container primitive.
+The next focus is deepening `@faux-ui/ui` beyond the first scroll-aware panel/body path and moving the shared example app onto that higher-level layer.
 
 ## Completed Foundation
 
@@ -39,6 +43,7 @@ The following areas are now considered baseline, not roadmap targets:
 - auto-body mounting and auto-cell-constraint measurement in DOM `render()`
 - default semantic colors in `@faux-ui/core`, auto-applied by renderers
 - a single `@faux-ui/app` entrypoint for app rendering
+- a single `@faux-ui/ui` entrypoint for JSX authoring and primitives
 
 Future work should treat those decisions as stable unless a deeper architectural problem appears.
 
@@ -68,40 +73,46 @@ Outcomes delivered:
 - DOM `render()` responds to container resize via `ResizeObserver`
 - `@faux-ui/core` exports `defaultSemanticColors`; `@faux-ui/render-dom` applies them as CSS custom properties automatically
 - `@faux-ui/app` is now the app-facing render package, while renderer internals stay in `@faux-ui/render-dom` and `@faux-ui/render-tui`
-- a custom `jsxImportSource` (`@faux-ui/reconciler`) restricts intrinsic elements to `view` and `text` at compile time
+- `@faux-ui/renderer` provides the neutral contract so new renderers can plug in without copying reconciler bootstrap logic
+- `create-faux-ui` now includes a contributor-facing renderer package template built around `@faux-ui/renderer`
+- `@faux-ui/render-inspect` now serves as a first-party proof-of-shape for that template by rendering the shared example app through a contract-only renderer package
+- `apps/example-renderer` now shows a contributor-owned HTML canvas renderer living outside `packages/render-*`
+- a custom `jsxImportSource` (`@faux-ui/ui`) restricts intrinsic elements to `view` and `text` at compile time
 - schema-authored documents still use semantic action identifiers, which remains the right place for any future entrypoint-level action map helper
 - `create-faux-ui` templates updated to use the simplified API
 - the example app uses `useReducer` internally, and DOM/TUI entry files are minimal (~5-10 lines)
 
-### 2. Add a minimal design-system package
+### 2. Ship a single public UI package
 
-Status: not started
+Status: **complete**
 
 Goal:
 
 - introduce one package above core and the renderers for reusable UI building blocks
 - keep semantic layout, render-tree rules, and event dispatch in `@faux-ui/core`
 - keep renderer-specific host behavior in `@faux-ui/render-dom` and `@faux-ui/render-tui`
-- move UI composition helpers, theme structure, and higher-level patterns out of example code
+- move the public JSX runtime and higher-level primitives behind one small package
 
 Why this matters:
 
-The engine is now smaller and more coherent, but authoring still drops too quickly to raw `View` and `Text`. A small design-system layer is the right place for reusable UI concerns that are real, but not universal enough to belong in core.
+The engine is already coherent. The problem was public sprawl. `@faux-ui/ui` keeps the public authoring path small while preserving the stable core and renderer boundaries.
 
-Likely outcomes:
+Outcomes delivered:
 
-- a package such as `@faux-ui/design-system`
-- shared component primitives that compile down to plain reconciler `View` and `Text`
-- a separate hooks package for app-facing runtime helpers such as environment or renderer detection
-- a clear boundary between semantic engine, renderer projection, and reusable UI patterns
+- `@faux-ui/ui` now owns the public JSX runtime (`jsxImportSource: "@faux-ui/ui"`)
+- `AppShell`, `Button`, and `Panel` provide the first complete primitive set
+- those primitives compile down to ordinary faux-ui `view` and `text` semantics
+- starter templates, gallery examples, and app tsconfigs now point at `@faux-ui/ui`
+- the split pre-0.1 design-system packages were removed instead of being kept as aliases
+- `apps/design-system-gallery` now validates the single-package UI surface
 
 Follow-up note:
 
-- temporary environment checks such as `detectTarget()` in app code should eventually move into a dedicated hooks package rather than living inside `@faux-ui/core`, `@faux-ui/app`, or renderer packages
+- renderer detection now belongs to renderer definitions only; future app-facing renderer metadata should come from neutral renderer contracts rather than ad hoc environment checks in app code
 
 ### 3. Add a scroll container primitive above core
 
-Status: not started
+Status: **in progress**
 
 Goal:
 
@@ -111,7 +122,13 @@ Goal:
 
 Why this matters:
 
-Scroll is a core semantic capability, but authoring the surrounding container pattern repeatedly is noise. The design-system layer should make the common case obvious without adding hidden layout negotiation.
+Scroll is a core semantic capability, but authoring the surrounding container pattern repeatedly is noise. The public UI layer should make the common case obvious without adding hidden layout negotiation.
+
+Progress so far:
+
+- `Panel` can now host an optional scrollable body region
+- scroll indicators are renderer-neutral and read live viewport/content metrics through a small UI runtime bridge
+- overflow chrome stays in `@faux-ui/ui`; core still treats scroll offset as render-phase state only
 
 ### 4. Add a wrapped-text helper outside core
 
@@ -119,7 +136,7 @@ Status: not started
 
 Goal:
 
-- support wrapped presentation as an opt-in design-system concern, not a core text rule
+- support wrapped presentation as an opt-in UI-layer concern, not a core text rule
 - calculate wrapped size deterministically in userland from text, wrap width, and explicit bounds
 - preserve the core invariant that base `Text` remains no-wrap
 
@@ -135,7 +152,7 @@ Non-goals:
 
 ### 5. Add bordered container and card primitives
 
-Status: not started
+Status: **in progress**
 
 Goal:
 
@@ -146,6 +163,12 @@ Goal:
 Why this matters:
 
 Cards, panes, and framed sections are likely to appear in nearly every serious TUI-first interface. They belong in a reusable UI layer rather than being copied through examples.
+
+Progress so far:
+
+- `Divider` now provides reusable single, double, dotted, and heavy chrome
+- `Panel` now supports header/body/footer framing with optional scroll chrome in the body region
+- named row and column names are optional additions to track arrays; numeric placement still works unchanged
 
 ### 6. Add the minimum essential input-oriented components
 
@@ -168,9 +191,9 @@ Why this matters:
 
 The framework needs enough input vocabulary to support practical apps, but not a large widget catalog. The right bar is "small but sufficient", not feature parity with browser UI kits.
 
-### 7. Establish a shared theme and semantic token story in the design system
+### 7. Establish a shared theme and semantic token story in the UI layer
 
-Status: not started
+Status: in progress
 
 Goal:
 
@@ -180,30 +203,30 @@ Goal:
 
 Why this matters:
 
-Theme application exists today, but it is still too close to renderer setup. The design-system layer should own component-facing theme conventions so application code does not assemble those rules ad hoc.
+Theme application exists today, but it is still too close to renderer setup. The UI layer should own component-facing theme conventions so application code does not assemble those rules ad hoc.
 
-### 8. Rewrite the example to consume the design system
+### 8. Rewrite the shared example app to consume `@faux-ui/ui`
 
 Status: not started
 
 Goal:
 
-- replace ad hoc example composition with the new design-system primitives
+- replace ad hoc example composition with the new `@faux-ui/ui` primitives
 - prove that the common authoring path now feels small and obvious
 - keep the example focused on application logic rather than framework assembly
 
 Why this matters:
 
-The example is the clearest proof of whether faux-ui is becoming pleasant to use. It should validate the design-system layer immediately instead of leaving those components unused.
+The example is the clearest proof of whether faux-ui is becoming pleasant to use. It should validate the public UI layer immediately instead of leaving those components unused.
 
 ### 9. Expand regression coverage around the higher-level layer
 
-Status: not started
+Status: in progress
 
 Goal:
 
 - add tests for wrapped-text helpers, scroll containers, cards, and basic input components
-- keep cross-renderer behavior aligned under the same design-system surface
+- keep cross-renderer behavior aligned under the same public UI surface
 - prevent convenience APIs from smuggling DOM-only behavior back into the stack
 
 Why this matters:
@@ -212,19 +235,19 @@ The engine is already well tested. The next risk is not core correctness; it is 
 
 ## Mid-Term Milestones
 
-### 10. Align starter, CLI, and schema paths with the design-system layer
+### 10. Align starter, CLI, and schema paths with the UI layer
 
-Status: deferred until the first component set exists
+Status: in progress
 
 Goal:
 
-- expose the design-system package in starter templates where appropriate
+- expose the public UI package in starter templates where appropriate
 - decide how schema-authored documents should reference higher-level primitives, if at all
 - keep CLI and inspection flows aware of the new package boundary without making it mandatory for low-level usage
 
 Why this matters:
 
-Tooling should reinforce the primary authoring path after that path is proven. It should not guess ahead of the API.
+Tooling should reinforce the primary authoring path after that path is proven. Starter generation now does; CLI and schema still need the same clarity.
 
 ### 11. Revisit advanced runtime features only after the authoring layer settles
 
@@ -256,13 +279,12 @@ If work continues immediately, the highest-leverage sequence is:
 
 1. remove binding tokens from the public authoring model
 2. define the JSON entrypoint contract around a document plus actions map
-3. add the design-system package boundary
-4. ship scroll container and bordered container primitives
-5. add wrapped-text as an opt-in helper outside core
-6. add the smallest useful input component set
-7. define shared theme structure for those components
-8. rewrite the example to use the new layer
-9. lock the new APIs down with regression coverage
-10. only then extend starters, schema, and tooling
+3. ship scroll container and bordered container primitives in `@faux-ui/ui`
+4. add wrapped-text as an opt-in helper outside core
+5. add the smallest useful input component set
+6. define shared theme structure for those components
+7. rewrite the shared example app to use the new layer
+8. lock the new APIs down with regression coverage
+9. extend CLI and schema workflows around the stabilized UI package
 
 That order keeps the project honest: the engine stays small, and complexity only returns where it is visible, reusable, and clearly above the semantic core.

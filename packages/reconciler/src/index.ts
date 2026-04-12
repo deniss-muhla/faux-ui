@@ -24,6 +24,7 @@ import {
   type ScrollAxis,
   type StyleValue,
   type TextNode,
+  type TrackPlacement,
   type TrackShorthand,
   type UINode,
   type ViewNode,
@@ -70,6 +71,8 @@ export interface ViewProps extends EventBindingProps {
   key?: Key | null;
   rows?: TrackShorthand[] | null;
   columns?: TrackShorthand[] | null;
+  row?: TrackPlacement | null;
+  column?: TrackPlacement | null;
   scroll?: ScrollAxis | null;
   style?: StyleValue | null;
   styleHover?: StyleValue | null;
@@ -82,6 +85,8 @@ export interface ViewProps extends EventBindingProps {
 export interface TextProps extends EventBindingProps {
   key?: Key | null;
   wrap?: boolean;
+  row?: TrackPlacement | null;
+  column?: TrackPlacement | null;
   style?: StyleValue | null;
   bindings?: BoundActions | null;
   children?: ReactNode;
@@ -534,6 +539,8 @@ function createHostInstance(
       bindings: readBindings(props),
       spec: {
         text: "",
+        row: readTrackPlacement(props.row),
+        column: readTrackPlacement(props.column),
         style: readStyle(props),
       },
     });
@@ -705,6 +712,12 @@ function buildViewPatch(
     ...(oldProps.columns !== newProps.columns
       ? { columns: readTrackList(newProps.columns) }
       : {}),
+    ...(oldProps.row !== newProps.row
+      ? { row: readTrackPlacement(newProps.row) }
+      : {}),
+    ...(oldProps.column !== newProps.column
+      ? { column: readTrackPlacement(newProps.column) }
+      : {}),
     ...(oldProps.scroll !== newProps.scroll
       ? { scroll: readScroll(newProps.scroll) }
       : {}),
@@ -728,6 +741,12 @@ function buildTextPatch(
   newProps: Props,
 ): Partial<NormalizedTextSpec> {
   return {
+    ...(oldProps.row !== newProps.row
+      ? { row: readTrackPlacement(newProps.row) }
+      : {}),
+    ...(oldProps.column !== newProps.column
+      ? { column: readTrackPlacement(newProps.column) }
+      : {}),
     ...(oldProps.style !== newProps.style
       ? { style: readStyle(newProps) }
       : {}),
@@ -738,6 +757,8 @@ function readInitialViewSpec(props: Props): Partial<NormalizedViewSpec> {
   return {
     rows: readTrackList(props.rows),
     columns: readTrackList(props.columns),
+    row: readTrackPlacement(props.row),
+    column: readTrackPlacement(props.column),
     scroll: readScroll(props.scroll),
     style: readStyle(props),
     styleHover: readNamedStyle(props.styleHover),
@@ -756,6 +777,30 @@ function readTrackList(value: unknown): TrackShorthand[] | null {
   }
 
   return [...(value as TrackShorthand[])];
+}
+
+function readTrackPlacement(value: unknown): TrackPlacement | null {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  if (typeof value === "number") {
+    if (!Number.isInteger(value) || value < 0) {
+      throw new Error(
+        "Track placement props must be non-negative integers or named tracks.",
+      );
+    }
+
+    return value;
+  }
+
+  if (typeof value === "string" && value.length > 0) {
+    return value;
+  }
+
+  throw new Error(
+    "Track placement props must be non-negative integers or named tracks.",
+  );
 }
 
 function readScroll(value: unknown): ScrollAxis | null {

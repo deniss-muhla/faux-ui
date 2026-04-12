@@ -6,5 +6,9 @@
     "tsBuildInfoFile": "dist/.tsbuildinfo"
   },
   "include": ["src/**/*.ts"],
-  "references": [{ "path": "../core" }, { "path": "../reconciler" }]
+  "references": [
+    { "path": "../core" },
+    { "path": "../reconciler" },
+    { "path": "../renderer" }
+  ]
 }

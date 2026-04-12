@@ -7,9 +7,14 @@ export default defineConfig({
       "@faux-ui/core": resolve(__dirname, "packages/core/src/index.ts"),
       "@faux-ui/app": resolve(__dirname, "packages/app/src/index.ts"),
       "@faux-ui/devtools": resolve(__dirname, "packages/devtools/src/index.ts"),
+      "@faux-ui/renderer": resolve(__dirname, "packages/renderer/src/index.ts"),
       "@faux-ui/render-dom": resolve(
         __dirname,
         "packages/render-dom/src/index.ts",
+      ),
+      "@faux-ui/render-inspect": resolve(
+        __dirname,
+        "packages/render-inspect/src/index.ts",
       ),
       "@faux-ui/schema": resolve(__dirname, "packages/schema/src/index.ts"),
       "@faux-ui/render-tui": resolve(
@@ -28,12 +33,24 @@ export default defineConfig({
         __dirname,
         "packages/reconciler/src/index.ts",
       ),
+      "@faux-ui/ui/jsx-runtime": resolve(
+        __dirname,
+        "packages/ui/src/jsx-runtime.ts",
+      ),
+      "@faux-ui/ui/jsx-dev-runtime": resolve(
+        __dirname,
+        "packages/ui/src/jsx-dev-runtime.ts",
+      ),
+      "@faux-ui/ui": resolve(__dirname, "packages/ui/src/index.ts"),
       "@faux-ui/mcp": resolve(__dirname, "packages/mcp/src/index.ts"),
     },
   },
   test: {
     environment: "node",
-    include: ["packages/*/test/**/*.test.ts", "apps/*/test/**/*.test.ts"],
+    include: [
+      "packages/*/test/**/*.test.ts",
+      "apps/*/test/**/*.test.ts",
+    ],
     exclude: ["**/dist/**", "**/node_modules/**"],
   },
 });

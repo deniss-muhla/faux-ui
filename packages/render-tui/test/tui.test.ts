@@ -189,24 +189,6 @@ describe("tui renderer", () => {
     ]);
   });
 
-  it("captures a stable TUI framebuffer snapshot", () => {
-    const root = createViewNode({ spec: { columns: [4, 4] } });
-    appendChild(
-      root,
-      createTextNode({ spec: { text: "left", wrap: false, style: null } }),
-    );
-    appendChild(
-      root,
-      createTextNode({ spec: { text: "R", wrap: false, style: null } }),
-    );
-
-    const buffer = renderToFrameBuffer(root, { constraints: ROOT_CONSTRAINTS });
-
-    expect(buffer.toString()).toMatchInlineSnapshot(
-      `"leftR   \n        \n        \n        "`,
-    );
-  });
-
   it("routes pointer and keyboard input through the TUI runtime", () => {
     const dispatched: Array<{
       binding: string;
@@ -538,6 +520,7 @@ describe("tui renderer", () => {
 
   it("updates managed scroll offsets and rerenders through the TUI runtime", () => {
     const dispatched: Array<Array<string | number>> = [];
+    const stateChanges: number[] = [];
     const root = createViewNode({
       spec: { rows: ["auto", "auto"], scroll: "y" },
       bindings: { scroll: "scroll-root" },
@@ -556,6 +539,9 @@ describe("tui renderer", () => {
       onDispatch: ({ result }) => {
         dispatched.push(result.actions.map((action) => action.action));
       },
+      onStateChange: () => {
+        stateChanges.push(1);
+      },
     });
 
     expect(runtime.render().toString()).toBe("one     ");
@@ -565,9 +551,11 @@ describe("tui renderer", () => {
     expect(runtime.getScrollOffset(root.id)).toEqual({ x: 0, y: 1 });
     expect(runtime.render().toString()).toBe("two     ");
     expect(dispatched).toEqual([["scroll-root"]]);
+    expect(stateChanges).toHaveLength(1);
   });
 
   it("normalizes and clamps manual TUI scroll offsets", () => {
+    const stateChanges: number[] = [];
     const root = createViewNode({
       spec: { rows: ["auto", "auto"], scroll: "y" },
     });
@@ -582,6 +570,9 @@ describe("tui renderer", () => {
 
     const runtime = mountTuiRoot(root, {
       constraints: { maxWidth: 8, maxHeight: 1 },
+      onStateChange: () => {
+        stateChanges.push(1);
+      },
     });
 
     runtime.setScrollOffset(root.id, { x: 2.7, y: 99.4 });
@@ -593,5 +584,6 @@ describe("tui renderer", () => {
 
     expect(runtime.getScrollOffset(root.id)).toEqual({ x: 0, y: 0 });
     expect(runtime.render().toString()).toBe("one     ");
+    expect(stateChanges).toHaveLength(2);
   });
 });

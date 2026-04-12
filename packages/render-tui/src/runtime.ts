@@ -89,6 +89,7 @@ export interface TuiRuntimeOptions<THandler = unknown> extends RenderOptions {
   resolveAction?: DispatchHandlerResolver<THandler>;
   onDispatch?: (event: TuiDispatchEvent<THandler>) => void;
   onFocusChange?: (event: TuiFocusChangeEvent) => void;
+  onStateChange?: () => void;
 }
 
 export interface MountedTuiRoot<THandler = unknown> {
@@ -199,8 +200,16 @@ export function mountTuiRoot<THandler>(
       return focusedNodeId;
     },
     setScrollOffset(nodeId, offset) {
-      currentScrollOffsets.set(nodeId, normalizeScrollOffset(offset));
+      const nextOffset = clampStoredScrollOffset(nodeId, normalizeScrollOffset(offset));
+      const previousOffset = currentScrollOffsets.get(nodeId);
+      currentScrollOffsets.set(nodeId, nextOffset);
       sanitizeStoredScrollOffsets();
+      if (
+        previousOffset?.x !== nextOffset.x ||
+        previousOffset?.y !== nextOffset.y
+      ) {
+        currentOptions.onStateChange?.();
+      }
     },
     getScrollOffset(nodeId) {
       const offset = currentScrollOffsets.get(nodeId);
@@ -373,7 +382,10 @@ export function mountTuiRoot<THandler>(
     pointer: PointerDispatchMeta | null = null,
   ): DispatchResult {
     const result = dispatchBindingAtPoint(buildInputTree(), point, "scroll");
-    applyScrollDelta(result.hit, delta);
+    const didScroll = applyScrollDelta(result.hit, delta);
+    if (didScroll) {
+      currentOptions.onStateChange?.();
+    }
     notifyDispatch(
       "scroll",
       result,
@@ -618,14 +630,14 @@ export function mountTuiRoot<THandler>(
   function applyScrollDelta(
     hit: RenderHit | null,
     delta: TuiScrollDelta,
-  ): void {
+  ): boolean {
     if (hit === null) {
-      return;
+      return false;
     }
 
     const scrollable = resolveScrollableNode(hit.path);
     if (scrollable === null) {
-      return;
+      return false;
     }
 
     const previousOffset = currentScrollOffsets.get(scrollable.nodeId) ?? {
@@ -638,10 +650,11 @@ export function mountTuiRoot<THandler>(
       nextOffset.x === previousOffset.x &&
       nextOffset.y === previousOffset.y
     ) {
-      return;
+      return false;
     }
 
     currentScrollOffsets.set(scrollable.nodeId, nextOffset);
+    return true;
   }
 
   function sanitizeStoredScrollOffsets(): void {

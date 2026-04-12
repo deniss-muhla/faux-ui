@@ -104,6 +104,7 @@ export interface DomMountOptions<THandler = unknown> extends DomRenderOptions {
   resolveAction?: DispatchHandlerResolver<THandler>;
   onDispatch?: (event: DomDispatchEvent<THandler>) => void;
   onFocusChange?: (event: DomFocusChangeEvent) => void;
+  onStateChange?: () => void;
 }
 
 export interface MountedDomRoot<THandler = unknown> {
@@ -356,9 +357,18 @@ export function mountDomRoot<THandler>(
       return focusedNodeId;
     },
     setScrollOffset(nodeId, offset) {
-      currentScrollOffsets.set(nodeId, normalizeScrollOffset(offset));
-      sanitizeStoredScrollOffsets();
+      const nextOffset = clampStoredScrollOffset(nodeId, offset);
+      const previousOffset = currentScrollOffsets.get(nodeId);
+      if (
+        previousOffset?.x === nextOffset.x &&
+        previousOffset?.y === nextOffset.y
+      ) {
+        return;
+      }
+
+      currentScrollOffsets.set(nodeId, nextOffset);
       rerenderInternal();
+      currentOptions.onStateChange?.();
     },
     getScrollOffset(nodeId) {
       const offset = currentScrollOffsets.get(nodeId);
@@ -489,6 +499,7 @@ export function mountDomRoot<THandler>(
     if (didScroll) {
       event.preventDefault?.();
       rerenderInternal();
+      currentOptions.onStateChange?.();
     }
 
     notifyDispatch(

@@ -19,8 +19,8 @@ describe("create-faux-ui", () => {
     expect(plan.files.map((file) => file.path)).toContain("tsconfig.json");
 
     const packageJson = plan.files.find((file) => file.path === "package.json");
-    expect(packageJson?.content).toContain("@faux-ui/reconciler");
     expect(packageJson?.content).toContain("@faux-ui/app");
+    expect(packageJson?.content).toContain("@faux-ui/ui");
     expect(packageJson?.content).toContain('"start": "tsx src/main.tsx"');
   });
 
@@ -36,6 +36,7 @@ describe("create-faux-ui", () => {
 
     const packageJson = plan.files.find((file) => file.path === "package.json");
     expect(packageJson?.content).toContain("@faux-ui/app");
+    expect(packageJson?.content).toContain("@faux-ui/ui");
     expect(packageJson?.content).toContain('"start": "vite"');
     expect(packageJson?.content).toContain('"build": "vite build"');
   });
@@ -50,6 +51,29 @@ describe("create-faux-ui", () => {
     expect(packageJson?.content).toContain("exec-faux-ui");
     expect(packageJson?.content).toContain("preview:tui");
     expect(packageJson?.content).toContain("inspect:bindings");
+  });
+
+  it("builds a renderer package starter plan with the shared contract", () => {
+    const plan = buildScaffoldPlan(baseOptions({ template: "renderer" }));
+
+    expect(plan.files.map((file) => file.path)).toContain("src/index.ts");
+    expect(plan.files.map((file) => file.path)).toContain(
+      "test/renderer.test.ts",
+    );
+    expect(plan.files.map((file) => file.path)).toContain("tsconfig.json");
+
+    const packageJson = plan.files.find((file) => file.path === "package.json");
+    const source = plan.files.find((file) => file.path === "src/index.ts");
+    const readme = plan.files.find((file) => file.path === "README.md");
+
+    expect(packageJson?.content).toContain("@faux-ui/renderer");
+    expect(packageJson?.content).toContain('"test": "vitest run"');
+    expect(source?.content).toContain("mountRendererApp");
+    expect(source?.content).toContain("RendererDefinition");
+    expect(source?.content).toContain("createExampleThemeTarget");
+    expect(source?.content).toContain("exampleRendererMetadata");
+    expect(readme?.content).toContain("renderer package template");
+    expect(readme?.content).toContain("capability and metadata export");
   });
 
   it("writes the scaffold to disk and prints next steps", () => {
@@ -92,9 +116,21 @@ describe("create-faux-ui", () => {
     expect(packageJson).toContain('"start": "vite"');
     expect(appSource).toContain("render(");
     expect(appSource).toContain("useState");
+    expect(appSource).toContain("AppShell");
+    expect(appSource).toContain("Button");
     expect(documentSource).toContain("drag-root-start");
     expect(documentSource).toContain("--inspect bindings");
     expect(indexHtml).toContain("<title>");
+  });
+
+  it("prints renderer template next steps with tests as the entrypoint", () => {
+    const output = run(
+      ["demo-renderer", "--template", "renderer", "--pm", "npm"],
+      mkdtempSync(join(tmpdir(), "create-faux-ui-renderer-")),
+    );
+
+    expect(output).toContain("npm install");
+    expect(output).toContain("npm run test");
   });
 
   it("refuses to scaffold into a non-empty directory", () => {

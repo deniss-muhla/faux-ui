@@ -51,6 +51,38 @@ describe("reconciler skeleton", () => {
     }
   });
 
+  it("maps named tracks and child placements into host specs", () => {
+    const reconciler = createReconciler();
+    const root = reconciler.createRoot();
+
+    root.render(
+      createElement(
+        VIEW_TYPE,
+        {
+          rows: [{ name: "header", size: 1 }, { name: "body", size: "1fr" }],
+          columns: [{ name: "main", size: "1fr" }],
+        },
+        createElement(TEXT_TYPE, { row: "body", column: 0 }, "A"),
+      ),
+    );
+
+    const mounted = root.getMountedNode();
+    expect(mounted?.kind).toBe("view");
+    if (mounted?.kind === "view") {
+      expect(mounted.spec.rows).toEqual([
+        { name: "header", size: 1 },
+        { name: "body", size: "1fr" },
+      ]);
+      expect(mounted.spec.columns).toEqual([{ name: "main", size: "1fr" }]);
+      const child = mounted.children[0];
+      expect(child?.kind).toBe("text");
+      if (child?.kind === "text") {
+        expect(child.spec.row).toBe("body");
+        expect(child.spec.column).toBe(0);
+      }
+    }
+  });
+
   it("supports append, insert, remove, and reorder under a view", () => {
     const reconciler = createReconciler();
     const root = reconciler.createRoot();

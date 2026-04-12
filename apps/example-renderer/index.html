@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="./src/styles.css" />
+    <title>faux-ui canvas renderer example</title>
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="intro">
+        <p class="eyebrow">contributor-owned renderer</p>
+        <h1>Canvas renderer example</h1>
+        <p>
+          This app lives under <code>apps/example-renderer</code> to show how a
+          renderer can be built outside the first-party <code>packages/render-*</code>
+          layer.
+        </p>
+      </header>
+      <canvas id="canvas-renderer" width="960" height="720"></canvas>
+    </div>
+    <script type="module" src="./src/main.tsx"></script>
+  </body>
+</html>

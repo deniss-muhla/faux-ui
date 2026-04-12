@@ -4,9 +4,9 @@ import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-export type ScaffoldTemplate = "jsx" | "json" | "hybrid";
+export type ScaffoldTemplate = "jsx" | "json" | "hybrid" | "renderer";
 export type PackageManager = "bun" | "npm" | "pnpm";
-export type ScaffoldRenderer = "dom" | "tui";
+export type ScaffoldRenderer = "dom" | "tui"; // TODO: Maybe this should be choose multiple renderers and generate multiple entry files? Connect with internal list of built-in renderers?
 
 export interface ScaffoldOptions {
   name: string;
@@ -54,6 +54,15 @@ export function buildScaffoldPlan(options: ScaffoldOptions): ScaffoldPlan {
       content: `${JSON.stringify(buildPackageJson(options), null, 2)}\n`,
     },
   ];
+
+  if (options.template === "renderer") {
+    files.push({
+      path: "tsconfig.json",
+      content: `${JSON.stringify(buildRendererTsconfig(), null, 2)}\n`,
+    });
+    files.push(...buildRendererFiles(options.name));
+    return { rootDir, files };
+  }
 
   if (options.template !== "json") {
     files.push({
@@ -195,16 +204,20 @@ function parseScaffoldArgs(
 }
 
 function buildPackageJson(options: ScaffoldOptions): Record<string, unknown> {
+  if (options.template === "renderer") {
+    return buildRendererPackageJson(options);
+  }
+
   const dependencies: Record<string, string> = {};
   const devDependencies: Record<string, string> = {};
   const scripts: Record<string, string> = {};
 
   if (options.template === "jsx" || options.template === "hybrid") {
     dependencies["@faux-ui/app"] = "0.1.0";
-    dependencies["@faux-ui/reconciler"] = "0.1.0";
+    dependencies["@faux-ui/ui"] = "0.1.0";
     dependencies.react = "^19.2.0";
     devDependencies["@types/react"] = "^19.2.2";
-    devDependencies.typescript = "^5.9.0";
+    devDependencies.typescript = "^6.0.0";
     scripts.typecheck = "tsc --noEmit";
 
     if (options.renderer === "tui") {
@@ -252,13 +265,54 @@ function buildPackageJson(options: ScaffoldOptions): Record<string, unknown> {
   return packageJson;
 }
 
+function buildRendererPackageJson(
+  options: ScaffoldOptions,
+): Record<string, unknown> {
+  const packageJson: Record<string, unknown> = {
+    name: options.name,
+    version: "0.1.0",
+    type: "module",
+    scripts: {
+      build: "tsc -p tsconfig.json",
+      typecheck: "tsc -p tsconfig.json --pretty false --noEmit",
+      test: "vitest run",
+    },
+    dependencies: {
+      "@faux-ui/core": "0.1.0",
+      "@faux-ui/renderer": "0.1.0",
+      react: "^19.2.0",
+    },
+    devDependencies: {
+      "@types/react": "^19.2.2",
+      typescript: "^6.0.0",
+      vitest: "^3.0.0",
+    },
+    exports: {
+      ".": {
+        types: "./dist/index.d.ts",
+        default: "./dist/index.js",
+      },
+    },
+    main: "./dist/index.js",
+    types: "./dist/index.d.ts",
+    files: ["dist"],
+  };
+
+  const packageManager = resolvePackageManagerField(options.packageManager);
+  if (packageManager !== null) {
+    packageJson.packageManager = packageManager;
+  }
+
+  return packageJson;
+}
+
 function buildTsconfig(renderer: ScaffoldRenderer): Record<string, unknown> {
   const compilerOptions: Record<string, unknown> = {
     target: "ES2023",
     module: "NodeNext",
     moduleResolution: "NodeNext",
     jsx: "react-jsx",
-    jsxImportSource: "@faux-ui/reconciler",
+    jsxImportSource: "@faux-ui/ui",
     strict: true,
     noEmit: true,
     skipLibCheck: true,
@@ -278,7 +332,28 @@ function buildTsconfig(renderer: ScaffoldRenderer): Record<string, unknown> {
   };
 }
 
+function buildRendererTsconfig(): Record<string, unknown> {
+  return {
+    compilerOptions: {
+      target: "ES2023",
+      module: "NodeNext",
+      moduleResolution: "NodeNext",
+      strict: true,
+      declaration: true,
+      outDir: "dist",
+      rootDir: ".",
+      skipLibCheck: true,
+      forceConsistentCasingInFileNames: true,
+    },
+    include: ["src/**/*.ts", "test/**/*.ts"],
+  };
+}
+
 function buildReadme(options: ScaffoldOptions): string {
+  if (options.template === "renderer") {
+    return buildRendererReadme(options);
+  }
+
   const templateLabel =
     options.template === "jsx"
       ? "JSX"
@@ -313,8 +388,44 @@ function buildReadme(options: ScaffoldOptions): string {
     "- The generated dependencies assume published faux-ui packages.",
     "- When working from a monorepo clone, replace them with local workspace or file references.",
     ...(options.template !== "json"
+      ? ["- JSX authoring uses @faux-ui/ui as the component surface and JSX runtime."]
+      : []),
+    ...(options.template !== "json"
       ? [`- Renderer target: ${options.renderer.toUpperCase()}`]
       : []),
+    "",
+  ].join("\n");
+}
+
+function buildRendererReadme(options: ScaffoldOptions): string {
+  const runner = resolvePackageManagerBinary(options.packageManager);
+
+  return [
+    `# ${options.name}`,
+    "",
+    "Starter generated by create-faux-ui using the renderer package template.",
+    "",
+    "## Commands",
+    "",
+    `- Install: ${buildInstallCommand(options.packageManager)}`,
+    `- Typecheck: ${runner} run typecheck`,
+    `- Test: ${runner} run test`,
+    `- Build: ${runner} run build`,
+    "",
+    "## What This Template Gives You",
+    "",
+    "- a typed RendererDefinition export",
+    "- a render() wrapper built on mountRendererApp()",
+    "- a fake-host test you can replace with your real platform runtime",
+    "- a small applyTheme() hook plus an optional theme-target helper",
+    "- a capability and metadata export you can keep near the renderer package",
+    "",
+    "## Replace First",
+    "",
+    "- rename exampleRenderer and the package name to your renderer's real identity",
+    "- replace detectExampleEnvironment() with your actual environment probe",
+    "- replace ExampleRendererHost with your platform mount/update/unmount bridge",
+    "- expand the options and mounted handle types to match your renderer runtime",
     "",
   ].join("\n");
 }
@@ -345,21 +456,269 @@ function buildJsxFiles(options: ScaffoldOptions): ScaffoldFile[] {
   ];
 }
 
+function buildRendererFiles(name: string): ScaffoldFile[] {
+  return [
+    {
+      path: "src/index.ts",
+      content: buildRendererTemplateSource(name),
+    },
+    {
+      path: "test/renderer.test.ts",
+      content: buildRendererTemplateTest(),
+    },
+  ];
+}
+
+function buildRendererTemplateSource(name: string): string {
+  return [
+    'import type { ReactNode } from "react";',
+    'import type { SemanticColor, UINode } from "@faux-ui/core";',
+    "import {",
+    "  mountRendererApp,",
+    "  type MountedRendererApp,",
+    "  type RendererDefinition,",
+    "  type RendererThemeValues,",
+    '} from "@faux-ui/renderer";',
+    "",
+    `const rendererName = ${JSON.stringify(name)};`,
+    "",
+    "export interface ExampleRendererHost {",
+    "  mount(root: UINode): void;",
+    "  update(root: UINode): void;",
+    "  unmount(): void;",
+    "}",
+    "",
+    "export interface ExampleThemeTarget {",
+    "  variables: Partial<Record<SemanticColor, string>>;",
+    "  setThemeVariable(name: string, value: string): void;",
+    "}",
+    "",
+    "export interface ExampleRendererCapabilities {",
+    '  output: "replace-me";',
+    "  supportsFocus: boolean;",
+    "  supportsHover: boolean;",
+    "  supportsThemeTarget: boolean;",
+    "}",
+    "",
+    "export interface ExampleRendererMetadata {",
+    "  capabilities: ExampleRendererCapabilities;",
+    "  themeTargetExample: string;",
+    "  notes: string[];",
+    "}",
+    "",
+    "export const exampleRendererCapabilities: ExampleRendererCapabilities = {",
+    '  output: "replace-me",',
+    "  supportsFocus: true,",
+    "  supportsHover: false,",
+    "  supportsThemeTarget: true,",
+    "};",
+    "",
+    "export const exampleRendererMetadata: ExampleRendererMetadata = {",
+    "  capabilities: exampleRendererCapabilities,",
+    '  themeTargetExample: "createExampleThemeTarget()",',
+    "  notes: [",
+    '    "Replace the capability flags with your renderer\'s real surface.",',
+    '    "If your renderer cannot apply theme tokens directly, drop the theme target helper.",',
+    "  ],",
+    "};",
+    "",
+    "export interface ExampleRendererOptions {",
+    "  host: ExampleRendererHost;",
+    "  themeTarget?: ExampleThemeTarget;",
+    "}",
+    "",
+    "interface ExampleRendererHandle {",
+    "  host: ExampleRendererHost;",
+    "  lastRoot: UINode;",
+    "  themeTarget: ExampleThemeTarget;",
+    "}",
+    "",
+    "export interface MountedExampleRendererApp",
+    "  extends MountedRendererApp<void, ExampleRendererHandle, void> {",
+    "  getHost(): ExampleRendererHost;",
+    "  getThemeTarget(): ExampleThemeTarget;",
+    "  getCapabilities(): ExampleRendererCapabilities;",
+    "}",
+    "",
+    "export function createExampleThemeTarget(",
+    "  initial: RendererThemeValues = {},",
+    "): ExampleThemeTarget {",
+    "  const variables: Partial<Record<SemanticColor, string>> = {};",
+    "",
+    "  for (const [token, value] of Object.entries(initial)) {",
+    "    if (value === undefined) {",
+    "      continue;",
+    "    }",
+    "",
+    "    variables[token as SemanticColor] = value;",
+    "  }",
+    "",
+    "  return {",
+    "    variables,",
+    "    setThemeVariable(name, value) {",
+    '      const prefix = "--faux-ui-color-";',
+    "      if (!name.startsWith(prefix)) {",
+    "        return;",
+    "      }",
+    "",
+    "      variables[name.slice(prefix.length) as SemanticColor] = value;",
+    "    },",
+    "  };",
+    "}",
+    "",
+    "export const exampleRenderer: RendererDefinition<",
+    "  ExampleRendererOptions,",
+    "  MountedExampleRendererApp,",
+    "  ExampleThemeTarget",
+    "> = {",
+    "  name: rendererName,",
+    "  detect: detectExampleEnvironment,",
+    "  render(node, options) {",
+    "    return render(node, options);",
+    "  },",
+    "  applyTheme(target, theme) {",
+    "    applyExampleTheme(target, theme);",
+    "  },",
+    "};",
+    "",
+    "export function render(",
+    "  node: ReactNode,",
+    "  options: ExampleRendererOptions,",
+    "): MountedExampleRendererApp {",
+    "  const mounted = mountRendererApp<",
+    "    ExampleRendererOptions,",
+    "    void,",
+    "    ExampleRendererHandle,",
+    "    void",
+    "  >(node, options, {",
+    "    targetName: rendererName,",
+    "    mount(root, initialOptions) {",
+    "      initialOptions.host.mount(root);",
+    "      return {",
+    "        host: initialOptions.host,",
+    "        lastRoot: root,",
+    "        themeTarget: initialOptions.themeTarget ?? createExampleThemeTarget(),",
+    "      };",
+    "    },",
+    "    update(handle, root) {",
+    "      handle.lastRoot = root;",
+    "      handle.host.update(root);",
+    "    },",
+    "    rerender(handle) {",
+    "      handle.host.update(handle.lastRoot);",
+    "    },",
+    "    unmount(handle) {",
+    "      handle.host.unmount();",
+    "    },",
+    "  });",
+    "",
+    "  return {",
+    "    ...mounted,",
+    "    getHost() {",
+    "      return mounted.getImplementationHandle().host;",
+    "    },",
+    "    getThemeTarget() {",
+    "      return mounted.getImplementationHandle().themeTarget;",
+    "    },",
+    "    getCapabilities() {",
+    "      return exampleRendererCapabilities;",
+    "    },",
+    "  };",
+    "}",
+    "",
+    "function detectExampleEnvironment(): boolean {",
+    "  return false;",
+    "}",
+    "",
+    "function applyExampleTheme(",
+    "  target: ExampleThemeTarget,",
+    "  theme: RendererThemeValues,",
+    "): void {",
+    "  for (const [token, value] of Object.entries(theme)) {",
+    "    if (value === undefined) {",
+    "      continue;",
+    "    }",
+    "",
+    "    target.setThemeVariable(`--faux-ui-color-${token}`, value);",
+    "  }",
+    "}",
+    "",
+  ].join("\n");
+}
+
+function buildRendererTemplateTest(): string {
+  return [
+    'import { createElement } from "react";',
+    'import { describe, expect, it } from "vitest";',
+    "",
+    'import { exampleRenderer, render } from "../src/index.js";',
+    "",
+    'describe("example renderer template", () => {',
+    '  it("mounts and updates through the host bridge", () => {',
+    "    const events: string[] = [];",
+    '    const mounted = render(createElement("view" as never), {',
+    "      host: {",
+    "        mount(root) {",
+    "          events.push(`mount:${root.kind}`);",
+    "        },",
+    "        update(root) {",
+    "          events.push(`update:${root.kind}`);",
+    "        },",
+    "        unmount() {",
+    '          events.push("unmount");',
+    "        },",
+    "      },",
+    "    });",
+    "",
+    "    expect(exampleRenderer.name).toBeTruthy();",
+    "    expect(mounted.getCapabilities().supportsThemeTarget).toBe(true);",
+    "    expect(mounted.getThemeTarget().variables).toEqual({});",
+    '    mounted.update(createElement("text" as never, undefined, "next"));',
+    "    mounted.rerender();",
+    "    mounted.unmount();",
+    "",
+    "    expect(events).toEqual([",
+    '      "mount:view",',
+    '      "update:text",',
+    '      "update:text",',
+    '      "unmount",',
+    "    ]);",
+    "  });",
+    "});",
+    "",
+  ].join("\n");
+}
+
 function buildTuiApp(name: string): string {
   return [
     'import { render } from "@faux-ui/app";',
+    'import { AppShell, Button, Panel } from "@faux-ui/ui";',
     "",
     `const appName = ${JSON.stringify(name)};`,
     "",
     "render(",
-    "  <view rows={[1, 1, 1, 1]}>",
-    "    <text>{`${appName} starter`}</text>",
-    "    <view focusable>",
-    "      <text>This card is focusable.</text>",
+    "  <AppShell",
+    '    label="starter"',
+    "    title={`${appName} starter`}",
+    '    description="Text-first UI for tools and operators."',
+    '    footer="Press Tab to focus the button and Ctrl+C to exit."',
+    "  >",
+    '    <view rows={[4, 4]} style={{ background: "bg" }}>',
+    "      <Button",
+    '        label="action"',
+    '        title="Run task"',
+    '        description="Focusable interaction shared across browser and terminal renderers."',
+    '        footer="onPress hooks into your app state"',
+    "        onPress={() => {}}",
+    "      />",
+    "      <Panel",
+    '        label="panel"',
+    '        title="Deterministic layout"',
+    '        description="The same semantic tree can target terminal, browser, and snapshots."',
+    '        footer="Drop to view/text only when you need lower-level control."',
+    "      />",
     "    </view>",
-    "    <text>faux-ui is rendering this layout through the TUI runtime.</text>",
-    "    <text>Press Ctrl+C to exit.</text>",
-    "  </view>,",
+    "  </AppShell>,",
     ");",
   ].join("\n");
 }
@@ -386,6 +745,7 @@ function buildDomApp(name: string): string {
   return [
     'import { useState } from "react";',
     'import { render } from "@faux-ui/app";',
+    'import { AppShell, Button, Panel } from "@faux-ui/ui";',
     'import "./styles.css";',
     "",
     `const appName = ${JSON.stringify(name)};`,
@@ -394,17 +754,28 @@ function buildDomApp(name: string): string {
     "  const [count, setCount] = useState(0);",
     "",
     "  return (",
-    '    <view rows={[56, 96, 44]} style={{ background: "bg" }}>',
-    '      <view rows={[28, 28]} style={{ background: "accent" }}>',
-    '        <text style={{ color: "inverse" }}>{`${appName} starter`}</text>',
-    '        <text style={{ color: "inverse" }}>DOM runtime with React state</text>',
+    "    <AppShell",
+    '      label="starter"',
+    "      title={`${appName} starter`}",
+    '      description="Text-first UI for tools and operators."',
+    '      footer="Click the button or focus it and press Enter."',
+    "    >",
+    '      <view rows={[4, 4]} style={{ background: "bg" }}>',
+    "        <Button",
+    '          label="action"',
+    '          title="Run task"',
+    '          description={`Count: ${count}`}',
+    '          footer="React state rerenders through @faux-ui/app"',
+    '          onPress={() => setCount((value) => value + 1)}',
+    "        />",
+    "        <Panel",
+    '          label="panel"',
+    '          title="Deterministic layout"',
+    '          description="Use Button and Panel first, then drop to view/text when you need exact control."',
+    '          footer="The DOM renderer keeps the same text-grid semantics."',
+    "        />",
     "      </view>",
-    '      <view rows={[30, 54]} focusable onClick={() => setCount((c) => c + 1)} onPress={() => setCount((c) => c + 1)} style={{ background: "selection" }} styleHover={{ background: "focus" }} styleFocus={{ background: "focus" }}>',
-    '        <text style={{ color: "accent" }}>Interaction card</text>',
-    '        <text style={{ color: "fg" }}>{`Count: ${count}`}</text>',
-    "      </view>",
-    '      <text style={{ color: "muted" }}>Click the card or use Tab plus Enter to update state.</text>',
-    "    </view>",
+    "    </AppShell>",
     "  );",
     "}",
     "",
@@ -472,11 +843,12 @@ function buildDocumentSpec(name: string): Record<string, unknown> {
 
 function buildUsage(): string {
   return [
-    "Usage: create-faux-ui <name> [--template jsx|json|hybrid] [--renderer dom|tui] [--pm bun|npm|pnpm]",
+    "Usage: create-faux-ui <name> [--template jsx|json|hybrid|renderer] [--renderer dom|tui] [--pm bun|npm|pnpm]",
     "- jsx creates a TypeScript + JSX starter, defaulting to the TUI renderer",
     "- json creates a schema document starter for exec-faux-ui",
     "- hybrid creates both JSX and JSON entrypoints",
-    "- renderer applies to JSX and hybrid starters",
+    "- renderer creates a third-party renderer package starter built on @faux-ui/renderer",
+    "- --renderer applies only to JSX and hybrid starters",
   ].join("\n");
 }
 
@@ -492,7 +864,12 @@ function ensureTargetDirectory(rootDir: string): void {
 }
 
 function parseTemplate(value: string): ScaffoldTemplate {
-  if (value === "jsx" || value === "json" || value === "hybrid") {
+  if (
+    value === "jsx" ||
+    value === "json" ||
+    value === "hybrid" ||
+    value === "renderer"
+  ) {
     return value;
   }
 
@@ -544,6 +921,10 @@ function buildStartCommand(
   packageManager: PackageManager,
 ): string {
   const runner = resolvePackageManagerBinary(packageManager);
+
+  if (template === "renderer") {
+    return `${runner} run test`;
+  }
 
   if (template === "json") {
     return `${runner} run preview:tui`;

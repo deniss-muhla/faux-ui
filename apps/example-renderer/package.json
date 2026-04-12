@@ -1,0 +1,24 @@
+{
+  "name": "@faux-ui/example-renderer",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev:dom": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json --pretty false"
+  },
+  "dependencies": {
+    "@faux-ui/core": "workspace:*",
+    "@faux-ui/renderer": "workspace:*",
+    "@faux-ui/ui": "workspace:*",
+    "react": "^19.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.2",
+    "typescript": "^6.0.0",
+    "vite": "^6.3.5"
+  }
+}

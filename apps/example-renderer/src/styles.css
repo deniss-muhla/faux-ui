@@ -1,0 +1,66 @@
+:root {
+  color-scheme: light;
+  font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top, #fff7e5 0, #fff7e5 16%, transparent 16%),
+    linear-gradient(180deg, #f2e8d8 0%, #e7dac5 100%);
+  color: #1f2937;
+}
+
+.page-shell {
+  width: min(1100px, calc(100vw - 32px));
+  margin: 0 auto;
+  padding: 24px 0 40px;
+}
+
+.intro {
+  margin-bottom: 18px;
+}
+
+.intro h1 {
+  margin: 6px 0 10px;
+  font-size: clamp(2rem, 4vw, 3.4rem);
+  line-height: 0.95;
+}
+
+.intro p {
+  max-width: 72ch;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.eyebrow {
+  margin-bottom: 10px;
+  color: #0f766e;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.75rem;
+}
+
+#canvas-renderer {
+  display: block;
+  width: 100%;
+  max-width: 960px;
+  border: 1px solid #d6cfc3;
+  background: #fffdf7;
+  box-shadow: 0 22px 48px rgba(54, 46, 33, 0.12);
+}
+
+code {
+  font-family: inherit;
+  font-size: 0.95em;
+}

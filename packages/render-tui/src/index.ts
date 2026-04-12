@@ -25,7 +25,7 @@ export {
   resolveTerminalMouseSupport,
   supportsTerminalMouse,
 } from "./terminal-host.js";
-export { render } from "./render-app.js";
+export { render, tuiRenderer } from "./render-app.js";
 export type { MountedRenderedTuiApp } from "./render-app.js";
 export type {
   MountedTerminalTuiHost,

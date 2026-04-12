@@ -3,8 +3,11 @@
 
 export { jsxDEV, Fragment } from "react/jsx-dev-runtime";
 
-import type { JSX as ReactJSX } from "react";
-import type { ViewProps, TextProps } from "./index.js";
+import type { JSX as ReactJSX, Ref } from "react";
+import type { TextProps, UINodeHandle, ViewProps } from "./index.js";
+
+type ViewElementProps = ViewProps & { ref?: Ref<UINodeHandle> };
+type TextElementProps = TextProps & { ref?: Ref<UINodeHandle> };
 
 export namespace JSX {
   export type Element = ReactJSX.Element;
@@ -20,7 +23,7 @@ export namespace JSX {
     extends ReactJSX.ElementChildrenAttribute {}
 
   export interface IntrinsicElements {
-    view: ViewProps;
-    text: TextProps;
+    view: ViewElementProps;
+    text: TextElementProps;
   }
 }

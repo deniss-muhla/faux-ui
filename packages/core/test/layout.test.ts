@@ -70,6 +70,68 @@ describe("layout computation", () => {
     expect(root.layout.contentSize).toEqual({ width: 8, height: 2 });
   });
 
+  it("supports optional named tracks while keeping numeric placement valid", () => {
+    const root = createViewNode({
+      spec: {
+        rows: [{ name: "header", size: 1 }, { name: "body", size: "1fr" }],
+        columns: [{ name: "side", size: 2 }, { name: "main", size: "1fr" }],
+      },
+    });
+    appendChild(
+      root,
+      createTextNode({ spec: { text: "A", style: null } }),
+    );
+    appendChild(
+      root,
+      createTextNode({
+        spec: {
+          text: "B",
+          row: "body",
+          column: "main",
+          style: null,
+        },
+      }),
+    );
+
+    const size = layoutNode(root, ROOT_CONSTRAINTS);
+
+    expect(size).toEqual({ width: 8, height: 4 });
+    expect(root.layout.childFrames?.[0]).toEqual({
+      x: 0,
+      y: 0,
+      width: 1,
+      height: 1,
+    });
+    expect(root.layout.childFrames?.[1]).toEqual({
+      x: 2,
+      y: 1,
+      width: 1,
+      height: 1,
+    });
+  });
+
+  it("rejects unknown named tracks during placement", () => {
+    const root = createViewNode({
+      spec: {
+        rows: [{ name: "header", size: 1 }, { name: "body", size: "1fr" }],
+      },
+    });
+    appendChild(
+      root,
+      createTextNode({
+        spec: {
+          text: "A",
+          row: "missing",
+          style: null,
+        },
+      }),
+    );
+
+    expect(() => layoutNode(root, ROOT_CONSTRAINTS)).toThrow(
+      /unknown row track/,
+    );
+  });
+
   it("throws for child overflow beyond available cells", () => {
     const root = createViewNode({
       spec: { rows: ["auto"], columns: ["auto"] },

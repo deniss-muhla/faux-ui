@@ -1,0 +1,22 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`example-tui visual regression > renders the shared example through the TUI renderer consistently 1`] = `
+"shared faux-ui studio             INTERACTIVE TOGGLE      INTERACTIVE TOGGLE                    
+Refine the current slice          Priority                Spotlight                             
+                                  Calm orbit              Focused                               
+                                                                                                
+                                                                                                
+INTERACTIVE LANE            Current focus                         Event log                     
+Backlog                     INTERACTIVE cards are actionable.     EVENT                         
+Shape next experiments                                            Shared example ready. DOM and 
+                            DOM runtime                           EVENT                         
+                            SELECTED TASK                         Look for INTERACTIVE cards. Ho
+                            Mirror focus and hover state visibly.                               
+INTERACTIVE LANE                                                                                
+Active                      INTERACTIVE TASK                                                    
+Application-owned handlers                            Keyboard                                  
+DOM and TUI both call the same app-owned handlers and Tab moves focus. Enter and Space activate 
+Renderer contract                                     Pointer                                   
+Platform detection now lives only in renderer definitiPointer and keyboard events call app-owned
+                                                                                                "
+`;
