@@ -19,8 +19,8 @@ describe("create-faux-ui", () => {
     expect(plan.files.map((file) => file.path)).toContain("tsconfig.json");
 
     const packageJson = plan.files.find((file) => file.path === "package.json");
-    expect(packageJson?.content).toContain("@faux-ui/reconciler");
     expect(packageJson?.content).toContain("@faux-ui/app");
+    expect(packageJson?.content).toContain("@faux-ui/ui");
     expect(packageJson?.content).toContain('"start": "tsx src/main.tsx"');
   });
 
@@ -36,6 +36,7 @@ describe("create-faux-ui", () => {
 
     const packageJson = plan.files.find((file) => file.path === "package.json");
     expect(packageJson?.content).toContain("@faux-ui/app");
+    expect(packageJson?.content).toContain("@faux-ui/ui");
     expect(packageJson?.content).toContain('"start": "vite"');
     expect(packageJson?.content).toContain('"build": "vite build"');
   });
@@ -115,6 +116,8 @@ describe("create-faux-ui", () => {
     expect(packageJson).toContain('"start": "vite"');
     expect(appSource).toContain("render(");
     expect(appSource).toContain("useState");
+    expect(appSource).toContain("AppShell");
+    expect(appSource).toContain("Button");
     expect(documentSource).toContain("drag-root-start");
     expect(documentSource).toContain("--inspect bindings");
     expect(indexHtml).toContain("<title>");

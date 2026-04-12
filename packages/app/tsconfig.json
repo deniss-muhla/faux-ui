@@ -11,6 +11,7 @@
     { "path": "../reconciler" },
     { "path": "../renderer" },
     { "path": "../render-dom" },
-    { "path": "../render-tui" }
+    { "path": "../render-tui" },
+    { "path": "../ui" }
   ]
 }

@@ -320,6 +320,7 @@ describe("dom renderer", () => {
   });
 
   it("normalizes and clamps manual DOM scroll offsets", () => {
+    const stateChanges: number[] = [];
     const root = createViewNode({
       spec: { rows: ["auto", "auto"], scroll: "y" },
     });
@@ -339,6 +340,9 @@ describe("dom renderer", () => {
       document,
       constraints: SCROLL_CONSTRAINTS,
       measureText: ({ text }) => ({ width: text.length, height: 1 }),
+      onStateChange: () => {
+        stateChanges.push(1);
+      },
     });
 
     mounted.setScrollOffset(root.id, { x: 2.7, y: 99.4 });
@@ -350,10 +354,12 @@ describe("dom renderer", () => {
 
     expect(mounted.getScrollOffset(root.id)).toEqual({ x: 0, y: 0 });
     expect(container.children[0]?.children[0]?.textContent).toBe("one");
+    expect(stateChanges).toHaveLength(2);
   });
 
   it("translates wheel input into managed DOM scroll updates", () => {
     const dispatched: Array<Array<string | number>> = [];
+    const stateChanges: number[] = [];
     const root = createViewNode({
       spec: { rows: ["auto", "auto"], scroll: "y" },
       bindings: { scroll: "scroll-root" },
@@ -377,6 +383,9 @@ describe("dom renderer", () => {
       onDispatch: ({ result }) => {
         dispatched.push(result.actions.map((action) => action.action));
       },
+      onStateChange: () => {
+        stateChanges.push(1);
+      },
     });
 
     container.emit("wheel", { clientX: 0, clientY: 0, deltaX: 0, deltaY: 1 });
@@ -384,6 +393,7 @@ describe("dom renderer", () => {
     expect(mounted.getScrollOffset(root.id)).toEqual({ x: 0, y: 1 });
     expect(container.children[0]?.children[0]?.textContent).toBe("two");
     expect(dispatched).toEqual([["scroll-root"]]);
+    expect(stateChanges).toHaveLength(1);
   });
 
   it("updates projected hover and focus styles through the DOM runtime", async () => {

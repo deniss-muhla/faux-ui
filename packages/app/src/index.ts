@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { createElement, type ReactNode } from "react";
+import type { ScrollOffset } from "@faux-ui/core";
 
 import {
   selectRenderer,
@@ -18,6 +19,11 @@ import {
   type MountedRenderedTuiApp,
   type TerminalTuiHostOptions,
 } from "@faux-ui/render-tui";
+import {
+  UiRuntimeProvider,
+  createUiRuntimeBridge,
+  type UiRuntimeAdapter,
+} from "@faux-ui/ui";
 
 export type RenderOptions<THandler = unknown> = DomAppOptions<THandler> &
   TerminalTuiHostOptions<THandler>;
@@ -46,6 +52,8 @@ export function render<THandler = unknown>(
   node: ReactNode,
   options?: BuiltInRenderOptions<THandler>,
 ): MountedRenderedApp<THandler> {
+  const bridge = createUiRuntimeBridge();
+  const wrappedNode = createElement(UiRuntimeProvider, { bridge }, node);
   const requestedRenderer = (options as { renderer?: unknown } | undefined)
     ?.renderer;
 
@@ -56,8 +64,28 @@ export function render<THandler = unknown>(
     const injected = options as unknown as InjectedRendererOptions<
       RendererDefinition<any, any, any>
     >;
+    if (injected.renderer.name === domRenderer.name) {
+      const mounted = renderBrowser(wrappedNode, {
+        ...(injected.rendererOptions as DomAppOptions<THandler>),
+        onStateChange: () => bridge.notify(),
+      });
+      bridge.attach(createRuntimeAdapter(mounted));
+      bridge.notify();
+      return mounted;
+    }
+
+    if (injected.renderer.name === tuiRenderer.name) {
+      const mounted = renderTerminal(wrappedNode, {
+        ...(injected.rendererOptions as TerminalTuiHostOptions<THandler>),
+        onStateChange: () => bridge.notify(),
+      });
+      bridge.attach(createRuntimeAdapter(mounted));
+      bridge.notify();
+      return mounted;
+    }
+
     return injected.renderer.render(
-      node,
+      wrappedNode,
       injected.rendererOptions,
     ) as MountedRenderedApp<THandler>;
   }
@@ -67,13 +95,22 @@ export function render<THandler = unknown>(
   const selected = selectRenderer(builtInRenderers, renderer);
 
   if (selected.name === domRenderer.name) {
-    return renderBrowser(node, rendererOptions as DomAppOptions<THandler>);
+    const mounted = renderBrowser(wrappedNode, {
+      ...(rendererOptions as DomAppOptions<THandler>),
+      onStateChange: () => bridge.notify(),
+    });
+    bridge.attach(createRuntimeAdapter(mounted));
+    bridge.notify();
+    return mounted;
   }
 
-  return renderTerminal(
-    node,
-    rendererOptions as TerminalTuiHostOptions<THandler>,
-  );
+  const mounted = renderTerminal(wrappedNode, {
+    ...(rendererOptions as TerminalTuiHostOptions<THandler>),
+    onStateChange: () => bridge.notify(),
+  });
+  bridge.attach(createRuntimeAdapter(mounted));
+  bridge.notify();
+  return mounted;
 }
 
 export function renderWithRenderer<
@@ -83,6 +120,38 @@ export function renderWithRenderer<
   options: InjectedRendererOptions<TRenderer>,
 ): RendererMountedOf<TRenderer> {
   return options.renderer.render(node, options.rendererOptions);
+}
+
+function createRuntimeAdapter<THandler>(
+  mounted: MountedRenderedApp<THandler>,
+): UiRuntimeAdapter {
+  if ("getRuntime" in mounted) {
+    const runtime = mounted.getRuntime();
+    return {
+      getMountedNode() {
+        return mounted.getMountedNode();
+      },
+      getScrollOffset(nodeId: number) {
+        return runtime.getScrollOffset(nodeId);
+      },
+      setScrollOffset(nodeId: number, offset: ScrollOffset) {
+        runtime.setScrollOffset(nodeId, offset);
+      },
+    };
+  }
+
+  const runtime = mounted.getHost().getRuntime();
+  return {
+    getMountedNode() {
+      return mounted.getMountedNode();
+    },
+    getScrollOffset(nodeId: number) {
+      return runtime.getScrollOffset(nodeId);
+    },
+    setScrollOffset(nodeId: number, offset: ScrollOffset) {
+      runtime.setScrollOffset(nodeId, offset);
+    },
+  };
 }
 
 export { View, Text, VIEW_TYPE, TEXT_TYPE } from "@faux-ui/reconciler";

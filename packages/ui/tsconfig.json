@@ -10,8 +10,7 @@
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
   "references": [
-    { "path": "../../packages/core" },
-    { "path": "../../packages/reconciler" },
-    { "path": "../foundation" }
+    { "path": "../core" },
+    { "path": "../reconciler" }
   ]
 }

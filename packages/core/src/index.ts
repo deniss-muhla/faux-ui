@@ -2,8 +2,10 @@ export type {
   BoundedConstraints,
   Constraints,
   LayoutNode,
+  NamedTrackShorthand,
   Size,
   Track,
+  TrackSizeShorthand,
   TrackShorthand,
 } from "./types.js";
 export type {
@@ -21,6 +23,7 @@ export type {
   SemanticColor,
   StyleValue,
   TextNode,
+  TrackPlacement,
   UINode,
   UINodeBase,
   ViewNode,
@@ -38,9 +41,13 @@ export type {
 export {
   assertBoundedConstraints,
   clampSize,
+  cloneTrackShorthand,
+  isNamedTrackShorthand,
   normalizeResolvedSize,
   normalizeTrack,
   normalizeTrackList,
+  readTrackName,
+  sameTrackShorthand,
 } from "./types.js";
 export { resolveTracks } from "./resolveTracks.js";
 export { layoutNode } from "./layout.js";

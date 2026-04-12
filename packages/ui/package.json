@@ -1,10 +1,9 @@
 {
-  "name": "@faux-ui/action",
+  "name": "@faux-ui/ui",
   "version": "0.1.0",
   "type": "module",
   "dependencies": {
     "@faux-ui/core": "workspace:*",
-    "@faux-ui/foundation": "workspace:*",
     "@faux-ui/reconciler": "workspace:*"
   },
   "peerDependencies": {
@@ -16,6 +15,14 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./jsx-runtime": {
+      "types": "./dist/jsx-runtime.d.ts",
+      "default": "./dist/jsx-runtime.js"
+    },
+    "./jsx-dev-runtime": {
+      "types": "./dist/jsx-dev-runtime.d.ts",
+      "default": "./dist/jsx-dev-runtime.js"
     }
   },
   "files": [

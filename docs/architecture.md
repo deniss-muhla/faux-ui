@@ -7,6 +7,7 @@ This document explains the current implementation architecture of faux-ui. It co
 faux-ui is organized around a small set of architectural constraints:
 
 - one semantic model shared across renderers
+- a small public authoring surface built around `@faux-ui/app` and `@faux-ui/ui`
 - TUI-first semantics with DOM as a projection, not a source of layout truth
 - deterministic fixed-cell layout with no CSS-style negotiation
 - strict separation between layout and render phases
@@ -20,7 +21,8 @@ Those constraints are visible throughout the repository structure and in the mai
 
 ```mermaid
 flowchart LR
-  A[JSX authoring] --> B[@faux-ui/reconciler]
+  A[JSX authoring] --> U[@faux-ui/ui]
+  U --> B[@faux-ui/reconciler]
   A --> Q[@faux-ui/app]
   J[JSON authoring] --> K[@faux-ui/schema]
   Q --> F[@faux-ui/render-dom]
@@ -60,13 +62,25 @@ It owns:
 
 No renderer package redefines these rules. That is the main architectural guardrail in the repository.
 
+### `@faux-ui/ui`
+
+`@faux-ui/ui` is the public JSX authoring surface.
+
+It provides:
+
+- the public JSX import source (`jsxImportSource: "@faux-ui/ui"`)
+- a minimal primitive set such as `AppShell`, `Button`, and `Panel`
+- optional low-level escape hatches via `View` and `Text`
+
+This package exists so application code can depend on one UI package instead of multiple low-level packages. Its components compile down to plain faux-ui `view` and `text` semantics.
+
 ### `@faux-ui/reconciler`
 
-`@faux-ui/reconciler` is the current JSX bridge.
+`@faux-ui/reconciler` is the internal JSX bridge behind `@faux-ui/ui` and the renderer stack.
 
 It converts React host instances into `UINode` objects, exposes the faux-ui intrinsic host types, and maps shorthand event props such as `onClick` and `onKeyDown` into core binding slots. JSX event props can now be either direct application-owned handler functions or semantic action identifiers. The reconciler does not perform layout, rendering, or app-state orchestration. Its job is to maintain the semantic tree and preserve the framework's authoring constraints, such as raw text only being legal inside `text`.
 
-The reconciler also provides a custom JSX import source (`@faux-ui/reconciler/jsx-runtime`) that restricts intrinsic elements to `view` and `text` at compile time, preventing accidental use of standard HTML tags in faux-ui JSX files.
+The public JSX runtime lives in `@faux-ui/ui`, but it uses the same reconciler-backed intrinsic restrictions so only `view` and `text` are legal host tags at compile time.
 
 ### `@faux-ui/app`
 
@@ -163,7 +177,7 @@ These packages matter architecturally because they show the intended integration
 
 The repository currently supports two authoring directions:
 
-- JSX through `@faux-ui/reconciler`
+- JSX through `@faux-ui/ui` (backed by `@faux-ui/reconciler`)
 - JSON-compatible documents through `@faux-ui/schema`
 
 Both paths are intended to converge on the same semantic runtime rules. The authoring layer is allowed to be ergonomic, but it is not allowed to invent alternate layout or dispatch semantics.

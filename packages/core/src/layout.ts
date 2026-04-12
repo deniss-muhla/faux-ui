@@ -4,6 +4,7 @@ import {
   commitLayout,
   type LayoutComputation,
   type Rect,
+  type TrackPlacement,
   type TextNode,
   type UINode,
   type ViewNode,
@@ -12,6 +13,7 @@ import {
   normalizeResolvedSize,
   clampSize,
   normalizeTrackList,
+  readTrackName,
   type Constraints,
   type Size,
   type TrackShorthand,
@@ -291,15 +293,231 @@ function buildPlacements(
   const byRow: number[][] = rows.map(() => []);
   const byColumn: number[][] = columns.map(() => []);
 
+  const rowNames = buildTrackNameMap(rows, "row");
+  const columnNames = buildTrackNameMap(columns, "column");
+  const autoChildren: number[] = [];
+
   for (let index = 0; index < node.children.length; index += 1) {
-    const rowIndex = Math.floor(index / columns.length);
-    const columnIndex = index % columns.length;
-    cells[rowIndex]![columnIndex] = index;
-    byRow[rowIndex]!.push(index);
-    byColumn[columnIndex]!.push(index);
+    const child = node.children[index];
+    if (child === undefined) {
+      continue;
+    }
+
+    const placement = readChildPlacement(child);
+    if (placement.row === null && placement.column === null) {
+      autoChildren.push(index);
+      continue;
+    }
+
+    placeChild(
+      node.id,
+      index,
+      placement.row,
+      placement.column,
+      cells,
+      byRow,
+      byColumn,
+      rowNames,
+      columnNames,
+    );
+  }
+
+  for (const childIndex of autoChildren) {
+    placeAutoChild(node.id, childIndex, cells, byRow, byColumn);
   }
 
   return { cells, byRow, byColumn };
+}
+
+function buildTrackNameMap(
+  tracks: TrackShorthand[],
+  axis: "row" | "column",
+): Map<string, number> {
+  const names = new Map<string, number>();
+
+  for (let index = 0; index < tracks.length; index += 1) {
+    const track = tracks[index];
+    if (track === undefined) {
+      continue;
+    }
+
+    const name = readTrackName(track);
+    if (name === null) {
+      continue;
+    }
+
+    if (names.has(name)) {
+      throw new Error(`Duplicate ${axis} track name: ${name}`);
+    }
+
+    names.set(name, index);
+  }
+
+  return names;
+}
+
+function readChildPlacement(child: UINode): {
+  row: TrackPlacement | null;
+  column: TrackPlacement | null;
+} {
+  return {
+    row: child.spec.row,
+    column: child.spec.column,
+  };
+}
+
+function placeChild(
+  nodeId: number,
+  childIndex: number,
+  rowPlacement: TrackPlacement | null,
+  columnPlacement: TrackPlacement | null,
+  cells: Array<Array<number | undefined>>,
+  byRow: number[][],
+  byColumn: number[][],
+  rowNames: Map<string, number>,
+  columnNames: Map<string, number>,
+): void {
+  const rowIndex = resolvePlacement(
+    nodeId,
+    rowPlacement,
+    rowNames,
+    cells.length,
+    "row",
+  );
+  const columnIndex = resolvePlacement(
+    nodeId,
+    columnPlacement,
+    columnNames,
+    cells[0]?.length ?? 0,
+    "column",
+  );
+
+  if (rowIndex !== null && columnIndex !== null) {
+    occupyCell(nodeId, childIndex, rowIndex, columnIndex, cells, byRow, byColumn);
+    return;
+  }
+
+  if (rowIndex !== null) {
+    for (let nextColumn = 0; nextColumn < (cells[rowIndex]?.length ?? 0); nextColumn += 1) {
+      if (cells[rowIndex]?.[nextColumn] === undefined) {
+        occupyCell(
+          nodeId,
+          childIndex,
+          rowIndex,
+          nextColumn,
+          cells,
+          byRow,
+          byColumn,
+        );
+        return;
+      }
+    }
+
+    throw new Error(
+      `View ${nodeId} could not place child ${childIndex} in row ${String(rowPlacement)}.`,
+    );
+  }
+
+  if (columnIndex !== null) {
+    for (let nextRow = 0; nextRow < cells.length; nextRow += 1) {
+      if (cells[nextRow]?.[columnIndex] === undefined) {
+        occupyCell(
+          nodeId,
+          childIndex,
+          nextRow,
+          columnIndex,
+          cells,
+          byRow,
+          byColumn,
+        );
+        return;
+      }
+    }
+
+    throw new Error(
+      `View ${nodeId} could not place child ${childIndex} in column ${String(columnPlacement)}.`,
+    );
+  }
+}
+
+function placeAutoChild(
+  nodeId: number,
+  childIndex: number,
+  cells: Array<Array<number | undefined>>,
+  byRow: number[][],
+  byColumn: number[][],
+): void {
+  for (let rowIndex = 0; rowIndex < cells.length; rowIndex += 1) {
+    for (
+      let columnIndex = 0;
+      columnIndex < (cells[rowIndex]?.length ?? 0);
+      columnIndex += 1
+    ) {
+      if (cells[rowIndex]?.[columnIndex] === undefined) {
+        occupyCell(
+          nodeId,
+          childIndex,
+          rowIndex,
+          columnIndex,
+          cells,
+          byRow,
+          byColumn,
+        );
+        return;
+      }
+    }
+  }
+
+  throw new Error(`View ${nodeId} has no remaining free cells.`);
+}
+
+function occupyCell(
+  nodeId: number,
+  childIndex: number,
+  rowIndex: number,
+  columnIndex: number,
+  cells: Array<Array<number | undefined>>,
+  byRow: number[][],
+  byColumn: number[][],
+): void {
+  if (cells[rowIndex]?.[columnIndex] !== undefined) {
+    throw new Error(
+      `View ${nodeId} has multiple children targeting row ${rowIndex} column ${columnIndex}.`,
+    );
+  }
+
+  cells[rowIndex]![columnIndex] = childIndex;
+  byRow[rowIndex]!.push(childIndex);
+  byColumn[columnIndex]!.push(childIndex);
+}
+
+function resolvePlacement(
+  nodeId: number,
+  placement: TrackPlacement | null,
+  names: Map<string, number>,
+  length: number,
+  axis: "row" | "column",
+): number | null {
+  if (placement === null) {
+    return null;
+  }
+
+  if (typeof placement === "number") {
+    if (placement >= 0 && placement < length) {
+      return placement;
+    }
+
+    throw new Error(
+      `View ${nodeId} ${axis} placement ${placement} is outside the available tracks.`,
+    );
+  }
+
+  const namedIndex = names.get(placement);
+  if (namedIndex !== undefined) {
+    return namedIndex;
+  }
+
+  throw new Error(`View ${nodeId} references unknown ${axis} track: ${placement}`);
 }
 
 function sameConstraints(

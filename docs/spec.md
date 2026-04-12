@@ -2,7 +2,7 @@
 
 ## Purpose
 
-faux-ui is a deterministic cross-renderer UI framework built around strict constraint algebra, explicit track resolution, and a hard separation between layout and rendering.
+faux-ui is a deterministic text-first UI framework for agents, operators, and tool UIs. It is built around explicit track resolution and a hard separation between layout and rendering.
 
 This specification freezes the core behavioral rules without importing hidden semantics from the DOM, CSS Grid, Flexbox, or existing TUI layout systems.
 
@@ -10,9 +10,10 @@ This specification freezes the core behavioral rules without importing hidden se
 
 - Workspace and package management: Bun
 - Runtime compatibility target: Node 22+
-- TypeScript baseline: 5.9 stable
-- TypeScript canary lane: 6.0 beta
+- TypeScript baseline: 6.0 stable
+- TypeScript next lane: 6.x
 - Authoring formats: JSX and JSON
+- Canonical JSX authoring surface: `@faux-ui/ui`
 - Canonical runtime semantics: shared across JSX and JSON
 
 ## Core Philosophy
@@ -306,18 +307,26 @@ The TUI renderer owns frame buffer construction, clipping, scroll transforms, an
 
 The engine operates in integer logical units only.
 
-## Public Monorepo Shape
+## Monorepo Shape
+
+Public authoring surface:
+
+- `@faux-ui/app`
+- `@faux-ui/ui`
+- `create-faux-ui`
+- `exec-faux-ui`
+
+Engine and tooling packages:
 
 - `@faux-ui/core`
-- `@faux-ui/app`
 - `@faux-ui/reconciler`
+- `@faux-ui/renderer`
 - `@faux-ui/render-dom`
 - `@faux-ui/render-tui`
+- `@faux-ui/render-inspect`
 - `@faux-ui/schema`
 - `@faux-ui/devtools`
 - `@faux-ui/mcp`
-- `create-faux-ui`
-- `exec-faux-ui`
 
 ## CLI Contract
 

@@ -5,14 +5,18 @@ import { defineConfig } from "vite";
 export default defineConfig({
   resolve: {
     alias: {
-      "@faux-ui/action": resolve(
-        __dirname,
-        "../../design-system/action/src/index.tsx",
-      ),
       "@faux-ui/core": resolve(__dirname, "../../packages/core/src/index.ts"),
-      "@faux-ui/foundation": resolve(
+      "@faux-ui/ui/jsx-runtime": resolve(
         __dirname,
-        "../../design-system/foundation/src/index.tsx",
+        "../../packages/ui/src/jsx-runtime.ts",
+      ),
+      "@faux-ui/ui/jsx-dev-runtime": resolve(
+        __dirname,
+        "../../packages/ui/src/jsx-dev-runtime.ts",
+      ),
+      "@faux-ui/ui": resolve(
+        __dirname,
+        "../../packages/ui/src/index.ts",
       ),
       "@faux-ui/app": resolve(__dirname, "../../packages/app/src/index.ts"),
       "@faux-ui/renderer": resolve(
@@ -39,14 +43,10 @@ export default defineConfig({
         __dirname,
         "../../packages/render-tui/src/index.ts",
       ),
-      "@faux-ui/surface": resolve(
-        __dirname,
-        "../../design-system/surface/src/index.tsx",
-      ),
     },
   },
   esbuild: {
-    jsxImportSource: "@faux-ui/reconciler",
+    jsxImportSource: "@faux-ui/ui",
   },
   server: {
     host: "127.0.0.1",

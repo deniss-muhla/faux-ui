@@ -188,6 +188,7 @@ export function mountTerminalTuiHost<THandler>(
   const handleResize = () => {
     runtime.update(undefined, buildRuntimeOptions(currentOptions, io.stdout));
     rerenderInternal();
+    currentOptions.onStateChange?.();
   };
 
   return {

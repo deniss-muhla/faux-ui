@@ -86,6 +86,7 @@ export function render<THandler = unknown>(
           ? observeResize(container, () => {
               constraints = measureCellConstraints(container);
               runtime.update(root, { constraints });
+              initialOptions.onStateChange?.();
             })
           : () => {};
 

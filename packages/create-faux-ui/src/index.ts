@@ -214,10 +214,10 @@ function buildPackageJson(options: ScaffoldOptions): Record<string, unknown> {
 
   if (options.template === "jsx" || options.template === "hybrid") {
     dependencies["@faux-ui/app"] = "0.1.0";
-    dependencies["@faux-ui/reconciler"] = "0.1.0";
+    dependencies["@faux-ui/ui"] = "0.1.0";
     dependencies.react = "^19.2.0";
     devDependencies["@types/react"] = "^19.2.2";
-    devDependencies.typescript = "^5.9.0";
+    devDependencies.typescript = "^6.0.0";
     scripts.typecheck = "tsc --noEmit";
 
     if (options.renderer === "tui") {
@@ -284,7 +284,7 @@ function buildRendererPackageJson(
     },
     devDependencies: {
       "@types/react": "^19.2.2",
-      typescript: "^5.9.0",
+      typescript: "^6.0.0",
       vitest: "^3.0.0",
     },
     exports: {
@@ -312,7 +312,7 @@ function buildTsconfig(renderer: ScaffoldRenderer): Record<string, unknown> {
     module: "NodeNext",
     moduleResolution: "NodeNext",
     jsx: "react-jsx",
-    jsxImportSource: "@faux-ui/reconciler",
+    jsxImportSource: "@faux-ui/ui",
     strict: true,
     noEmit: true,
     skipLibCheck: true,
@@ -387,6 +387,9 @@ function buildReadme(options: ScaffoldOptions): string {
     "",
     "- The generated dependencies assume published faux-ui packages.",
     "- When working from a monorepo clone, replace them with local workspace or file references.",
+    ...(options.template !== "json"
+      ? ["- JSX authoring uses @faux-ui/ui as the component surface and JSX runtime."]
+      : []),
     ...(options.template !== "json"
       ? [`- Renderer target: ${options.renderer.toUpperCase()}`]
       : []),
@@ -689,18 +692,33 @@ function buildRendererTemplateTest(): string {
 function buildTuiApp(name: string): string {
   return [
     'import { render } from "@faux-ui/app";',
+    'import { AppShell, Button, Panel } from "@faux-ui/ui";',
     "",
     `const appName = ${JSON.stringify(name)};`,
     "",
     "render(",
-    "  <view rows={[1, 1, 1, 1]}>",
-    "    <text>{`${appName} starter`}</text>",
-    "    <view focusable>",
-    "      <text>This card is focusable.</text>",
+    "  <AppShell",
+    '    label="starter"',
+    "    title={`${appName} starter`}",
+    '    description="Text-first UI for tools and operators."',
+    '    footer="Press Tab to focus the button and Ctrl+C to exit."',
+    "  >",
+    '    <view rows={[4, 4]} style={{ background: "bg" }}>',
+    "      <Button",
+    '        label="action"',
+    '        title="Run task"',
+    '        description="Focusable interaction shared across browser and terminal renderers."',
+    '        footer="onPress hooks into your app state"',
+    "        onPress={() => {}}",
+    "      />",
+    "      <Panel",
+    '        label="panel"',
+    '        title="Deterministic layout"',
+    '        description="The same semantic tree can target terminal, browser, and snapshots."',
+    '        footer="Drop to view/text only when you need lower-level control."',
+    "      />",
     "    </view>",
-    "    <text>faux-ui is rendering this layout through the TUI runtime.</text>",
-    "    <text>Press Ctrl+C to exit.</text>",
-    "  </view>,",
+    "  </AppShell>,",
     ");",
   ].join("\n");
 }
@@ -727,6 +745,7 @@ function buildDomApp(name: string): string {
   return [
     'import { useState } from "react";',
     'import { render } from "@faux-ui/app";',
+    'import { AppShell, Button, Panel } from "@faux-ui/ui";',
     'import "./styles.css";',
     "",
     `const appName = ${JSON.stringify(name)};`,
@@ -735,17 +754,28 @@ function buildDomApp(name: string): string {
     "  const [count, setCount] = useState(0);",
     "",
     "  return (",
-    '    <view rows={[56, 96, 44]} style={{ background: "bg" }}>',
-    '      <view rows={[28, 28]} style={{ background: "accent" }}>',
-    '        <text style={{ color: "inverse" }}>{`${appName} starter`}</text>',
-    '        <text style={{ color: "inverse" }}>DOM runtime with React state</text>',
+    "    <AppShell",
+    '      label="starter"',
+    "      title={`${appName} starter`}",
+    '      description="Text-first UI for tools and operators."',
+    '      footer="Click the button or focus it and press Enter."',
+    "    >",
+    '      <view rows={[4, 4]} style={{ background: "bg" }}>',
+    "        <Button",
+    '          label="action"',
+    '          title="Run task"',
+    '          description={`Count: ${count}`}',
+    '          footer="React state rerenders through @faux-ui/app"',
+    '          onPress={() => setCount((value) => value + 1)}',
+    "        />",
+    "        <Panel",
+    '          label="panel"',
+    '          title="Deterministic layout"',
+    '          description="Use Button and Panel first, then drop to view/text when you need exact control."',
+    '          footer="The DOM renderer keeps the same text-grid semantics."',
+    "        />",
     "      </view>",
-    '      <view rows={[30, 54]} focusable onClick={() => setCount((c) => c + 1)} onPress={() => setCount((c) => c + 1)} style={{ background: "selection" }} styleHover={{ background: "focus" }} styleFocus={{ background: "focus" }}>',
-    '        <text style={{ color: "accent" }}>Interaction card</text>',
-    '        <text style={{ color: "fg" }}>{`Count: ${count}`}</text>',
-    "      </view>",
-    '      <text style={{ color: "muted" }}>Click the card or use Tab plus Enter to update state.</text>',
-    "    </view>",
+    "    </AppShell>",
     "  );",
     "}",
     "",

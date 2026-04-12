@@ -5,7 +5,8 @@
   "dependencies": {
     "@faux-ui/renderer": "workspace:*",
     "@faux-ui/render-dom": "workspace:*",
-    "@faux-ui/render-tui": "workspace:*"
+    "@faux-ui/render-tui": "workspace:*",
+    "@faux-ui/ui": "workspace:*"
   },
   "peerDependencies": {
     "react": "^19.2.0"

@@ -1,10 +1,17 @@
-import type { Constraints, Size, TrackShorthand } from "./types.js";
+import {
+  cloneTrackShorthand,
+  sameTrackShorthand,
+  type Constraints,
+  type Size,
+  type TrackShorthand,
+} from "./types.js";
 
 export type NodeId = number;
 export type ActionIdentifier = string;
 export type ActionHandler = (event: unknown) => void;
 export type BoundAction = ActionIdentifier | ActionHandler;
 export type ScrollAxis = "x" | "y" | "both";
+export type TrackPlacement = number | string;
 export type SemanticColor =
   | "fg"
   | "muted"
@@ -88,6 +95,8 @@ export type LayoutComputation = {
 export type NormalizedViewSpec = {
   rows: TrackShorthand[] | null;
   columns: TrackShorthand[] | null;
+  row: TrackPlacement | null;
+  column: TrackPlacement | null;
   scroll: ScrollAxis | null;
   style: StyleValue | null;
   styleHover: StyleValue | null;
@@ -98,6 +107,8 @@ export type NormalizedViewSpec = {
 export type NormalizedTextSpec = {
   text: string;
   wrap?: boolean;
+  row: TrackPlacement | null;
+  column: TrackPlacement | null;
   style: StyleValue | null;
 };
 
@@ -154,7 +165,7 @@ export function createTextNode(options: {
   id?: NodeId;
   key?: string;
   bindings?: BoundActions | null;
-  spec: NormalizedTextSpec;
+  spec: Partial<NormalizedTextSpec> & { text: string };
 }): TextNode {
   const base = createNodeBase(options.id, options.key, options.bindings);
 
@@ -230,6 +241,26 @@ export function updateViewNode(node: ViewNode, patch: ViewSpecPatch): boolean {
     paintChanged = true;
   }
 
+  if (
+    patch.row !== undefined &&
+    !sameTrackPlacement(node.spec.row, patch.row ?? null)
+  ) {
+    node.spec.row = cloneTrackPlacement(patch.row ?? null);
+    changed = true;
+    layoutChanged = true;
+    paintChanged = true;
+  }
+
+  if (
+    patch.column !== undefined &&
+    !sameTrackPlacement(node.spec.column, patch.column ?? null)
+  ) {
+    node.spec.column = cloneTrackPlacement(patch.column ?? null);
+    changed = true;
+    layoutChanged = true;
+    paintChanged = true;
+  }
+
   if (patch.scroll !== undefined && node.spec.scroll !== patch.scroll) {
     node.spec.scroll = patch.scroll ?? null;
     changed = true;
@@ -291,6 +322,7 @@ export function updateViewNode(node: ViewNode, patch: ViewSpecPatch): boolean {
 export function updateTextNode(node: TextNode, patch: TextSpecPatch): boolean {
   let changed = false;
   let intrinsicChanged = false;
+  let layoutChanged = false;
   let paintChanged = false;
 
   if (patch.text !== undefined && node.spec.text !== patch.text) {
@@ -309,6 +341,26 @@ export function updateTextNode(node: TextNode, patch: TextSpecPatch): boolean {
     paintChanged = true;
   }
 
+  if (
+    patch.row !== undefined &&
+    !sameTrackPlacement(node.spec.row, patch.row ?? null)
+  ) {
+    node.spec.row = cloneTrackPlacement(patch.row ?? null);
+    changed = true;
+    layoutChanged = true;
+    paintChanged = true;
+  }
+
+  if (
+    patch.column !== undefined &&
+    !sameTrackPlacement(node.spec.column, patch.column ?? null)
+  ) {
+    node.spec.column = cloneTrackPlacement(patch.column ?? null);
+    changed = true;
+    layoutChanged = true;
+    paintChanged = true;
+  }
+
   if (!changed) {
     return false;
   }
@@ -316,6 +368,9 @@ export function updateTextNode(node: TextNode, patch: TextSpecPatch): boolean {
   recordMutation(node);
   if (intrinsicChanged) {
     markIntrinsicDirty(node);
+  }
+  if (layoutChanged) {
+    markLayoutDirty(node);
   }
   if (paintChanged) {
     markPaintDirty(node);
@@ -441,6 +496,8 @@ function normalizeViewSpec(
   return {
     rows: cloneTrackList(spec?.rows ?? null),
     columns: cloneTrackList(spec?.columns ?? null),
+    row: cloneTrackPlacement(spec?.row ?? null),
+    column: cloneTrackPlacement(spec?.column ?? null),
     scroll: spec?.scroll ?? null,
     style: cloneStyle(spec?.style ?? null),
     styleHover: cloneStyle(spec?.styleHover ?? null),
@@ -449,9 +506,13 @@ function normalizeViewSpec(
   };
 }
 
-function normalizeTextSpec(spec: NormalizedTextSpec): NormalizedTextSpec {
+function normalizeTextSpec(
+  spec: Partial<NormalizedTextSpec> & { text: string },
+): NormalizedTextSpec {
   return {
     text: spec.text,
+    row: cloneTrackPlacement(spec.row ?? null),
+    column: cloneTrackPlacement(spec.column ?? null),
     style: cloneStyle(spec.style ?? null),
   };
 }
@@ -480,7 +541,7 @@ function sameTrackList(
   }
 
   for (let index = 0; index < left.length; index += 1) {
-    if (left[index] !== right[index]) {
+    if (!sameTrackShorthand(left[index]!, right[index]!)) {
       return false;
     }
   }
@@ -520,7 +581,20 @@ function sameBindings(
 function cloneTrackList(
   value: TrackShorthand[] | null,
 ): TrackShorthand[] | null {
-  return value === null ? null : [...value];
+  return value === null
+    ? null
+    : value.map((track) => cloneTrackShorthand(track) as TrackShorthand);
+}
+
+function sameTrackPlacement(
+  left: TrackPlacement | null,
+  right: TrackPlacement | null,
+): boolean {
+  return left === right;
+}
+
+function cloneTrackPlacement(value: TrackPlacement | null): TrackPlacement | null {
+  return value;
 }
 
 function cloneStyle(value: StyleValue | null): StyleValue | null {

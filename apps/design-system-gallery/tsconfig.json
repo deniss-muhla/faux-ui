@@ -5,16 +5,13 @@
     "outDir": "dist",
     "tsBuildInfoFile": "dist/.tsbuildinfo",
     "jsx": "react-jsx",
-    "jsxImportSource": "@faux-ui/reconciler",
+    "jsxImportSource": "@faux-ui/ui",
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "types": ["node", "vite/client"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "vite.config.ts"],
   "references": [
-    { "path": "../../packages/reconciler" },
+    { "path": "../../packages/ui" },
     { "path": "../../packages/app" },
-    { "path": "../../design-system/foundation" },
-    { "path": "../../design-system/action" },
-    { "path": "../../design-system/surface" }
   ]
 }
