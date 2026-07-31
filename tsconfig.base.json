@@ -1,12 +1,10 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
     "target": "ES2023",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "lib": ["ES2023"],
     "types": ["node"],
-    "ignoreDeprecations": "6.0",
     "strict": true,
     "declaration": true,
     "declarationMap": true,
@@ -21,27 +19,18 @@
     "skipLibCheck": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "forceConsistentCasingInFileNames": true,
     "paths": {
-      "@faux-ui/core": ["packages/core/src/index.ts"],
-      "@faux-ui/reconciler": ["packages/reconciler/src/index.ts"],
-      "@faux-ui/reconciler/jsx-runtime": [
-        "packages/reconciler/src/jsx-runtime.ts"
-      ],
-      "@faux-ui/reconciler/jsx-dev-runtime": [
-        "packages/reconciler/src/jsx-dev-runtime.ts"
-      ],
-      "@faux-ui/ui": ["packages/ui/src/index.ts"],
-      "@faux-ui/ui/jsx-runtime": ["packages/ui/src/jsx-runtime.ts"],
-      "@faux-ui/ui/jsx-dev-runtime": ["packages/ui/src/jsx-dev-runtime.ts"],
-      "@faux-ui/renderer": ["packages/renderer/src/index.ts"],
-      "@faux-ui/app": ["packages/app/src/index.ts"],
-      "@faux-ui/render-dom": ["packages/render-dom/src/index.ts"],
-      "@faux-ui/render-inspect": ["packages/render-inspect/src/index.ts"],
-      "@faux-ui/render-tui": ["packages/render-tui/src/index.ts"],
-      "@faux-ui/schema": ["packages/schema/src/index.ts"],
-      "@faux-ui/devtools": ["packages/devtools/src/index.ts"],
-      "@faux-ui/mcp": ["packages/mcp/src/index.ts"]
+      "@faux-ui/ui": ["./packages/ui/src/index.ts"],
+      "@faux-ui/ui/dom": ["./packages/ui/src/dom.ts"],
+      "@faux-ui/ui/tui": ["./packages/ui/src/tui.ts"],
+      "@faux-ui/ui/testing": ["./packages/ui/src/testing.ts"],
+      "@faux-ui/ui/jsx-runtime": ["./packages/ui/src/jsx-runtime.ts"],
+      "@faux-ui/ui/jsx-dev-runtime": ["./packages/ui/src/jsx-dev-runtime.ts"]
     }
   }
 }

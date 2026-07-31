@@ -1,5 +1,9 @@
 # faux-ui refactor report
 
+## Outcome
+
+The recommendation in this historical report is implemented by the 1.0.0 source tree. The repository now has one public package, isolated host subpaths, pure one-axis layout, vendored Unicode 17 cellization, one canonical scene/controller, the foundation components, packed consumer gates, and no prototype compatibility packages. See [../architecture.md](../architecture.md) for implemented reality and [tasks.md](tasks.md) for the completed execution record.
+
 ## Executive recommendation
 
 Reset faux-ui around one narrow product promise:

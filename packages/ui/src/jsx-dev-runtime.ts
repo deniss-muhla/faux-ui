@@ -1,26 +1,16 @@
-export { jsxDEV, Fragment } from "react/jsx-dev-runtime";
+export { Fragment, jsxDEV } from "react/jsx-dev-runtime";
 
-import type { JSX as ReactJSX, Ref } from "react";
-import type { TextProps, UINodeHandle, ViewProps } from "@faux-ui/reconciler";
-
-type ViewElementProps = ViewProps & { ref?: Ref<UINodeHandle> };
-type TextElementProps = TextProps & { ref?: Ref<UINodeHandle> };
+import type { JSX as ReactJSX } from "react";
 
 export namespace JSX {
   export type Element = ReactJSX.Element;
   export type ElementType = ReactJSX.ElementType;
-
   export interface IntrinsicAttributes extends ReactJSX.IntrinsicAttributes {}
-
-  export interface IntrinsicClassAttributes<
-    T,
-  > extends ReactJSX.IntrinsicClassAttributes<T> {}
-
+  export interface IntrinsicClassAttributes<T>
+    extends ReactJSX.IntrinsicClassAttributes<T> {}
   export interface ElementChildrenAttribute
     extends ReactJSX.ElementChildrenAttribute {}
-
-  export interface IntrinsicElements {
-    view: ViewElementProps;
-    text: TextElementProps;
-  }
+  export type LibraryManagedAttributes<C, P> =
+    ReactJSX.LibraryManagedAttributes<C, P>;
+  export interface IntrinsicElements {}
 }

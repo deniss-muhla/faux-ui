@@ -252,3 +252,37 @@ Created and switched to branch `refactor/tui-first-reset` after the task plan wa
 1. Commit all documentation on `refactor/tui-first-reset` as requested.
 2. Confirm the resulting commit and clean branch state.
 3. Leave tracked-artifact cleanup for a separate implementation/chore commit; it is not part of the docs commit.
+
+## 2026-07-31 — 1.0 implementation checkpoint
+
+The user approved continuing through a complete, well-tested first release and requested minimal/zero additional runtime dependencies plus current stable tooling.
+
+Implemented outcome:
+
+- Collapsed 13 prototype packages to one `@faux-ui/ui` package; removed 12 obsolete packages and two obsolete apps.
+- Added isolated root, `/dom`, `/tui`, `/testing`, and JSX runtime exports.
+- Internalized a minimal React reconciler; `react-reconciler` is the only direct implementation dependency and React remains a peer.
+- Avoided a Unicode package dependency by generating/vendoring Unicode 17.0.0 property tables.
+- Implemented full UAX #29 grapheme rules, deterministic width/tab/control policy, clipping, four ellipsis modes, and wide continuation cells.
+- Replaced mutable cached grid layout with preferred-size plus top-down row/column allocation.
+- Added one canonical scene and one focus/key/pointer/press/scroll controller.
+- Added `Text`, `Box`, `Row`, `Column`, `Fill`, `Divider`, `ScrollView`, `Button`, theme, input, and focus APIs.
+- Rebuilt DOM as one application surface with grouped row/style runs, actual-rectangle pointer conversion, fitting, internal reset, and minimal semantic accessibility descendants.
+- Rebuilt TUI with true-color ANSI, key/CSI/SGR parsing, fake streams, resizing, and terminal restoration.
+- Added a synthetic queue/detail/metadata fixture with split panes, overflow, 11 actions, global keys, and both host entries.
+- Added packed-tarball consumer typecheck, Bun/Vite browser isolation, and fake-TUI execution.
+- Added TypeScript negative API assertions, 1,000 randomized layout cases, the complete official Unicode 17 grapheme fixture, real Chromium tests, and CI.
+- Deleted tracked Playwright/log artifacts and ignored future loose logs/tarballs.
+- Updated package metadata to Bun 1.3.14 and dependencies to current stable TypeScript 7.0.2 (Go implementation), React 19.2.8, Vite 8.2.0, Vitest 4.1.10, Playwright 1.62.1, Node/React types, and fast-check 4.9.0. Replacing the system Bun binary was skipped after `/usr/bin/bun` returned `EACCES`, as instructed; its reported version is already 1.3.14 (canary revision).
+
+Release versions are `1.0.0` in the root, package, and example manifests. Tagging/publishing was intentionally not performed without an explicit release instruction.
+
+Final release gate:
+
+- `bun audit`: no vulnerabilities after pinning safe `picomatch`/`tinyglobby` overrides for the latest Vitest graph.
+- TypeScript 7 source plus test/negative-type checks pass.
+- Vitest: 9 files / 32 tests pass, including 1,000 randomized layouts and all official Unicode 17 boundary cases.
+- Playwright: 5 real-Chromium tests pass.
+- Packed consumer: tarball install, DOM-only/TUI-only types, Bun/Vite browser bundles, and Bun/Node fake-terminal execution pass.
+- Production package/example build passes with no browser target warning.
+- `bun run check` passes end to end.

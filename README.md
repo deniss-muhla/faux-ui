@@ -1,90 +1,261 @@
 # faux-ui
 
-Terminal-first UI for agents, humans, and text-oriented tools—with a browser mirror.
-
-## Status: unreleased architecture reset
-
-The current source tree is the pre-refactor prototype. It proved deterministic cell layout and React authoring, but its package graph and public API are being replaced before the first release.
-
-Do not treat existing package names or APIs as stable. No compatibility aliases or migration layer will be kept.
-
-Start here:
-
-- Product strategy: [docs/strategy.md](docs/strategy.md)
-- vNext semantics: [docs/spec.md](docs/spec.md)
-- Current implementation architecture: [docs/architecture.md](docs/architecture.md)
-- Delivery milestones: [docs/roadmap.md](docs/roadmap.md)
-- Refactor evidence: [docs/refactor/analisis.md](docs/refactor/analisis.md)
-- Refactor recommendation: [docs/refactor/report.md](docs/refactor/report.md)
-- Implementation tasks: [docs/refactor/tasks.md](docs/refactor/tasks.md)
-
-## Product direction
-
-faux-ui is being reset around one promise:
-
-> Author a deterministic character-cell interface with React, run it in a terminal, and render the same logical cells and interactions in the browser.
-
-The intended foundation is deliberately small:
-
-- `Text`
-- `Box`
-- `Row` / `Column`
-- `Fill` and its thin `Divider` convenience
-- `ScrollView`
-- `Button`
-- shared key/focus handling
-- one semantic palette
-
-Higher-level app shells, panels, action bars, status surfaces, and split layouts should initially be compositions of that foundation.
-
-## Target package experience
-
-The refactor targets one public package with isolated host entrypoints:
+Deterministic terminal-cell UI for React, with terminal and browser hosts driven by the same logical scene.
 
 ```tsx
-// Shared app
-import { Box, Button, Column, Row, Text } from "@faux-ui/ui";
+<Row tracks={[28, "2fr", 30]} gap={1}>
+  <Queue />
+  <Details />
+  <Metadata />
+</Row>
 ```
 
+faux-ui favors explicit integer-cell layout over CSS/Yoga-style negotiation. It is intended for review queues, dashboards, inspectors, logs, and keyboard-first operational tools authored by humans or coding agents.
+
+## Install
+
+```bash
+bun add @faux-ui/ui react
+```
+
+Requirements:
+
+- Bun 1.3.14+ for the workspace/recommended toolchain;
+- Node 22+ for terminal applications;
+- React 19.2.8+;
+- current evergreen browsers.
+
+Configure JSX in `tsconfig.json`:
+
+```json
+{
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "@faux-ui/ui"
+  }
+}
+```
+
+HTML/SVG intrinsic elements are intentionally rejected in faux-ui JSX.
+
+## Shared application
+
 ```tsx
-// Browser entry
+import {
+  Box,
+  Button,
+  Column,
+  Row,
+  ScrollView,
+  Text,
+  useInput,
+} from "@faux-ui/ui";
+import { useState } from "react";
+
+export function App() {
+  const [selected, setSelected] = useState(0);
+
+  useInput((input) => {
+    if (input.key === "j") {
+      setSelected((value) => value + 1);
+      return true;
+    }
+    return false;
+  });
+
+  return (
+    <Column tracks={[3, "1fr", 2]}>
+      <Box border="double" title=" Review " padding={{ x: 1 }}>
+        <Text>Shared terminal/browser application</Text>
+      </Box>
+
+      <Row tracks={[24, "1fr"]} gap={1}>
+        <ScrollView axis="y" border title=" Queue ">
+          <Column>
+            <Button label="First" selected={selected === 0} onPress={() => setSelected(0)} />
+            <Button label="Second" selected={selected === 1} onPress={() => setSelected(1)} />
+          </Column>
+        </ScrollView>
+        <Box border title=" Detail " padding={1}>
+          <Text overflow="ellipsis-end">Selected item {selected}</Text>
+        </Box>
+      </Row>
+
+      <Button label="Approve" hotkey="a" onPress={() => {}} />
+    </Column>
+  );
+}
+```
+
+React hooks and direct handlers work normally. There is no action registry, runtime bridge, manual rerender, public node ID, or renderer object.
+
+## Browser entry
+
+```tsx
 import { render } from "@faux-ui/ui/dom";
-render(<App />, { fit: "viewport" });
+import { App } from "./App.js";
+
+const app = render(<App />, {
+  ariaLabel: "Review tool",
+  // width: 100,
+  // height: 30,
+});
+
+// app.rerender(<App />)
+// app.setSize({ width: 120, height: 40 })
+// app.unmount()
 ```
+
+The default body mount:
+
+- fits the viewport using fixed 8×16-pixel cell calibration;
+- installs the required margin/overflow/font reset;
+- renders grouped row/style runs rather than one element per cell;
+- maps pointer pixels back to logical cells;
+- exposes one `role="application"` tab stop plus labeled semantic actions;
+- requires no app-authored CSS.
+
+For a custom container, pass `container`. It must have concrete dimensions when using `fit: "container"`. Passing explicit `width` and `height` bypasses host-derived logical sizing.
+
+The DOM entry has no dependency on terminal or Node modules.
+
+## Terminal entry
 
 ```tsx
-// Terminal entry
 import { render } from "@faux-ui/ui/tui";
-render(<App />);
+import { App } from "./App.js";
+
+const app = render(<App />);
+
+// app.rerender(<App />)
+// app.stop()
+// app.start()
+// app.unmount()
 ```
 
-The browser entry must not load terminal/Node code. Neither entry should require a runtime bridge, manual rerender, internal renderer package, or app CSS.
+The terminal host derives its logical size from columns/rows, handles keyboard and SGR mouse input, writes true-color ANSI, and restores raw mode, cursor, mouse tracking, and alternate-screen state on unmount.
 
-## Current prototype
+Fake `input` and `output` streams can be passed for tests.
 
-The checked-in implementation currently contains shared core layout/render-tree logic, React reconciliation, DOM/TUI runtimes, schema/CLI experiments, and UI components. It is retained temporarily as behavioral reference while vNext is built.
+## Layout
 
-See [docs/architecture.md](docs/architecture.md) for an accurate description of what exists today and [docs/refactor/report.md](docs/refactor/report.md) for what will replace it.
+All dimensions are non-negative integer cells.
 
-## Workspace commands
+```ts
+type Track = number | "auto" | `${number}fr`;
+```
+
+- fixed tracks reserve exact cells;
+- `auto` uses preferred content size;
+- fractions divide positive remaining space;
+- remainder cells are assigned from the first fraction track onward;
+- fixed/auto overflow is clipped, never renegotiated;
+- base text uses explicit newlines and never auto-wraps;
+- margin, percentages, named tracks, spans, overlap, and responsive breakpoints do not exist.
+
+Use nested `Row` and `Column` components instead of a general two-dimensional grid.
+
+## Foundation
+
+| Component | Purpose |
+| --- | --- |
+| `Text` | Explicit-line text with clip/start/middle/end ellipsis |
+| `Box` | Single-child surface with padding, border, title, style, and handlers |
+| `Row` / `Column` | Sequential fixed/auto/fraction allocation |
+| `Fill` / `Divider` | Paint an allocated frame without guessed string lengths |
+| `ScrollView` | Shared viewport/content/offset semantics |
+| `Button` | One focus, pointer, Enter, Space, and `onPress` contract |
+| `ThemeProvider` | Shared semantic palette override |
+
+App shells, panels, action bars, split panes, key hints, and status states are compositions of these primitives.
+
+## Input and focus
+
+- `useInput(handler)` registers renderer-neutral app hotkeys. Return `true` to consume a key.
+- `useFocusManager()` exposes next, previous, and clear focus operations.
+- `Tab` and `Shift+Tab` traverse focusable nodes.
+- Enter, Space, and completed primary clicks synthesize one `onPress`.
+- events bubble target-to-root and support `preventDefault()` and `stopPropagation()`.
+- wheel, terminal mouse, arrows, Page Up/Down, Home, and End use shared scroll offsets when a scroll viewport is targeted.
+
+## Theme
+
+Components use semantic names (`fg`, `bg`, `panel`, `accent`, `success`, `warning`, `danger`, and others). Override concrete colors once:
+
+```tsx
+<ThemeProvider palette={{ bg: "#05070a", accent: "#22d3ee" }}>
+  <App />
+</ThemeProvider>
+```
+
+DOM and TUI consume the same palette. Concrete values must use `#RRGGBB` so both hosts interpret them identically.
+
+## Static testing
+
+```tsx
+import { renderStatic } from "@faux-ui/ui/testing";
+
+const app = renderStatic(<App />, { width: 80, height: 24 });
+expect(app.getText()).toContain("Review");
+
+app.keyDown({ key: "Tab" });
+app.keyDown({ key: "Enter" });
+expect(app.getEventTrace()).toContainEqual(
+  expect.objectContaining({ type: "press" }),
+);
+
+app.unmount();
+```
+
+`@faux-ui/ui/testing` exposes read-only layout, canonical scene, row runs, text snapshots, event traces, and the pinned Unicode metadata.
+
+## Unicode contract
+
+The cellizer vendors generated Unicode 17.0.0 tables; it has no Unicode runtime dependency. It implements the Unicode extended grapheme boundary rules and terminal-oriented widths:
+
+- combining clusters stay together;
+- East Asian wide/fullwidth graphemes occupy two cells;
+- ambiguous-width characters occupy one cell;
+- emoji presentation/ZWJ sequences occupy two cells;
+- width-2 graphemes reserve continuation cells;
+- tabs use four-cell stops;
+- unsupported controls render as `�`;
+- leading zero-width clusters receive a dotted-circle base.
+
+The full official Unicode 17 grapheme conformance fixture runs in the test suite.
+
+## Repository
 
 ```bash
 bun install --frozen-lockfile
 bun run typecheck
 bun run test
+bun run test:browser
+bun run test:package
 bun run build
 ```
 
-Combined type and unit checks:
+Run everything:
 
 ```bash
 bun run check
 ```
 
-Production builds remain a separate required check:
+Examples:
 
 ```bash
-bun run build
+bun run example:dom
+bun run example:tui
 ```
 
-The current first-party browser builds still expose a known target-isolation warning; removing that is a vNext milestone, not an accepted release state.
+Further documentation:
+
+- [Specification](docs/spec.md)
+- [Architecture](docs/architecture.md)
+- [Strategy](docs/strategy.md)
+- [Roadmap](docs/roadmap.md)
+- [Testing and release gates](docs/testing.md)
+- [Composition recipes](docs/recipes.md)
+- [Changelog](CHANGELOG.md)
+- [Third-party notices](THIRD_PARTY_NOTICES.md)
+- [Refactor evidence and history](docs/refactor/report.md)

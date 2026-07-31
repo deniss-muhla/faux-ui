@@ -1,8 +1,0 @@
-[     102ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://127.0.0.1:4173/src/main.tsx:0
-[     107ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:4173/favicon.ico:0
-[   12585ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:4173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:4173/@vite/client:1034
-[   20299ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:4173/' failed: Error during WebSocket handshake: net::ERR_CONNECTION_RESET @ http://127.0.0.1:4173/@vite/client:1034
-[   21300ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:4173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:4173/@vite/client:1034
-[   22301ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:4173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:4173/@vite/client:1034
-[   23302ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:4173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:4173/@vite/client:1034
-[   24303ms] [ERROR] WebSocket connection to 'ws://127.0.0.1:4173/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:4173/@vite/client:1034

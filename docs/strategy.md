@@ -68,9 +68,9 @@ A few composable primitives must handle a serious tool UI cleanly before adding 
 
 App shell, toolbar, inspector layout, status panel, and empty/loading/error surfaces begin as documented compositions. Promote a component only after repeated real use shows stable semantics.
 
-### 8. Delete accidental complexity
+### 8. Do not regrow accidental complexity
 
-The project is unreleased. Prefer replacement and deletion over adapters, aliases, deprecation, and compatibility layers.
+The unreleased prototype was replaced without compatibility layers. After 1.0, preserve the singular public surface with SemVer and do not reintroduce deleted package boundaries or speculative adapters.
 
 ### 9. Profile before caching
 
@@ -80,7 +80,7 @@ Typical terminal surfaces are small. Start with pure, observable computation and
 
 A feature is not delivered if it works only through workspace aliases. Packed-package install, typecheck, Bun/Vite browser bundle, and fake-terminal execution are release gates.
 
-## Experience target
+## Author experience
 
 A shared app should look like normal React:
 
@@ -182,22 +182,22 @@ The synthetic real-tool fixture is the initial product benchmark. Future real ap
 
 Roadmap changes should cite this evidence rather than speculative ecosystem completeness.
 
-## Success measures
+## 1.0 baseline
 
-Before first release:
+The first implementation establishes:
 
 - one faux-ui package installed by app authors;
 - one-call DOM and TUI mounting;
 - zero target leakage in browser bundles;
 - zero app CSS/runtime bridge in the serious fixture;
-- matching logical scenes and event traces across hosts;
-- global shortcuts, focus, buttons, and scroll working on both hosts;
-- deterministic Unicode/cell behavior documented and tested;
-- packed-package consumer checks in CI;
-- documentation that starts with external app setup, not internal package architecture.
+- one logical scene and controller across hosts;
+- global shortcuts, focus, buttons, pointer input, and scroll on both hosts;
+- deterministic Unicode 17 cell behavior and official grapheme conformance;
+- packed-package consumer checks;
+- documentation that starts with external app setup rather than internal package architecture.
 
 ## What “done” does not mean
 
-The project does not need a large widget catalog, renderer marketplace, compact protocol, MCP server, virtualized table, or browser-responsive system to release.
+The 1.0 foundation does not imply a large widget catalog, renderer marketplace, compact protocol, MCP server, virtualized table, or browser-responsive system.
 
-It needs one coherent path that makes a real text-first tool easier to build than the alternatives while preserving deterministic terminal/browser behavior.
+Future scope must keep the coherent text-first path easier to use while preserving deterministic terminal/browser behavior.

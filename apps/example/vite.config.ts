@@ -4,55 +4,34 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   resolve: {
-    alias: {
-      "@faux-ui/core": resolve(__dirname, "../../packages/core/src/index.ts"),
-      "@faux-ui/renderer": resolve(
-        __dirname,
-        "../../packages/renderer/src/index.ts",
-      ),
-      "@faux-ui/ui/jsx-runtime": resolve(
-        __dirname,
-        "../../packages/ui/src/jsx-runtime.ts",
-      ),
-      "@faux-ui/ui/jsx-dev-runtime": resolve(
-        __dirname,
-        "../../packages/ui/src/jsx-dev-runtime.ts",
-      ),
-      "@faux-ui/ui": resolve(__dirname, "../../packages/ui/src/index.ts"),
-      "@faux-ui/render-dom": resolve(
-        __dirname,
-        "../../packages/render-dom/src/index.ts",
-      ),
-      "@faux-ui/app": resolve(__dirname, "../../packages/app/src/index.ts"),
-      "@faux-ui/reconciler/jsx-runtime": resolve(
-        __dirname,
-        "../../packages/reconciler/src/jsx-runtime.ts",
-      ),
-      "@faux-ui/reconciler/jsx-dev-runtime": resolve(
-        __dirname,
-        "../../packages/reconciler/src/jsx-dev-runtime.ts",
-      ),
-      "@faux-ui/reconciler": resolve(
-        __dirname,
-        "../../packages/reconciler/src/index.ts",
-      ),
-      "@faux-ui/render-tui": resolve(
-        __dirname,
-        "../../packages/render-tui/src/index.ts",
-      ),
-    },
+    alias: [
+      {
+        find: "@faux-ui/ui/dom",
+        replacement: resolve(import.meta.dirname, "../../packages/ui/src/dom.ts"),
+      },
+      {
+        find: "@faux-ui/ui/tui",
+        replacement: resolve(import.meta.dirname, "../../packages/ui/src/tui.ts"),
+      },
+      {
+        find: "@faux-ui/ui/testing",
+        replacement: resolve(import.meta.dirname, "../../packages/ui/src/testing.ts"),
+      },
+      {
+        find: "@faux-ui/ui/jsx-runtime",
+        replacement: resolve(import.meta.dirname, "../../packages/ui/src/jsx-runtime.ts"),
+      },
+      {
+        find: "@faux-ui/ui/jsx-dev-runtime",
+        replacement: resolve(import.meta.dirname, "../../packages/ui/src/jsx-dev-runtime.ts"),
+      },
+      {
+        find: "@faux-ui/ui",
+        replacement: resolve(import.meta.dirname, "../../packages/ui/src/index.ts"),
+      },
+    ],
   },
-  esbuild: {
-    jsxImportSource: "@faux-ui/ui",
-  },
-  server: {
-    host: "127.0.0.1",
-    port: 4173,
-    strictPort: true,
-  },
-  preview: {
-    host: "127.0.0.1",
-    port: 4173,
-    strictPort: true,
-  },
+  esbuild: { jsxImportSource: "@faux-ui/ui" },
+  server: { host: "127.0.0.1", port: 4173, strictPort: true },
+  preview: { host: "127.0.0.1", port: 4173, strictPort: true },
 });
