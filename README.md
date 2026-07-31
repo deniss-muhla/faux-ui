@@ -1,77 +1,90 @@
 # faux-ui
 
-Text-first UI for agents and operators.
+Terminal-first UI for agents, humans, and text-oriented tools—with a browser mirror.
 
-faux-ui is a deterministic UI framework for tool UIs. Author once in React/JSX or JSON, inspect the result as text, and render the same semantic tree to terminal, browser, and snapshot targets. TUI semantics are canonical; DOM is a projection.
+## Status: unreleased architecture reset
 
-## Status
+The current source tree is the pre-refactor prototype. It proved deterministic cell layout and React authoring, but its package graph and public API are being replaced before the first release.
 
-- Specification: [docs/spec.md](docs/spec.md)
-- Architecture: [docs/architecture.md](docs/architecture.md)
-- TypeScript baseline: `6.0`
-- Public authoring path: `@faux-ui/app` + `@faux-ui/ui`
-- Public CLIs: `create-faux-ui`, `exec-faux-ui`
+Do not treat existing package names or APIs as stable. No compatibility aliases or migration layer will be kept.
 
-## Why faux-ui
+Start here:
 
-- one semantic model across DOM, TUI, and inspect renderers
-- deterministic fixed-cell layout with no CSS-style negotiation
-- inspectable render trees and schema documents that fit agent workflows
-- React as the authoring bridge without making browser layout the source of truth
+- Product strategy: [docs/strategy.md](docs/strategy.md)
+- vNext semantics: [docs/spec.md](docs/spec.md)
+- Current implementation architecture: [docs/architecture.md](docs/architecture.md)
+- Delivery milestones: [docs/roadmap.md](docs/roadmap.md)
+- Refactor evidence: [docs/refactor/analisis.md](docs/refactor/analisis.md)
+- Refactor recommendation: [docs/refactor/report.md](docs/refactor/report.md)
+- Implementation tasks: [docs/refactor/tasks.md](docs/refactor/tasks.md)
 
-## Workspace
+## Product direction
 
-Public authoring packages:
+faux-ui is being reset around one promise:
 
-- `@faux-ui/app`
-- `@faux-ui/ui`
-- `create-faux-ui`
-- `exec-faux-ui`
+> Author a deterministic character-cell interface with React, run it in a terminal, and render the same logical cells and interactions in the browser.
 
-Engine and tooling packages:
+The intended foundation is deliberately small:
 
-- `@faux-ui/core`
-- `@faux-ui/reconciler`
-- `@faux-ui/renderer`
-- `@faux-ui/render-dom`
-- `@faux-ui/render-inspect`
-- `@faux-ui/render-tui`
-- `@faux-ui/schema`
-- `@faux-ui/devtools`
-- `@faux-ui/mcp`
+- `Text`
+- `Box`
+- `Row` / `Column`
+- `Fill` and its thin `Divider` convenience
+- `ScrollView`
+- `Button`
+- shared key/focus handling
+- one semantic palette
 
-Apps:
+Higher-level app shells, panels, action bars, status surfaces, and split layouts should initially be compositions of that foundation.
 
-- `@faux-ui/example`
-- `@faux-ui/design-system-gallery`
-- `@faux-ui/example-renderer`
+## Target package experience
 
-## Commands
+The refactor targets one public package with isolated host entrypoints:
+
+```tsx
+// Shared app
+import { Box, Button, Column, Row, Text } from "@faux-ui/ui";
+```
+
+```tsx
+// Browser entry
+import { render } from "@faux-ui/ui/dom";
+render(<App />, { fit: "viewport" });
+```
+
+```tsx
+// Terminal entry
+import { render } from "@faux-ui/ui/tui";
+render(<App />);
+```
+
+The browser entry must not load terminal/Node code. Neither entry should require a runtime bridge, manual rerender, internal renderer package, or app CSS.
+
+## Current prototype
+
+The checked-in implementation currently contains shared core layout/render-tree logic, React reconciliation, DOM/TUI runtimes, schema/CLI experiments, and UI components. It is retained temporarily as behavioral reference while vNext is built.
+
+See [docs/architecture.md](docs/architecture.md) for an accurate description of what exists today and [docs/refactor/report.md](docs/refactor/report.md) for what will replace it.
+
+## Workspace commands
 
 ```bash
-bun install
+bun install --frozen-lockfile
 bun run typecheck
 bun run test
 bun run build
 ```
 
-## Examples
+Combined type and unit checks:
 
-- `bun run example:dom` starts the shared example app in the browser.
-- `bun run example:tui` starts the same app in the terminal.
-- `bun run gallery:dom` opens the public `@faux-ui/ui` primitive gallery.
-- `bun run example-renderer:dom` runs the contributor-owned canvas renderer example.
+```bash
+bun run check
+```
 
-## Current scope
+Production builds remain a separate required check:
 
-The repository currently includes:
+```bash
+bun run build
+```
 
-- deterministic layout, render-tree construction, and event dispatch in `@faux-ui/core`
-- a public React authoring path through `@faux-ui/ui` and `@faux-ui/app`
-- DOM, TUI, and inspect renderers over the same semantic tree
-- JSON schema authoring plus execution and inspect tooling
-- a renderer template for contributor-owned renderers
-- regression coverage across layout, renderers, starter generation, and example apps
-- UI-layer named tracks, divider chrome, and scroll-aware panels for common tool layouts
-
-The next major work is filling out the rest of the higher-level UI layer and the inspect/MCP workflow without growing the core semantics.
+The current first-party browser builds still expose a known target-isolation warning; removing that is a vNext milestone, not an accepted release state.

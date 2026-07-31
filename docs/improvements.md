@@ -1,5 +1,5 @@
 # Small unstructured improvements
 
-- Remove `.playwright-mcp` from git and add to ignore
-- Why we have this in project and git `test-results` do we need it here? Should we create single untracked folder for all test related stuff?
-- Rename `@faux-ui/renderer` to `@faux-ui/render`
+- Remove the already-ignored tracked artifacts `.playwright-mcp/console-*.log`, `test-results/.last-run.json`, and `typecheck.log`; add a direct ignore rule for loose log files.
+
+Larger package/API removals are tracked in [refactor/tasks.md](refactor/tasks.md), not here.
