@@ -17,7 +17,7 @@ faux-ui treats logical parity and packed-consumer behavior as primary evidence. 
 | Ordinary React state and restricted text nesting | `vnext-react.test.ts` |
 | DOM fit/pixel conversion | `vnext-dom-spike.test.ts` |
 | DOM wheel-notch/trackpad normalization | `vnext-dom-spike.pw.spec.ts` in Chromium |
-| Grouped DOM projection, exact run fitting, background/border seam joins, and accessibility | `vnext-dom-spike.pw.spec.ts` in Chromium |
+| Grouped DOM projection, terminal-graphics font runs, exact fitting/background seams, and accessibility | `vnext-dom-spike.pw.spec.ts` in Chromium |
 | Serious browser authoring/input/resize path | `apps/example/test/example-dom.pw.spec.ts` |
 | Terminal input, ANSI, Unicode cursor anchoring, right-margin/autowrap safety, fake IO, cleanup | `vnext-tui.test.ts` |
 | Public JSX rejects HTML/named tracks | `public-api.typecheck.tsx` through `tsconfig.test.json` |

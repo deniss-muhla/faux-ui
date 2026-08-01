@@ -18,7 +18,7 @@ First release-ready implementation.
 
 ### Fixed
 
-- Browser font advances are fitted to logical cells, adjacent run backgrounds overlap safely, and vertical box-drawing joins are bridged with matching glyph fragments, preventing clipped borders, cumulative row shifts, and fractional-scale seams.
+- Browser font advances are fitted to logical cells, adjacent run backgrounds overlap safely, and Unicode terminal-graphics runs use a connection-safe monospace fallback stack, preventing clipped borders, cumulative row shifts, and fractional-scale seams without geometric overlays.
 - Terminal painting disables autowrap, uses explicit CRLF row boundaries, and re-anchors after non-ASCII graphemes, preventing full-width frames and terminal-specific Unicode widths from shifting later cells.
 - Browser mouse-wheel notches map to one terminal-like cell step while small trackpad deltas accumulate smoothly.
 - Compact fixture actions retain horizontal breathing room.

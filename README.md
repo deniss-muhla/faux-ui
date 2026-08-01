@@ -111,7 +111,8 @@ The default body mount:
 - fits the viewport using fixed 8×16-pixel cell calibration;
 - installs the required margin/overflow/font reset;
 - renders grouped row/style runs rather than one element per cell;
-- maps pointer pixels back to logical cells;
+- keeps connectable Unicode glyphs as text while using a connection-safe terminal-graphics font stack;
+- maps pointer pixels back to logical cells and normalizes wheel notches to one-cell steps;
 - exposes one `role="application"` tab stop plus labeled semantic actions;
 - requires no app-authored CSS.
 

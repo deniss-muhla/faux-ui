@@ -244,7 +244,7 @@ The browser host creates one application surface and two internal layers:
 
 The root is one focusable `role="application"` element. Shared focus updates `aria-activedescendant`; native focus never becomes semantic state.
 
-The host uses inline-owned styles, a monospace stack, disabled ligatures, fixed physical cell calibration, and no app CSS. Each scene row becomes a positioned row and each style run a positioned span. The projector calibrates the active font advance to one logical cell, fits residual wide/fallback-font runs to their canonical width, slightly overlaps adjacent backgrounds, and bridges only connected vertical box-drawing joins with clipped matching glyph fragments. Browser zoom therefore cannot expose fractional-pixel seams; there is still no general per-cell DOM projection.
+The host uses inline-owned styles, disabled ligatures, fixed physical cell calibration, and no app CSS. Each scene row becomes a positioned row and each style run a positioned span. Ordinary text keeps the default monospace stack; Unicode box-drawing, block, legacy-computing, and Powerline ranges are split into terminal-graphics runs that prefer connection-safe monospace fonts. The projector calibrates font advance to one logical cell, fits residual runs to their canonical width, and slightly overlaps adjacent backgrounds. Glyph height is never stretched and no geometric border overlay or per-cell DOM projection exists.
 
 Mouse-wheel line/page events and conventional large pixel notches become one logical cell step, matching one terminal wheel command. Small pixel deltas accumulate to a cell so trackpads remain smooth without skipping short scroll content.
 

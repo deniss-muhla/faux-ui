@@ -30,7 +30,7 @@ test.describe("vNext DOM scene spike", () => {
           accessibleLabel: "Approve",
           styleFocus: { background: "focus" },
         });
-        const label = createTextNode(3, { text: "A古é👩‍💻" });
+        const label = createTextNode(3, { text: "A古é👩‍💻│█▗" });
         replaceChildren(action, [label]);
         replaceChildren(root, [action]);
 
@@ -58,11 +58,14 @@ test.describe("vNext DOM scene spike", () => {
         );
         const rowElements = [...surface.querySelectorAll<HTMLElement>("[data-faux-ui-row]")];
         const runElements = [...surface.querySelectorAll<HTMLElement>("[data-faux-ui-run]")];
-        const connectorElements = [
-          ...surface.querySelectorAll<HTMLElement>("[data-faux-ui-border-connector]"),
+        const graphicsElements = [
+          ...surface.querySelectorAll<HTMLElement>("[data-faux-ui-graphics]"),
         ];
-        const connectorHeights = connectorElements.map(
-          (connector) => connector.getBoundingClientRect().height,
+        const graphicsFonts = graphicsElements.map(
+          (element) => getComputedStyle(element).fontFamily,
+        );
+        const graphicsText = graphicsElements.map(
+          (element) => element.textContent ?? "",
         );
         const fittedWidthErrors = runElements.map((run) => {
           const width = Number(run.dataset.fauxUiRun?.split(":")[2] ?? 0) * 8;
@@ -99,8 +102,12 @@ test.describe("vNext DOM scene spike", () => {
           rowElements: rowElements.length,
           runElements: runElements.length,
           cellElements: surface.querySelectorAll("[data-faux-ui-cell]").length,
-          connectorElements: connectorElements.length,
-          connectorHeights,
+          graphicsElements: graphicsElements.length,
+          graphicsFonts,
+          graphicsText,
+          connectorElements: surface.querySelectorAll(
+            "[data-faux-ui-border-connector]",
+          ).length,
           maxFittedWidthError: Math.max(...fittedWidthErrors),
           maxScaledFittedWidthError: Math.max(...scaledFittedWidthErrors),
           verticalOverlap:
@@ -131,8 +138,12 @@ test.describe("vNext DOM scene spike", () => {
     expect(result.rowElements).toBe(4);
     expect(result.runElements).toBe(result.stats.runs);
     expect(result.cellElements).toBe(0);
-    expect(result.connectorElements).toBe(6);
-    expect(result.connectorHeights.every((height) => height === 1)).toBe(true);
+    expect(result.graphicsElements).toBeGreaterThan(0);
+    expect(
+      result.graphicsFonts.every((font) => font.includes("Source Code Pro")),
+    ).toBe(true);
+    expect(result.graphicsText.join("")).toContain("│█▗");
+    expect(result.connectorElements).toBe(0);
     expect(result.maxFittedWidthError).toBeLessThan(0.05);
     expect(result.maxScaledFittedWidthError).toBeLessThan(0.05);
     expect(result.verticalOverlap).toBeGreaterThanOrEqual(1);

@@ -2,11 +2,9 @@ import type { Size } from "./model.js";
 import type { Palette } from "./palette.js";
 import { defaultPalette } from "./palette.js";
 import {
-  type Cell,
   type CellScene,
   type ResolvedStyle,
   accessibleNodes,
-  sceneRows,
 } from "./scene.js";
 import type { NodeId, Point, SemanticNode } from "./model.js";
 
@@ -38,6 +36,10 @@ export interface DomSceneProjectorOptions {
 const DEFAULT_CELL_SIZE: DomCellSize = { width: 8, height: 16 };
 const DEFAULT_FONT_HEIGHT_RATIO = 0.875;
 const SEAM_OVERLAP = 1;
+const TEXT_FONT_FAMILY =
+  '"Cascadia Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace';
+const TERMINAL_GRAPHICS_FONT_FAMILY =
+  '"Source Code Pro", "Cascadia Mono", "SFMono-Regular", Menlo, Consolas, "DejaVu Sans Mono", "Noto Sans Mono", PowerlineSymbols, "Liberation Mono", monospace';
 let nextProjectionId = 1;
 
 export class DomSceneProjector {
@@ -64,7 +66,7 @@ export class DomSceneProjector {
   }
 
   updateScene(scene: CellScene): DomProjectionStats {
-    const rows = sceneRows(scene);
+    const rows = domSceneRows(scene);
     const rowElements: HTMLElement[] = [];
     const fittedText: Array<readonly [HTMLElement, number]> = [];
     let runCount = 0;
@@ -93,6 +95,7 @@ export class DomSceneProjector {
         const runElement = this.#surface.ownerDocument.createElement("span");
         const textElement = this.#surface.ownerDocument.createElement("span");
         runElement.dataset.fauxUiRun = `${row.y}:${run.x}:${run.width}`;
+        if (run.terminalGraphics) runElement.dataset.fauxUiGraphics = "";
         textElement.dataset.fauxUiText = "";
         textElement.textContent = run.text;
         Object.assign(runElement.style, {
@@ -108,6 +111,9 @@ export class DomSceneProjector {
           fontWeight: run.style.bold ? "700" : "400",
           opacity: run.style.dim ? "0.65" : "1",
           textDecoration: run.style.underline ? "underline" : "none",
+          fontFamily: run.terminalGraphics
+            ? TERMINAL_GRAPHICS_FONT_FAMILY
+            : TEXT_FONT_FAMILY,
         });
         Object.assign(textElement.style, {
           display: "inline-block",
@@ -122,13 +128,7 @@ export class DomSceneProjector {
       rowElements.push(rowElement);
     }
 
-    const borderConnectors = createVerticalBorderConnectors(
-      this.#surface.ownerDocument,
-      scene,
-      this.#cellSize,
-      this.#palette,
-    );
-    this.#visual.replaceChildren(...rowElements, ...borderConnectors);
+    this.#visual.replaceChildren(...rowElements);
     for (const [element, targetWidth] of fittedText) {
       fitTextToCells(element, targetWidth);
     }
@@ -214,92 +214,78 @@ export function fitCells(
   };
 }
 
-function createVerticalBorderConnectors(
-  document: Document,
-  scene: CellScene,
-  cellSize: DomCellSize,
-  palette: Palette,
-): HTMLElement[] {
-  const connectors: HTMLElement[] = [];
-  const joinHeight = Math.min(1, cellSize.height);
+interface DomSceneRun {
+  readonly x: number;
+  readonly width: number;
+  readonly text: string;
+  readonly style: ResolvedStyle;
+  readonly terminalGraphics: boolean;
+}
 
-  for (let y = 0; y < scene.height - 1; y += 1) {
-    for (let x = 0; x < scene.width; x += 1) {
-      const upper = scene.cells[y * scene.width + x];
-      const lower = scene.cells[(y + 1) * scene.width + x];
-      if (upper === undefined || lower === undefined) continue;
-      const kind = matchingVerticalConnection(upper, lower);
-      if (kind === null) continue;
+interface DomSceneRow {
+  readonly y: number;
+  readonly runs: readonly DomSceneRun[];
+}
 
-      const connector = document.createElement("span");
-      const bridgeGlyph = document.createElement("span");
-      connector.dataset.fauxUiBorderConnector = `${x}:${y}:${kind}`;
-      Object.assign(connector.style, {
-        position: "absolute",
-        left: px(x * cellSize.width),
-        top: px((y + 1) * cellSize.height - joinHeight / 2),
-        width: px(cellSize.width),
-        height: px(joinHeight),
-        overflow: "hidden",
-        pointerEvents: "none",
-        color: concreteForeground(upper.style, palette),
-        fontWeight: upper.style.bold ? "700" : "400",
-        opacity: upper.style.dim ? "0.65" : "1",
-        textDecoration: upper.style.underline ? "underline" : "none",
-        whiteSpace: "pre",
+function domSceneRows(scene: CellScene): DomSceneRow[] {
+  const rows: DomSceneRow[] = [];
+  for (let y = 0; y < scene.height; y += 1) {
+    const runs: DomSceneRun[] = [];
+    let x = 0;
+    while (x < scene.width) {
+      const first = scene.cells[y * scene.width + x];
+      if (first === undefined) break;
+      const style = first.style;
+      const terminalGraphics =
+        !first.continuation && isTerminalGraphicsGlyph(first.glyph);
+      const start = x;
+      let text = "";
+      while (x < scene.width) {
+        const cell = scene.cells[y * scene.width + x];
+        if (cell === undefined || !stylesEqual(cell.style, style)) break;
+        if (
+          !cell.continuation &&
+          isTerminalGraphicsGlyph(cell.glyph) !== terminalGraphics
+        ) {
+          break;
+        }
+        if (!cell.continuation) text += cell.glyph === "" ? " " : cell.glyph;
+        x += 1;
+      }
+      runs.push({
+        x: start,
+        width: x - start,
+        text,
+        style,
+        terminalGraphics,
       });
-      bridgeGlyph.textContent = kind === "single" ? "│" : "║";
-      Object.assign(bridgeGlyph.style, {
-        position: "absolute",
-        left: "0",
-        top: px(-(cellSize.height - joinHeight) / 2),
-        width: px(cellSize.width),
-        height: px(cellSize.height),
-        lineHeight: px(cellSize.height),
-        whiteSpace: "pre",
-      });
-      connector.append(bridgeGlyph);
-      connectors.push(connector);
     }
+    rows.push({ y, runs });
   }
-
-  return connectors;
+  return rows;
 }
 
-function matchingVerticalConnection(
-  upper: Cell,
-  lower: Cell,
-): "single" | "double" | null {
-  const down = verticalConnection(upper.glyph, "down");
-  const up = verticalConnection(lower.glyph, "up");
-  return down !== null && down === up ? down : null;
+function isTerminalGraphicsGlyph(glyph: string): boolean {
+  const codePoint = glyph.codePointAt(0);
+  if (codePoint === undefined) return false;
+  return (
+    (codePoint >= 0x23ba && codePoint <= 0x23bd) ||
+    (codePoint >= 0x2500 && codePoint <= 0x259f) ||
+    (codePoint >= 0xe0a0 && codePoint <= 0xe0d7) ||
+    (codePoint >= 0x1cc00 && codePoint <= 0x1cebf) ||
+    (codePoint >= 0x1fb00 && codePoint <= 0x1fbff)
+  );
 }
 
-function verticalConnection(
-  glyph: string,
-  direction: "up" | "down",
-): "single" | "double" | null {
-  if (glyph === "│") return "single";
-  if (glyph === "║") return "double";
-  if (
-    direction === "down" &&
-    (glyph === "┌" || glyph === "┐" || glyph === "╭" || glyph === "╮")
-  ) {
-    return "single";
-  }
-  if (
-    direction === "up" &&
-    (glyph === "└" || glyph === "┘" || glyph === "╰" || glyph === "╯")
-  ) {
-    return "single";
-  }
-  if (direction === "down" && (glyph === "╔" || glyph === "╗")) {
-    return "double";
-  }
-  if (direction === "up" && (glyph === "╚" || glyph === "╝")) {
-    return "double";
-  }
-  return null;
+function stylesEqual(a: ResolvedStyle, b: ResolvedStyle): boolean {
+  return (
+    a.foreground === b.foreground &&
+    a.background === b.background &&
+    a.bold === b.bold &&
+    a.dim === b.dim &&
+    a.inverse === b.inverse &&
+    a.underline === b.underline
+  );
 }
 
 function configureCellTypography(
@@ -352,8 +338,7 @@ function configureSurface(surface: HTMLElement, ariaLabel: string): void {
     border: "0",
     overflow: "hidden",
     boxSizing: "content-box",
-    fontFamily:
-      '"Cascadia Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace',
+    fontFamily: TEXT_FONT_FAMILY,
     fontSize: "14px",
     fontVariantLigatures: "none",
     fontFeatureSettings: '"liga" 0, "calt" 0',
