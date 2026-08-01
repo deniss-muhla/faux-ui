@@ -144,7 +144,11 @@ test.describe("vNext DOM scene spike", () => {
     expect(result.cellElements).toBe(0);
     expect(result.graphicsElements).toBeGreaterThan(0);
     expect(
-      result.graphicsFonts.every((font) => font.includes("Source Code Pro")),
+      result.graphicsFonts.every(
+        (font) =>
+          font.includes("Cascadia Mono") &&
+          font.indexOf("Adwaita Mono") < font.indexOf("Source Code Pro"),
+      ),
     ).toBe(true);
     expect(result.graphicsLetterSpacing.every((value) => value === "0px")).toBe(
       true,

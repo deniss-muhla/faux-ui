@@ -39,7 +39,7 @@ const SEAM_OVERLAP = 1;
 const TEXT_FONT_FAMILY =
   '"Cascadia Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace';
 const TERMINAL_GRAPHICS_FONT_FAMILY =
-  '"Source Code Pro", "Cascadia Mono", "SFMono-Regular", Menlo, Consolas, "DejaVu Sans Mono", "Noto Sans Mono", PowerlineSymbols, "Liberation Mono", monospace';
+  '"Cascadia Mono", "SFMono-Regular", Menlo, Consolas, "Adwaita Mono", "FantasqueSansM Nerd Font Mono", "DejaVu Sans Mono", "Noto Sans Mono", PowerlineSymbols, "Source Code Pro", "Liberation Mono", monospace';
 let nextProjectionId = 1;
 
 export class DomSceneProjector {
