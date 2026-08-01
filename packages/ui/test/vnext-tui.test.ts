@@ -146,21 +146,22 @@ describe("vNext TUI host", () => {
     ]);
   });
 
-  it("serializes canonical scene styles as true color ANSI", () => {
+  it("serializes true color and re-anchors after Unicode glyphs", () => {
     const input = new FakeInput();
     const output = new FakeOutput();
-    const handle = render(createElement(Text, null, "古"), {
+    const handle = render(createElement(Text, null, "Aé👩‍💻B"), {
       input,
       output,
       alternateScreen: false,
       mouse: false,
-      width: 2,
+      width: 5,
       height: 1,
     });
     const ansi = sceneToAnsi(handle.getScene(), defaultPalette);
     expect(ansi).toContain("38;2;");
     expect(ansi).toContain("48;2;");
-    expect(ansi).toContain("古");
+    expect(ansi).toContain("é\u001b[3G");
+    expect(ansi).toContain("👩‍💻\u001b[5G");
     expect(ansi.endsWith("\u001b[0m")).toBe(true);
     handle.unmount();
   });

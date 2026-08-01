@@ -398,7 +398,8 @@ The shared controller owns interaction state and dispatch.
 
 - Render one fixed-cell application surface from canonical scene rows/style runs.
 - Use a monospace font stack, disable ligatures, and calibrate/final-fit glyph runs to exact logical cell widths.
-- Paint adjacent run backgrounds without fractional-scale seams.
+- Paint adjacent run backgrounds and connected vertical box-drawing joins without fractional-scale seams.
+- Normalize one conventional browser wheel notch to one logical cell; accumulate sub-cell pixel deltas.
 - Install the minimal sizing/margin/overflow reset needed by the host.
 - Require no app-authored CSS for the default full viewport path.
 - Convert pointer pixels to cells using actual surface geometry and logical dimensions.
@@ -413,6 +414,7 @@ The shared controller owns interaction state and dispatch.
 - Translate terminal input and resize into shared controller commands/root sizes.
 - Keep ANSI protocol parsing, raw mode, alternate screen, cursor, autowrap, and mouse negotiation host-local.
 - Prevent terminal right-margin autowrap from changing logical row placement.
+- Re-anchor after non-ASCII graphemes so terminal-specific Unicode-width disagreement cannot shift subsequent cells.
 - Restore terminal state on unmount, error, and normal exit.
 - Import no DOM code.
 

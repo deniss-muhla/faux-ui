@@ -244,7 +244,9 @@ The browser host creates one application surface and two internal layers:
 
 The root is one focusable `role="application"` element. Shared focus updates `aria-activedescendant`; native focus never becomes semantic state.
 
-The host uses inline-owned styles, a monospace stack, disabled ligatures, fixed physical cell calibration, and no app CSS. Each scene row becomes a positioned row and each style run a positioned span. The projector calibrates the active font advance to one logical cell, fits residual wide/fallback-font runs to their canonical width, and slightly overlaps adjacent backgrounds so browser zoom cannot expose fractional-pixel seams. There is no per-cell DOM node.
+The host uses inline-owned styles, a monospace stack, disabled ligatures, fixed physical cell calibration, and no app CSS. Each scene row becomes a positioned row and each style run a positioned span. The projector calibrates the active font advance to one logical cell, fits residual wide/fallback-font runs to their canonical width, slightly overlaps adjacent backgrounds, and bridges only connected vertical box-drawing joins with clipped matching glyph fragments. Browser zoom therefore cannot expose fractional-pixel seams; there is still no general per-cell DOM projection.
+
+Mouse-wheel line/page events and conventional large pixel notches become one logical cell step, matching one terminal wheel command. Small pixel deltas accumulate to a cell so trackpads remain smooth without skipping short scroll content.
 
 Pointer conversion uses the actual surface rectangle and logical scene dimensions:
 
@@ -270,7 +272,7 @@ The terminal entry owns all Node-specific behavior:
 - full-frame redraw and resize;
 - lifecycle restoration.
 
-Input/output are structural interfaces, enabling fake streams without a real terminal. Full-frame painting disables terminal autowrap and uses explicit CRLF row boundaries, so writing the final terminal column cannot insert or shift rows. Ctrl+C can unmount or route as a shared key. Cleanup restores autowrap and is idempotent.
+Input/output are structural interfaces, enabling fake streams without a real terminal. Full-frame painting disables terminal autowrap and uses explicit CRLF row boundaries, so writing the final terminal column cannot insert or shift rows. After each non-ASCII grapheme, ANSI horizontal positioning re-anchors subsequent cells; a terminal that assigns a different width to an emoji, combining, ambiguous, or CJK sequence therefore cannot move later borders. Ctrl+C can unmount or route as a shared key. Cleanup restores autowrap and is idempotent.
 
 ## Palette
 

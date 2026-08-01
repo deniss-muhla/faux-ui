@@ -16,9 +16,10 @@ faux-ui treats logical parity and packed-consumer behavior as primary evidence. 
 | DOM/TUI logical command/scene/event parity | `vnext-host-parity.test.ts` |
 | Ordinary React state and restricted text nesting | `vnext-react.test.ts` |
 | DOM fit/pixel conversion | `vnext-dom-spike.test.ts` |
-| Grouped DOM projection, exact run fitting, seam overlap, and accessibility | `vnext-dom-spike.pw.spec.ts` in Chromium |
+| DOM wheel-notch/trackpad normalization | `vnext-dom-spike.pw.spec.ts` in Chromium |
+| Grouped DOM projection, exact run fitting, background/border seam joins, and accessibility | `vnext-dom-spike.pw.spec.ts` in Chromium |
 | Serious browser authoring/input/resize path | `apps/example/test/example-dom.pw.spec.ts` |
-| Terminal input, ANSI, right-margin/autowrap safety, fake IO, cleanup | `vnext-tui.test.ts` |
+| Terminal input, ANSI, Unicode cursor anchoring, right-margin/autowrap safety, fake IO, cleanup | `vnext-tui.test.ts` |
 | Public JSX rejects HTML/named tracks | `public-api.typecheck.tsx` through `tsconfig.test.json` |
 | Packed tarball install/types/Bun/Vite/TUI | `scripts/test-package.mjs` |
 

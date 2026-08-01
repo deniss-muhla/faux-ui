@@ -2,6 +2,7 @@ import type { Size } from "./model.js";
 import type { Palette } from "./palette.js";
 import { defaultPalette } from "./palette.js";
 import {
+  type Cell,
   type CellScene,
   type ResolvedStyle,
   accessibleNodes,
@@ -121,7 +122,13 @@ export class DomSceneProjector {
       rowElements.push(rowElement);
     }
 
-    this.#visual.replaceChildren(...rowElements);
+    const borderConnectors = createVerticalBorderConnectors(
+      this.#surface.ownerDocument,
+      scene,
+      this.#cellSize,
+      this.#palette,
+    );
+    this.#visual.replaceChildren(...rowElements, ...borderConnectors);
     for (const [element, targetWidth] of fittedText) {
       fitTextToCells(element, targetWidth);
     }
@@ -205,6 +212,94 @@ export function fitCells(
     width: Math.max(0, Math.floor(pixelWidth / normalized.width)),
     height: Math.max(0, Math.floor(pixelHeight / normalized.height)),
   };
+}
+
+function createVerticalBorderConnectors(
+  document: Document,
+  scene: CellScene,
+  cellSize: DomCellSize,
+  palette: Palette,
+): HTMLElement[] {
+  const connectors: HTMLElement[] = [];
+  const joinHeight = Math.min(1, cellSize.height);
+
+  for (let y = 0; y < scene.height - 1; y += 1) {
+    for (let x = 0; x < scene.width; x += 1) {
+      const upper = scene.cells[y * scene.width + x];
+      const lower = scene.cells[(y + 1) * scene.width + x];
+      if (upper === undefined || lower === undefined) continue;
+      const kind = matchingVerticalConnection(upper, lower);
+      if (kind === null) continue;
+
+      const connector = document.createElement("span");
+      const bridgeGlyph = document.createElement("span");
+      connector.dataset.fauxUiBorderConnector = `${x}:${y}:${kind}`;
+      Object.assign(connector.style, {
+        position: "absolute",
+        left: px(x * cellSize.width),
+        top: px((y + 1) * cellSize.height - joinHeight / 2),
+        width: px(cellSize.width),
+        height: px(joinHeight),
+        overflow: "hidden",
+        pointerEvents: "none",
+        color: concreteForeground(upper.style, palette),
+        fontWeight: upper.style.bold ? "700" : "400",
+        opacity: upper.style.dim ? "0.65" : "1",
+        textDecoration: upper.style.underline ? "underline" : "none",
+        whiteSpace: "pre",
+      });
+      bridgeGlyph.textContent = kind === "single" ? "│" : "║";
+      Object.assign(bridgeGlyph.style, {
+        position: "absolute",
+        left: "0",
+        top: px(-(cellSize.height - joinHeight) / 2),
+        width: px(cellSize.width),
+        height: px(cellSize.height),
+        lineHeight: px(cellSize.height),
+        whiteSpace: "pre",
+      });
+      connector.append(bridgeGlyph);
+      connectors.push(connector);
+    }
+  }
+
+  return connectors;
+}
+
+function matchingVerticalConnection(
+  upper: Cell,
+  lower: Cell,
+): "single" | "double" | null {
+  const down = verticalConnection(upper.glyph, "down");
+  const up = verticalConnection(lower.glyph, "up");
+  return down !== null && down === up ? down : null;
+}
+
+function verticalConnection(
+  glyph: string,
+  direction: "up" | "down",
+): "single" | "double" | null {
+  if (glyph === "│") return "single";
+  if (glyph === "║") return "double";
+  if (
+    direction === "down" &&
+    (glyph === "┌" || glyph === "┐" || glyph === "╭" || glyph === "╮")
+  ) {
+    return "single";
+  }
+  if (
+    direction === "up" &&
+    (glyph === "└" || glyph === "┘" || glyph === "╰" || glyph === "╯")
+  ) {
+    return "single";
+  }
+  if (direction === "down" && (glyph === "╔" || glyph === "╗")) {
+    return "double";
+  }
+  if (direction === "up" && (glyph === "╚" || glyph === "╝")) {
+    return "double";
+  }
+  return null;
 }
 
 function configureCellTypography(

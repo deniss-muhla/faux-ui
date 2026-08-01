@@ -8,7 +8,7 @@ import {
 } from "./internal/dom-scene.js";
 import { SemanticMount } from "./internal/mount.js";
 import type { CellScene } from "./internal/scene.js";
-import type { Palette, Size } from "./internal/model.js";
+import type { Palette, Point, Size } from "./internal/model.js";
 import { mergePalette } from "./internal/palette.js";
 
 export interface DomRenderOptions {
@@ -78,6 +78,7 @@ export function render(
   const listeners: Array<
     readonly [string, EventListenerOrEventListenerObject, AddEventListenerOptions?]
   > = [];
+  const wheelRemainder = { x: 0, y: 0 };
   const listen = (
     type: string,
     listener: EventListener,
@@ -148,10 +149,12 @@ export function render(
       const event = rawEvent as WheelEvent;
       const point = pointFromPointer(surface, mount.size(), event);
       if (point === null) return;
+      const delta = wheelDeltaToCells(event, cellSize, wheelRemainder);
+      if (delta.x === 0 && delta.y === 0) return;
       const result = mount.scroll({
         ...point,
-        deltaX: pixelDeltaToCells(event.deltaX, cellSize.width),
-        deltaY: pixelDeltaToCells(event.deltaY, cellSize.height),
+        deltaX: delta.x,
+        deltaY: delta.y,
       });
       if (result.defaultPrevented) event.preventDefault();
     },
@@ -269,9 +272,60 @@ function pointerModifiers(event: PointerEvent) {
   };
 }
 
-function pixelDeltaToCells(delta: number, cellPixels: number): number {
-  if (delta === 0) return 0;
-  return Math.sign(delta) * Math.max(1, Math.floor(Math.abs(delta) / cellPixels));
+interface WheelRemainder {
+  x: number;
+  y: number;
+}
+
+function wheelDeltaToCells(
+  event: Pick<WheelEvent, "deltaMode" | "deltaX" | "deltaY">,
+  cellSize: DomCellSize,
+  remainder: WheelRemainder,
+): Point {
+  const horizontal = wheelAxisToCells(
+    event.deltaX,
+    event.deltaMode,
+    cellSize.width,
+    remainder.x,
+  );
+  const vertical = wheelAxisToCells(
+    event.deltaY,
+    event.deltaMode,
+    cellSize.height,
+    remainder.y,
+  );
+  remainder.x = horizontal.remainder;
+  remainder.y = vertical.remainder;
+  return { x: horizontal.cells, y: vertical.cells };
+}
+
+function wheelAxisToCells(
+  delta: number,
+  deltaMode: number,
+  cellPixels: number,
+  previousRemainder: number,
+): { readonly cells: number; readonly remainder: number } {
+  if (!Number.isFinite(delta) || delta === 0) {
+    return { cells: 0, remainder: previousRemainder };
+  }
+
+  // Line/page-mode wheels and conventional ~100 px mouse notches should
+  // match one terminal wheel command rather than skipping several rows.
+  if (deltaMode !== 0 || Math.abs(delta) >= Math.max(40, cellPixels * 3)) {
+    return { cells: Math.sign(delta), remainder: 0 };
+  }
+
+  const sameDirection =
+    previousRemainder === 0 || Math.sign(previousRemainder) === Math.sign(delta);
+  const accumulated = (sameDirection ? previousRemainder : 0) + delta;
+  if (Math.abs(accumulated) < cellPixels) {
+    return { cells: 0, remainder: accumulated };
+  }
+  const cells = Math.sign(accumulated);
+  return {
+    cells,
+    remainder: accumulated - cells * cellPixels,
+  };
 }
 
 function configureHost(

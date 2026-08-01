@@ -282,7 +282,7 @@ Final release gate:
 - `bun audit`: no vulnerabilities after pinning safe `picomatch`/`tinyglobby` overrides for the latest Vitest graph.
 - TypeScript 7 source plus test/negative-type checks pass.
 - Vitest: 9 files / 32 tests pass, including 1,000 randomized layouts and all official Unicode 17 boundary cases.
-- Playwright: 5 real-Chromium tests pass.
+- Playwright: 6 real-Chromium tests pass.
 - Packed consumer: tarball install, DOM-only/TUI-only types, Bun/Vite browser bundles, and Bun/Node fake-terminal execution pass.
 - Production package/example build passes with no browser target warning.
 - `bun run check` passes end to end.

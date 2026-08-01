@@ -58,6 +58,12 @@ test.describe("vNext DOM scene spike", () => {
         );
         const rowElements = [...surface.querySelectorAll<HTMLElement>("[data-faux-ui-row]")];
         const runElements = [...surface.querySelectorAll<HTMLElement>("[data-faux-ui-run]")];
+        const connectorElements = [
+          ...surface.querySelectorAll<HTMLElement>("[data-faux-ui-border-connector]"),
+        ];
+        const connectorHeights = connectorElements.map(
+          (connector) => connector.getBoundingClientRect().height,
+        );
         const fittedWidthErrors = runElements.map((run) => {
           const width = Number(run.dataset.fauxUiRun?.split(":")[2] ?? 0) * 8;
           const text = run.querySelector<HTMLElement>("[data-faux-ui-text]");
@@ -93,6 +99,8 @@ test.describe("vNext DOM scene spike", () => {
           rowElements: rowElements.length,
           runElements: runElements.length,
           cellElements: surface.querySelectorAll("[data-faux-ui-cell]").length,
+          connectorElements: connectorElements.length,
+          connectorHeights,
           maxFittedWidthError: Math.max(...fittedWidthErrors),
           maxScaledFittedWidthError: Math.max(...scaledFittedWidthErrors),
           verticalOverlap:
@@ -123,6 +131,8 @@ test.describe("vNext DOM scene spike", () => {
     expect(result.rowElements).toBe(4);
     expect(result.runElements).toBe(result.stats.runs);
     expect(result.cellElements).toBe(0);
+    expect(result.connectorElements).toBe(6);
+    expect(result.connectorHeights.every((height) => height === 1)).toBe(true);
     expect(result.maxFittedWidthError).toBeLessThan(0.05);
     expect(result.maxScaledFittedWidthError).toBeLessThan(0.05);
     expect(result.verticalOverlap).toBeGreaterThanOrEqual(1);
@@ -136,6 +146,93 @@ test.describe("vNext DOM scene spike", () => {
       buttonRole: "button",
     });
     expect(result.activeDescendant).toMatch(/^faux-ui-\d+-a11y-2$/u);
+  });
+
+  test("normalizes browser wheel notches to terminal-like cell steps", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const result = await page.evaluate(
+      async ({ componentsUrl, domUrl, sceneUrl }) => {
+        const reactUrl: string = "/@id/react";
+        const react = await import(reactUrl);
+        const createElement = react.createElement ?? react.default?.createElement;
+        if (createElement === undefined) throw new Error("Missing React.createElement");
+        const { Column, ScrollView, Text } = await import(componentsUrl);
+        const { render } = await import(domUrl);
+        const { sceneToText } = await import(sceneUrl);
+
+        document.body.replaceChildren();
+        document.body.style.margin = "0";
+        const rows = ["A", "B", "C", "D", "E", "F"].map((label) =>
+          createElement(Text, { key: label }, label),
+        );
+        const handle = render(
+          createElement(
+            ScrollView,
+            { axis: "y" },
+            createElement(Column, { tracks: rows.map(() => 1) }, ...rows),
+          ),
+          { width: 8, height: 2 },
+        );
+        const visibleRows = () =>
+          sceneToText(handle.getScene())
+            .split("\n")
+            .map((line: string) => line.trimEnd());
+        const wheel = (deltaY: number, deltaMode = 0) => {
+          const event = new WheelEvent("wheel", {
+            bubbles: true,
+            cancelable: true,
+            clientX: 4,
+            clientY: 4,
+            deltaMode,
+            deltaY,
+          });
+          handle.element.dispatchEvent(event);
+          return event.defaultPrevented;
+        };
+
+        const initial = visibleRows();
+        const notchPrevented = wheel(100);
+        const afterNotch = visibleRows();
+        const firstPartialPrevented = wheel(8);
+        const afterFirstPartial = visibleRows();
+        const secondPartialPrevented = wheel(8);
+        const afterSecondPartial = visibleRows();
+        const lineModePrevented = wheel(3, WheelEvent.DOM_DELTA_LINE);
+        const afterLineMode = visibleRows();
+        handle.unmount();
+
+        return {
+          initial,
+          afterNotch,
+          afterFirstPartial,
+          afterSecondPartial,
+          afterLineMode,
+          notchPrevented,
+          firstPartialPrevented,
+          secondPartialPrevented,
+          lineModePrevented,
+        };
+      },
+      {
+        componentsUrl: src("../components"),
+        domUrl: src("../dom"),
+        sceneUrl: src("scene"),
+      },
+    );
+
+    expect(result).toEqual({
+      initial: ["A", "B"],
+      afterNotch: ["B", "C"],
+      afterFirstPartial: ["B", "C"],
+      afterSecondPartial: ["C", "D"],
+      afterLineMode: ["D", "E"],
+      notchPrevented: true,
+      firstPartialPrevented: false,
+      secondPartialPrevented: true,
+      lineModePrevented: true,
+    });
   });
 
   test("cleans up failed and successful DOM mounts", async ({ page }) => {
