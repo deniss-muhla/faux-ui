@@ -19,10 +19,11 @@ const ENTER_ALTERNATE_SCREEN = "\u001b[?1049h";
 const LEAVE_ALTERNATE_SCREEN = "\u001b[?1049l";
 const HIDE_CURSOR = "\u001b[?25l";
 const SHOW_CURSOR = "\u001b[?25h";
+const DISABLE_AUTOWRAP = "\u001b[?7l";
+const ENABLE_AUTOWRAP = "\u001b[?7h";
 const ENABLE_MOUSE = "\u001b[?1000h\u001b[?1002h\u001b[?1006h";
 const DISABLE_MOUSE = "\u001b[?1000l\u001b[?1002l\u001b[?1006l";
 const CLEAR_SCREEN = "\u001b[2J\u001b[H";
-const ERASE_REST = "\u001b[J";
 
 export interface TerminalInput {
   readonly isTTY?: boolean;
@@ -87,9 +88,7 @@ export function render(
     onFrame: (frame) => {
       if (!running) return;
       const palette = mergePalette({ ...frame.palette, ...options.palette });
-      output.write(CLEAR_SCREEN);
-      output.write(sceneToAnsi(frame.scene, palette));
-      output.write(ERASE_REST);
+      writeFrame(output, frame.scene, palette);
     },
   });
   const decoder = new TextDecoder();
@@ -141,12 +140,11 @@ export function render(
       output.on?.("resize", handleResize);
       if (alternateScreen) output.write(ENTER_ALTERNATE_SCREEN);
       output.write(HIDE_CURSOR);
+      output.write(DISABLE_AUTOWRAP);
       if (mouse) output.write(ENABLE_MOUSE);
       const frame = mount.frame();
       const palette = mergePalette({ ...frame.palette, ...options.palette });
-      output.write(CLEAR_SCREEN);
-      output.write(sceneToAnsi(frame.scene, palette));
-      output.write(ERASE_REST);
+      writeFrame(output, frame.scene, palette);
     },
     stop(): void {
       if (!running) return;
@@ -156,6 +154,7 @@ export function render(
       input.setRawMode?.(false);
       input.pause?.();
       if (mouse) output.write(DISABLE_MOUSE);
+      output.write(ENABLE_AUTOWRAP);
       output.write(SHOW_CURSOR);
       if (alternateScreen) output.write(LEAVE_ALTERNATE_SCREEN);
     },
@@ -210,6 +209,14 @@ export function render(
   }
 
   return handle;
+}
+
+function writeFrame(
+  output: TerminalOutput,
+  scene: CellScene,
+  palette: Palette,
+): void {
+  output.write(`${CLEAR_SCREEN}${sceneToAnsi(scene, palette)}`);
 }
 
 function resolveTerminalSize(

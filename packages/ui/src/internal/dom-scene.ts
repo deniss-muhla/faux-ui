@@ -35,6 +35,8 @@ export interface DomSceneProjectorOptions {
 }
 
 const DEFAULT_CELL_SIZE: DomCellSize = { width: 8, height: 16 };
+const DEFAULT_FONT_HEIGHT_RATIO = 0.875;
+const SEAM_OVERLAP = 1;
 let nextProjectionId = 1;
 
 export class DomSceneProjector {
@@ -57,11 +59,13 @@ export class DomSceneProjector {
     configureVisualLayer(this.#visual);
     configureAccessibilityLayer(this.#accessibility);
     surface.replaceChildren(this.#visual, this.#accessibility);
+    configureCellTypography(surface, this.#cellSize);
   }
 
   updateScene(scene: CellScene): DomProjectionStats {
     const rows = sceneRows(scene);
     const rowElements: HTMLElement[] = [];
+    const fittedText: Array<readonly [HTMLElement, number]> = [];
     let runCount = 0;
 
     this.#surface.style.width = px(scene.width * this.#cellSize.width);
@@ -79,20 +83,23 @@ export class DomSceneProjector {
         width: px(scene.width * this.#cellSize.width),
         height: px(this.#cellSize.height),
         lineHeight: px(this.#cellSize.height),
-        overflow: "hidden",
+        overflow: "visible",
         whiteSpace: "pre",
       });
 
       for (const run of row.runs) {
+        const targetWidth = run.width * this.#cellSize.width;
         const runElement = this.#surface.ownerDocument.createElement("span");
+        const textElement = this.#surface.ownerDocument.createElement("span");
         runElement.dataset.fauxUiRun = `${row.y}:${run.x}:${run.width}`;
-        runElement.textContent = run.text;
+        textElement.dataset.fauxUiText = "";
+        textElement.textContent = run.text;
         Object.assign(runElement.style, {
           position: "absolute",
           left: px(run.x * this.#cellSize.width),
           top: "0",
-          width: px(run.width * this.#cellSize.width),
-          height: px(this.#cellSize.height),
+          width: px(targetWidth + SEAM_OVERLAP),
+          height: px(this.#cellSize.height + SEAM_OVERLAP),
           overflow: "hidden",
           whiteSpace: "pre",
           color: concreteForeground(run.style, this.#palette),
@@ -101,13 +108,23 @@ export class DomSceneProjector {
           opacity: run.style.dim ? "0.65" : "1",
           textDecoration: run.style.underline ? "underline" : "none",
         });
+        Object.assign(textElement.style, {
+          display: "inline-block",
+          transformOrigin: "left top",
+          whiteSpace: "pre",
+        });
+        runElement.append(textElement);
         rowElement.append(runElement);
+        fittedText.push([textElement, targetWidth]);
         runCount += 1;
       }
       rowElements.push(rowElement);
     }
 
     this.#visual.replaceChildren(...rowElements);
+    for (const [element, targetWidth] of fittedText) {
+      fitTextToCells(element, targetWidth);
+    }
     return { rows: rows.length, runs: runCount, cells: scene.cells.length };
   }
 
@@ -139,6 +156,7 @@ export class DomSceneProjector {
 
   setCellSize(cellSize: DomCellSize): void {
     this.#cellSize = normalizeCellSize(cellSize);
+    configureCellTypography(this.#surface, this.#cellSize);
   }
 
   cellSize(): DomCellSize {
@@ -187,6 +205,43 @@ export function fitCells(
     width: Math.max(0, Math.floor(pixelWidth / normalized.width)),
     height: Math.max(0, Math.floor(pixelHeight / normalized.height)),
   };
+}
+
+function configureCellTypography(
+  surface: HTMLElement,
+  cellSize: DomCellSize,
+): void {
+  const fontSize = cellSize.height * DEFAULT_FONT_HEIGHT_RATIO;
+  surface.style.fontSize = px(fontSize);
+
+  const probe = surface.ownerDocument.createElement("span");
+  const probeText = "0".repeat(1024);
+  probe.textContent = probeText;
+  Object.assign(probe.style, {
+    position: "absolute",
+    visibility: "hidden",
+    whiteSpace: "pre",
+    letterSpacing: "0",
+    fontWeight: "400",
+  });
+  surface.append(probe);
+  const measured = probe.offsetWidth / probeText.length;
+  probe.remove();
+
+  const advance = measured > 0 ? measured : fontSize * 0.6;
+  surface.style.letterSpacing = px(cellSize.width - advance);
+}
+
+function fitTextToCells(element: HTMLElement, targetWidth: number): void {
+  const naturalWidth = element.getBoundingClientRect().width;
+  const runWidth = element.parentElement?.getBoundingClientRect().width ?? 0;
+  if (targetWidth <= 0 || naturalWidth <= 0 || runWidth <= 0) return;
+  const renderedTarget =
+    (runWidth * targetWidth) / (targetWidth + SEAM_OVERLAP);
+  const scale = renderedTarget / naturalWidth;
+  if (Math.abs(scale - 1) > 0.0001) {
+    element.style.transform = `scaleX(${scale})`;
+  }
 }
 
 function configureSurface(surface: HTMLElement, ariaLabel: string): void {

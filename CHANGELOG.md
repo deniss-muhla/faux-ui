@@ -16,6 +16,12 @@ First release-ready implementation.
 - Static layout/scene/text/event inspection API.
 - Serious dual-host fixture, official Unicode conformance tests, property tests, Chromium tests, packed-consumer tests, and CI.
 
+### Fixed
+
+- Browser font advances are fitted to logical cells and adjacent run backgrounds overlap safely, preventing clipped borders, cumulative row shifts, and fractional-scale seams.
+- Terminal painting disables autowrap and uses explicit CRLF row boundaries, preventing full-width frames from inserting blank or shifted rows.
+- Compact fixture actions retain horizontal breathing room.
+
 ### Removed
 
 - Prototype app/core/reconciler/renderer/schema/CLI/MCP/devtools packages.

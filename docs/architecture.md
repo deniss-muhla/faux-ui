@@ -244,7 +244,7 @@ The browser host creates one application surface and two internal layers:
 
 The root is one focusable `role="application"` element. Shared focus updates `aria-activedescendant`; native focus never becomes semantic state.
 
-The host uses inline-owned styles, a monospace stack, disabled ligatures, fixed physical cell calibration, and no app CSS. Each scene row becomes a positioned row and each style run a positioned span. There is no per-cell DOM node.
+The host uses inline-owned styles, a monospace stack, disabled ligatures, fixed physical cell calibration, and no app CSS. Each scene row becomes a positioned row and each style run a positioned span. The projector calibrates the active font advance to one logical cell, fits residual wide/fallback-font runs to their canonical width, and slightly overlaps adjacent backgrounds so browser zoom cannot expose fractional-pixel seams. There is no per-cell DOM node.
 
 Pointer conversion uses the actual surface rectangle and logical scene dimensions:
 
@@ -270,7 +270,7 @@ The terminal entry owns all Node-specific behavior:
 - full-frame redraw and resize;
 - lifecycle restoration.
 
-Input/output are structural interfaces, enabling fake streams without a real terminal. Ctrl+C can unmount or route as a shared key. Cleanup is idempotent.
+Input/output are structural interfaces, enabling fake streams without a real terminal. Full-frame painting disables terminal autowrap and uses explicit CRLF row boundaries, so writing the final terminal column cannot insert or shift rows. Ctrl+C can unmount or route as a shared key. Cleanup restores autowrap and is idempotent.
 
 ## Palette
 

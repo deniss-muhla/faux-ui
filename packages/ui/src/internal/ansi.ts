@@ -13,7 +13,7 @@ export function sceneToAnsi(scene: CellScene, palette: Palette): string {
       output += ansiStyle(run.style, palette);
       output += run.text;
     }
-    if (rowIndex < rows.length - 1) output += "\n";
+    if (rowIndex < rows.length - 1) output += "\r\n";
   }
   return `${output}${RESET}`;
 }

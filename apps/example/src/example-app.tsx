@@ -176,7 +176,7 @@ export function ExampleApp() {
               key={key}
               label={label}
               hotkey={key}
-              padding={0}
+              padding={{ x: 1 }}
               onPress={() => runAction(key, label)}
             />
           ))}

@@ -397,7 +397,8 @@ The shared controller owns interaction state and dispatch.
 ## DOM host requirements
 
 - Render one fixed-cell application surface from canonical scene rows/style runs.
-- Use a monospace font stack and disable ligatures.
+- Use a monospace font stack, disable ligatures, and calibrate/final-fit glyph runs to exact logical cell widths.
+- Paint adjacent run backgrounds without fractional-scale seams.
 - Install the minimal sizing/margin/overflow reset needed by the host.
 - Require no app-authored CSS for the default full viewport path.
 - Convert pointer pixels to cells using actual surface geometry and logical dimensions.
@@ -410,7 +411,8 @@ The shared controller owns interaction state and dispatch.
 
 - Serialize the canonical scene with the active palette.
 - Translate terminal input and resize into shared controller commands/root sizes.
-- Keep ANSI protocol parsing, raw mode, alternate screen, cursor, and mouse negotiation host-local.
+- Keep ANSI protocol parsing, raw mode, alternate screen, cursor, autowrap, and mouse negotiation host-local.
+- Prevent terminal right-margin autowrap from changing logical row placement.
 - Restore terminal state on unmount, error, and normal exit.
 - Import no DOM code.
 

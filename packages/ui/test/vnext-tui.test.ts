@@ -70,8 +70,18 @@ describe("vNext TUI host", () => {
 
     expect(handle.isRunning()).toBe(true);
     expect(input.rawModes).toEqual([true]);
-    expect(output.writes.join("")).toContain("\u001b[?1049h");
-    expect(output.writes.join("")).toContain("Actions");
+    const mountedOutput = output.writes.join("");
+    expect(mountedOutput).toContain("\u001b[?1049h");
+    expect(mountedOutput).toContain("\u001b[?7l");
+    expect(mountedOutput.indexOf("\u001b[?7l")).toBeLessThan(
+      mountedOutput.indexOf("Actions"),
+    );
+    expect(mountedOutput).toContain("\r\n");
+    const serializedRows = sceneToAnsi(handle.getScene(), defaultPalette)
+      .replaceAll(/\u001b\[[\d;]*m/gu, "")
+      .split("\r\n");
+    expect(serializedRows).toHaveLength(3);
+    expect(serializedRows.every((row) => row.length === 12)).toBe(true);
 
     input.emit("\t\r");
     expect(press).toHaveBeenCalledTimes(1);
@@ -79,7 +89,12 @@ describe("vNext TUI host", () => {
     handle.unmount();
     expect(input.rawModes).toEqual([true, false]);
     expect(input.paused).toBe(1);
-    expect(output.writes.join("")).toContain("\u001b[?1049l");
+    const stoppedOutput = output.writes.join("");
+    expect(stoppedOutput).toContain("\u001b[?7h");
+    expect(stoppedOutput.indexOf("\u001b[?7h")).toBeGreaterThan(
+      stoppedOutput.indexOf("\u001b[?7l"),
+    );
+    expect(stoppedOutput).toContain("\u001b[?1049l");
     expect(input.listeners.size).toBe(0);
   });
 
@@ -100,6 +115,7 @@ describe("vNext TUI host", () => {
     expect(() => input.emit("\t\r")).toThrow("boom");
     expect(handle.isRunning()).toBe(false);
     expect(input.rawModes).toEqual([true, false]);
+    expect(output.writes.join("")).toContain("\u001b[?7h");
   });
 
   it("parses split-safe keyboard and SGR mouse controls", () => {

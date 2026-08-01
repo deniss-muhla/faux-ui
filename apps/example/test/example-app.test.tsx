@@ -21,6 +21,7 @@ describe("release-review fixture", () => {
     expect(text).toContain("ONLINE");
     expect(text).toContain("古");
     expect(text).toContain("👩‍💻");
+    expect(text.split("\n")[27]).toMatch(/^ Open/u);
     expect(app.getScene()).toMatchObject({ width: 100, height: 30 });
     expect(app.getLayout().root.children).toHaveLength(3);
     app.unmount();
