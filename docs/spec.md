@@ -397,7 +397,7 @@ The shared controller owns interaction state and dispatch.
 ## DOM host requirements
 
 - Render one fixed-cell application surface from canonical scene rows/style runs.
-- Use monospace text and connection-safe terminal-graphics font stacks, disable ligatures, and calibrate/final-fit glyph runs to exact logical cell widths.
+- Use monospace text and connection-safe terminal-graphics font stacks, disable ligatures, and calibrate/final-fit glyph runs to exact logical cell widths without sharing text letter-spacing adjustments with graphics runs.
 - Keep connectable Unicode glyphs as text; do not stretch their height or replace them with geometric overlays.
 - Paint adjacent run backgrounds without fractional-scale seams.
 - Normalize one conventional browser wheel notch to one logical cell; accumulate sub-cell pixel deltas.

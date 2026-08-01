@@ -64,6 +64,9 @@ test.describe("vNext DOM scene spike", () => {
         const graphicsFonts = graphicsElements.map(
           (element) => getComputedStyle(element).fontFamily,
         );
+        const graphicsLetterSpacing = graphicsElements.map(
+          (element) => element.style.letterSpacing,
+        );
         const graphicsText = graphicsElements.map(
           (element) => element.textContent ?? "",
         );
@@ -104,6 +107,7 @@ test.describe("vNext DOM scene spike", () => {
           cellElements: surface.querySelectorAll("[data-faux-ui-cell]").length,
           graphicsElements: graphicsElements.length,
           graphicsFonts,
+          graphicsLetterSpacing,
           graphicsText,
           connectorElements: surface.querySelectorAll(
             "[data-faux-ui-border-connector]",
@@ -142,6 +146,9 @@ test.describe("vNext DOM scene spike", () => {
     expect(
       result.graphicsFonts.every((font) => font.includes("Source Code Pro")),
     ).toBe(true);
+    expect(result.graphicsLetterSpacing.every((value) => value === "0px")).toBe(
+      true,
+    );
     expect(result.graphicsText.join("")).toContain("│█▗");
     expect(result.connectorElements).toBe(0);
     expect(result.maxFittedWidthError).toBeLessThan(0.05);

@@ -114,6 +114,7 @@ export class DomSceneProjector {
           fontFamily: run.terminalGraphics
             ? TERMINAL_GRAPHICS_FONT_FAMILY
             : TEXT_FONT_FAMILY,
+          letterSpacing: run.terminalGraphics ? "0" : "inherit",
         });
         Object.assign(textElement.style, {
           display: "inline-block",
