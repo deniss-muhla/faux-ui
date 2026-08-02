@@ -1,8 +1,8 @@
-# faux-ui refactor report
+# TUI-first reset proposal
 
 ## Outcome
 
-The recommendation in this historical report is implemented by the 1.0.0 source tree. The repository now has one public package, isolated host subpaths, pure one-axis layout, vendored Unicode 17 cellization, one canonical scene/controller, the foundation components, packed consumer gates, and no prototype compatibility packages. See [../architecture.md](../architecture.md) for implemented reality and [tasks.md](tasks.md) for the completed execution record.
+The recommendation in this historical report is implemented by the 1.0.0 source tree. The repository now has one public package, isolated host subpaths, pure one-axis layout, vendored Unicode 17 cellization, one canonical scene/controller, the foundation components, packed consumer gates, and no prototype compatibility packages. See [../../architecture.md](../../architecture.md) for implemented reality and [03-execution.md](03-execution.md) for the completed execution record.
 
 ## Executive recommendation
 

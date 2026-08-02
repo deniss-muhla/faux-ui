@@ -2,11 +2,11 @@
 
 ## Current position
 
-Status: **1.0.0 implementation complete and release-ready**
+Status: **1.0 semantic implementation complete; public-language cutover pending**
 
-The destructive TUI-first reset is implemented on `refactor/tui-first-reset`. Publication/tagging is a separate explicit release action.
+The destructive TUI-first reset and rendering stabilization are implemented on `refactor/tui-first-reset`, but the branch has not been merged, tagged, or published. The public API can still break without compatibility work.
 
-The authoritative behavior is [spec.md](spec.md), implemented structure is [architecture.md](architecture.md), and product scope is [strategy.md](strategy.md). Historical evidence and task detail remain under [refactor/](refactor/).
+The authoritative implemented behavior is [spec.md](spec.md), implemented structure is [architecture.md](architecture.md), and product scope is [strategy.md](strategy.md). Development history is indexed in [docs/README.md](README.md). The [2026-08-01 public-language decision](refactors/2026-08-01-api-language-review/03-decision.md) must be implemented before release readiness is restored.
 
 ## Completed reset milestones
 
@@ -94,9 +94,29 @@ Complete:
 - package metadata, license, package README, root guides, and architecture updated;
 - Bun requirement/package-manager metadata and TypeScript, React, Vite, Vitest, Playwright, types, and fast-check updated to current stable versions.
 
+## Active pre-release milestone — public language and outside spacing
+
+Decision work:
+
+- [x] inventory current component, prop, type, host, lifecycle, and testing names;
+- [x] evaluate plain-English readability and false HTML/CSS expectations;
+- [x] define three coherent naming variants;
+- [x] select the plain-spatial variant and deterministic `spaceOutside` semantics;
+- [x] organize refactor history into dated dossiers.
+
+Implementation work:
+
+- [ ] implement `spaceOutside` in preferred size, layout, scene ownership, and tests;
+- [ ] replace public names/types/hooks without aliases;
+- [ ] replace `/dom` and `/tui` with `/browser` and `/terminal`;
+- [ ] rewrite examples, current docs, type tests, and packed consumers;
+- [ ] prove browser/terminal parity and restore release-ready status.
+
+See the [public-language dossier](refactors/2026-08-01-api-language-review/README.md).
+
 ## 1.0 release gate
 
-Implemented gates:
+Implemented semantic/host gates:
 
 - [x] one app-author package;
 - [x] one-call DOM and TUI mounting;
@@ -111,8 +131,11 @@ Implemented gates:
 - [x] typecheck, unit/property/conformance, browser, package, and build checks;
 - [x] no compatibility aliases.
 
-Release action still requiring an explicit maintainer command:
+Work still required before release action:
 
+- implement the selected public-language and deterministic outside-spacing cutover without aliases;
+- update every current doc/example/type/package fixture to the selected vocabulary;
+- rerun all release gates after the cutover;
 - create the release commit/PR;
 - tag `v1.0.0`;
 - publish `@faux-ui/ui@1.0.0`.

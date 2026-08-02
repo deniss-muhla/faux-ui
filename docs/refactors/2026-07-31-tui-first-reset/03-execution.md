@@ -1,6 +1,6 @@
-# faux-ui refactor tasks
+# TUI-first reset execution record
 
-> Completed execution record for the clean-break 1.0 reset described in [report.md](report.md). Nothing was released before this replacement, so no compatibility aliases were retained.
+> Completed execution record for the clean-break 1.0 reset described in [02-proposal.md](02-proposal.md). Nothing was released before this replacement, so no compatibility aliases were retained.
 
 ## Phase 0 — Lock the reset contract
 
@@ -35,7 +35,7 @@
 - [x] Scroll clamping and paint-only offset semantics retained.
 - [x] Focus traversal and direct React handlers retained.
 - [x] Generic-renderer/schema/token/named-placement/dead-measurement tests deleted.
-- [x] [Testing matrix](../testing.md) maps behavior to executable coverage.
+- [x] [Testing matrix](../../testing.md) maps behavior to executable coverage.
 
 ### R1.3 Consumer package tests — complete
 
@@ -165,7 +165,7 @@
 
 ### R7.2 Recipes — complete
 
-- [x] App shell, panel, action bar, split panes, key/value metadata, status, queue, and divider recipes documented in [recipes.md](../recipes.md).
+- [x] App shell, panel, action bar, split panes, key/value metadata, status, queue, and divider recipes documented in [recipes.md](../../recipes.md).
 - [x] Public component count remains intentionally small.
 
 ### R7.3 Quality gates — complete
@@ -198,7 +198,7 @@
 
 ### R8.2 Release gate — complete
 
-- [x] Success criteria in `report.md` are implemented.
+- [x] Success criteria in `02-proposal.md` are implemented.
 - [x] Clean packed install passes.
 - [x] No old package name is required.
 - [x] Serious fixture passes both hosts.

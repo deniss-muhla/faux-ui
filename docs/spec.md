@@ -2,7 +2,7 @@
 
 ## Status
 
-This is the normative contract implemented by faux-ui 1.0.0. Delivery history belongs in [roadmap.md](roadmap.md); rationale and evidence belong in [refactor/report.md](refactor/report.md).
+This is the normative contract implemented by the current faux-ui 1.0 candidate. Delivery history belongs in [roadmap.md](roadmap.md); reset rationale belongs in the [TUI-first dossier](refactors/2026-07-31-tui-first-reset/README.md). The [public-language decision](refactors/2026-08-01-api-language-review/03-decision.md) is not normative until its source cutover is complete.
 
 Frozen implementation decisions:
 

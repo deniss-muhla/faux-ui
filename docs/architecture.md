@@ -2,7 +2,7 @@
 
 ## Status
 
-This document describes the implemented 1.0.0 architecture. Historical prototype analysis remains in [refactor/analisis.md](refactor/analisis.md) and [refactor/report.md](refactor/report.md).
+This document describes the currently implemented 1.0 candidate architecture. Historical prototype analysis is in the [TUI-first reset dossier](refactors/2026-07-31-tui-first-reset/README.md). The selected public-language changes are documented separately and remain pending in the [API language review](refactors/2026-08-01-api-language-review/README.md).
 
 ## System shape
 

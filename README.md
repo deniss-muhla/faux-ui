@@ -251,6 +251,7 @@ bun run example:tui
 
 Further documentation:
 
+- [Documentation map and timeline](docs/README.md)
 - [Specification](docs/spec.md)
 - [Architecture](docs/architecture.md)
 - [Strategy](docs/strategy.md)
@@ -259,4 +260,5 @@ Further documentation:
 - [Composition recipes](docs/recipes.md)
 - [Changelog](CHANGELOG.md)
 - [Third-party notices](THIRD_PARTY_NOTICES.md)
-- [Refactor evidence and history](docs/refactor/report.md)
+- [Implemented reset history](docs/refactors/2026-07-31-tui-first-reset/README.md)
+- [Pending public-language decision](docs/refactors/2026-08-01-api-language-review/README.md)

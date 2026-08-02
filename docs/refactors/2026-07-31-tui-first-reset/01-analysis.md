@@ -1,6 +1,6 @@
-# Refactor analysis notebook
+# TUI-first reset analysis notebook
 
-> Living evidence log for the TUI-first simplification. This file intentionally records findings as they are gathered; consolidated conclusions belong in `report.md` and executable work belongs in `tasks.md`.
+> Historical evidence log for the TUI-first simplification. Consolidated conclusions are in [02-proposal.md](02-proposal.md); executable work is recorded in [03-execution.md](03-execution.md).
 
 ## 2026-07-31 — Scope and directional hypotheses
 
@@ -212,7 +212,7 @@ This section is intentionally redundant so work can resume after context compact
 - Ran a synthetic full consumer screen in Chromium, captured DOM/runtime metrics, exercised its hotkey, and inspected screenshots.
 - Verified the repo after `bun install --frozen-lockfile`: typecheck, build, and 125 tests pass. Vite browser builds still warn about statically imported `node:process` from TUI.
 - Compared relevant official Ink, Textual, Ratatui, and xterm.js documentation.
-- Wrote the consolidated recommendation to `docs/refactor/report.md`.
+- Wrote the consolidated recommendation (now `docs/refactors/2026-07-31-tui-first-reset/02-proposal.md`).
 
 ### Current recommendation
 
@@ -227,9 +227,9 @@ This section is intentionally redundant so work can resume after context compact
 
 ### Files changed/created at the documentation checkpoint
 
-- `docs/refactor/analisis.md` — detailed evidence and recovery checkpoints.
-- `docs/refactor/report.md` — consolidated product/architecture recommendation.
-- `docs/refactor/tasks.md` — ordered destructive implementation tasks with acceptance gates.
+- `01-analysis.md` — detailed evidence and recovery checkpoints.
+- `02-proposal.md` — consolidated product/architecture recommendation.
+- `03-execution.md` — ordered destructive implementation tasks with acceptance gates.
 - `docs/spec.md` — normative vNext semantics.
 - `docs/roadmap.md` — reset milestone status.
 - `docs/strategy.md` — product positioning, scope filter, and delivery strategy.
