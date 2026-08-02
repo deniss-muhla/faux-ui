@@ -1,22 +1,22 @@
 # Composition recipes
 
-These patterns intentionally use the 1.0 foundation rather than adding specialized core components.
+These patterns intentionally use the 0.9.1 evidence foundation rather than adding specialized core components.
 
 ## App shell
 
 ```tsx
-import { Box, Column, Text } from "@faux-ui/ui";
+import { Box, Rows, Text } from "@faux-ui/ui";
 import type { ReactNode } from "react";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
-    <Column tracks={[3, "1fr", 2]}>
+    <Rows tracks={[3, "1fr", 2]}>
       <Box border="double" title=" Tool " padding={{ x: 1 }}>
         <Text overflow="ellipsis-end">Keyboard-first review tool</Text>
       </Box>
       <Box>{children}</Box>
       <Text style={{ foreground: "muted" }}>Tab focus · ? help</Text>
-    </Column>
+    </Rows>
   );
 }
 ```
@@ -41,25 +41,27 @@ export function Panel({
 }
 ```
 
-A no-axis `Box` accepts one semantic child. Wrap multiple panel rows in `Column`.
+A no-axis `Box` accepts one semantic child. Wrap multiple panel rows in `Rows`.
 
 ## Three-pane inspector
 
+`Columns` makes each child a column, so numeric tracks below are widths.
+
 ```tsx
-<Row tracks={[28, "2fr", 30]} gap={1}>
+<Columns tracks={[28, "2fr", 30]} gap={1}>
   <Panel title="Queue"><Queue /></Panel>
   <Panel title="Details"><Details /></Panel>
   <Panel title="Metadata"><Metadata /></Panel>
-</Row>
+</Columns>
 ```
 
-Use nested rows/columns rather than named tracks or two-dimensional placement.
+Use nested `Rows` / `Columns` rather than named tracks or two-dimensional placement.
 
 ## Scrollable selectable queue
 
 ```tsx
 <ScrollView axis="y" border title=" Queue ">
-  <Column tracks={items.map(() => 2)}>
+  <Rows tracks={items.map(() => 2)}>
     {items.map((item, index) => (
       <Button
         key={item.id}
@@ -68,13 +70,13 @@ Use nested rows/columns rather than named tracks or two-dimensional placement.
         padding={{ x: 1 }}
         onPress={() => setSelected(index)}
       >
-        <Column tracks={[1, 1]}>
+        <Rows tracks={[1, 1]}>
           <Text overflow="ellipsis-end">{item.title}</Text>
           <Text style={{ foreground: "muted" }}>{item.owner}</Text>
-        </Column>
+        </Rows>
       </Button>
     ))}
-  </Column>
+  </Rows>
 </ScrollView>
 ```
 
@@ -89,17 +91,17 @@ const actions = [
   ["c", "Comment"],
 ] as const;
 
-<Row tracks={actions.map(() => "1fr")}>
+<Columns tracks={actions.map(() => "1fr")}>
   {actions.map(([key, label]) => (
     <Button
       key={key}
       label={label}
-      hotkey={key}
+      keyHint={key}
       padding={0}
       onPress={() => runAction(key)}
     />
   ))}
-</Row>
+</Columns>
 ```
 
 For global hotkeys, call the same action function from `useInput`; do not synthesize host events.
@@ -107,14 +109,14 @@ For global hotkeys, call the same action function from `useInput`; do not synthe
 ## Key-value metadata
 
 ```tsx
-<Column tracks={rows.map(() => 1)} gap={1}>
+<Rows tracks={rows.map(() => 1)} gap={1}>
   {rows.map(([label, value]) => (
-    <Row key={label} tracks={[12, "1fr"]}>
+    <Columns key={label} tracks={[12, "1fr"]}>
       <Text style={{ foreground: "muted" }}>{label}</Text>
       <Text overflow="ellipsis-end">{value}</Text>
-    </Row>
+    </Columns>
   ))}
-</Column>
+</Rows>
 ```
 
 ## Empty, loading, error, and success states
@@ -154,18 +156,18 @@ useInput(
 );
 ```
 
-Returning `true` consumes the key before focused semantic dispatch. For focused-child bubbling instead, attach `onKeyDown` to a root `Box`, `Row`, or `Column`.
+Returning `true` consumes the key before focused semantic dispatch. For focused-child bubbling instead, attach `onKeyDown` to a root `Box`, `Columns`, or `Rows`.
 
 ## Divider
 
 Allocate one cell on the divider's cross axis; the component fills its actual frame:
 
 ```tsx
-<Column tracks={["1fr", 1, "1fr"]}>
+<Rows tracks={["1fr", 1, "1fr"]}>
   <Top />
   <Divider variant="dashed" />
   <Bottom />
-</Column>
+</Rows>
 ```
 
 No guessed 256/512-character fill string is involved.

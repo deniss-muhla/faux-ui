@@ -2,11 +2,11 @@
 
 ## Current position
 
-Status: **1.0 semantic implementation complete; public-language cutover pending**
+Status: **0.9.1 implementation complete; gathering evidence before release and 1.0**
 
-The destructive TUI-first reset and rendering stabilization are implemented on `refactor/tui-first-reset`, but the branch has not been merged, tagged, or published. The public API can still break without compatibility work.
+The destructive TUI-first reset, rendering stabilization, and focused public-language cutover are implemented on `refactor/tui-first-reset`. The branch has not been merged, tagged, or published. Version 0.9.1 intentionally leaves room for further evidence before the stable 1.0 contract.
 
-The authoritative implemented behavior is [spec.md](spec.md), implemented structure is [architecture.md](architecture.md), and product scope is [strategy.md](strategy.md). Development history is indexed in [docs/README.md](README.md). The [2026-08-01 public-language decision](refactors/2026-08-01-api-language-review/03-decision.md) must be implemented before release readiness is restored.
+The authoritative implemented behavior is [spec.md](spec.md), implemented structure is [architecture.md](architecture.md), and product scope is [strategy.md](strategy.md). Development history is indexed in [docs/README.md](README.md). The implemented plural-layout rationale is in the [2026-08-01 API language decision](refactors/2026-08-01-api-language-review/03-decision.md).
 
 ## Completed reset milestones
 
@@ -83,7 +83,7 @@ Complete:
 - official Unicode conformance and randomized layout properties run;
 - packed-package consumer installs, typechecks, bundles with Bun/Vite, and executes fake TUI IO.
 
-### 7 — Prototype deletion and 1.0 preparation
+### 7 — Prototype deletion and pre-1.0 preparation
 
 Complete:
 
@@ -94,28 +94,21 @@ Complete:
 - package metadata, license, package README, root guides, and architecture updated;
 - Bun requirement/package-manager metadata and TypeScript, React, Vite, Vitest, Playwright, types, and fast-check updated to current stable versions.
 
-## Active pre-release milestone — focused public API polish
+## Completed 0.9.1 public API polish
 
-Decision work:
-
-- [x] inventory current component, prop, type, host, lifecycle, and testing names;
-- [x] evaluate three coherent naming variants against the likely React/TypeScript audience;
-- [x] retain short familiar components, tracks, `padding`, `gap`, `x` / `y`, and host/lifecycle names;
+- [x] inventory the component, prop, type, host, lifecycle, and testing language;
+- [x] evaluate three broad naming variants against the likely React/TypeScript audience;
+- [x] use `Rows` for child rows/height tracks and `Columns` for child columns/width tracks;
+- [x] retain `Track`, `auto`/fraction syntax, `padding`, `gap`, `x` / `y`, and host/lifecycle names;
+- [x] rename `hotkey` to display-only `keyHint`;
+- [x] rename `styleFocus` / `styleHover` to `focusStyle` / `hoverStyle`;
+- [x] remove ineffective `Box.alignX` / `Box.alignY` while retaining text alignment;
 - [x] defer outer spacing because its contract costs exceed current evidence;
-- [x] limit the cutover to false, ineffective, or awkwardly ordered names;
-- [x] organize refactor history into dated dossiers.
-
-Implementation work:
-
-- [ ] rename `hotkey` to display-only `keyHint`;
-- [ ] rename `styleFocus` / `styleHover` to `focusStyle` / `hoverStyle`;
-- [ ] remove ineffective `Box.alignX` / `Box.alignY` while retaining text alignment;
-- [ ] update examples, current docs, type tests, and packed consumers;
-- [ ] prove DOM/TUI parity and restore release-ready status.
+- [x] update examples, current docs, type tests, and packed consumers without aliases.
 
 See the [public-language dossier](refactors/2026-08-01-api-language-review/README.md).
 
-## 1.0 release gate
+## 0.9.1 evidence gate
 
 Implemented semantic/host gates:
 
@@ -132,14 +125,15 @@ Implemented semantic/host gates:
 - [x] typecheck, unit/property/conformance, browser, package, and build checks;
 - [x] no compatibility aliases.
 
-Work still required before release action:
+Work still required before any release action:
 
-- implement the focused public API polish without aliases or outer spacing;
-- update every current doc/example/type/package fixture for the selected changes;
-- rerun all release gates after the cutover;
+- gather more real-use data with the 0.9.1 contract;
+- record pressure around plural layout names, track readability, spacing, and repeated compositions;
+- rerun all release gates after any resulting change;
 - create the release commit/PR;
-- tag `v1.0.0`;
-- publish `@faux-ui/ui@1.0.0`.
+- tag or publish only on an explicit maintainer instruction.
+
+A future 1.0 requires evidence that the public names and narrow foundation are stable; changing the manifest version does not itself freeze the contract.
 
 ## Post-1.0 candidates
 

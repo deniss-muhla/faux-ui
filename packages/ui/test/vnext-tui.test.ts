@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import { Button, Column, Text } from "../src/index.js";
+import { Button, Rows, Text } from "../src/index.js";
 import { sceneToAnsi } from "../src/internal/ansi.js";
 import { defaultPalette } from "../src/internal/palette.js";
 import { consumeTerminalInput } from "../src/internal/tui-input.js";
@@ -59,7 +59,7 @@ describe("vNext TUI host", () => {
     const press = vi.fn();
     const handle = render(
       createElement(
-        Column,
+        Rows,
         { tracks: [1, 1, 1] },
         createElement(Text, null, "Actions"),
         createElement(Button, { label: "Run", padding: 0, onPress: press }),

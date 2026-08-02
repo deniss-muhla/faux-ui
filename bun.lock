@@ -19,7 +19,7 @@
     },
     "apps/example": {
       "name": "@faux-ui/example",
-      "version": "1.0.0",
+      "version": "0.9.1",
       "dependencies": {
         "@faux-ui/ui": "workspace:*",
         "react": "^19.2.8",
@@ -30,7 +30,7 @@
     },
     "packages/ui": {
       "name": "@faux-ui/ui",
-      "version": "1.0.0",
+      "version": "0.9.1",
       "dependencies": {
         "react-reconciler": "0.33.0",
       },

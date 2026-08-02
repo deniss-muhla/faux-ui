@@ -1,7 +1,7 @@
 {
   "name": "@faux-ui/example",
   "private": true,
-  "version": "1.0.0",
+  "version": "0.9.1",
   "type": "module",
   "dependencies": {
     "@faux-ui/ui": "workspace:*",

@@ -20,7 +20,7 @@ faux-ui treats logical parity and packed-consumer behavior as primary evidence. 
 | Grouped DOM projection, terminal-graphics font runs, exact fitting/background seams, and accessibility | `vnext-dom-spike.pw.spec.ts` in Chromium |
 | Serious browser authoring/input/resize path | `apps/example/test/example-dom.pw.spec.ts` |
 | Terminal input, ANSI, Unicode cursor anchoring, right-margin/autowrap safety, fake IO, cleanup | `vnext-tui.test.ts` |
-| Public JSX rejects HTML/named tracks | `public-api.typecheck.tsx` through `tsconfig.test.json` |
+| Public JSX exposes `Rows` / `Columns` and rejects HTML, named tracks, removed singular layouts, old style/hint props, and inert Box alignment | `public-api.typecheck.tsx` through `tsconfig.test.json` |
 | Packed tarball install/types/Bun/Vite/TUI | `scripts/test-package.mjs` |
 
 ## Commands

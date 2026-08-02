@@ -153,8 +153,8 @@ interface SemanticNodeBase {
   readonly id: NodeId;
   parent: BoxNode | null;
   style: Style;
-  styleFocus: Style;
-  styleHover: Style;
+  focusStyle: Style;
+  hoverStyle: Style;
   handlers: EventHandlers;
   accessibleLabel: string | null;
   palette: Palette | null;
@@ -178,8 +178,6 @@ export interface BoxNode extends SemanticNodeBase {
   padding: Insets;
   border: Border | null;
   title: string | null;
-  alignX: Align;
-  alignY: Align;
   scroll: ScrollAxis | null;
   focusable: boolean;
   disabled: boolean;
@@ -193,8 +191,8 @@ export interface TextSpec extends EventHandlers {
   readonly alignX?: Align;
   readonly alignY?: Align;
   readonly style?: Style;
-  readonly styleFocus?: Style;
-  readonly styleHover?: Style;
+  readonly focusStyle?: Style;
+  readonly hoverStyle?: Style;
   readonly fill?: boolean;
   readonly accessibleLabel?: string;
   /** Internal value populated by ThemeProvider-aware public components. */
@@ -208,11 +206,9 @@ export interface BoxSpec extends EventHandlers {
   readonly padding?: InsetsInput;
   readonly border?: BorderInput;
   readonly title?: string;
-  readonly alignX?: Align;
-  readonly alignY?: Align;
   readonly style?: Style;
-  readonly styleFocus?: Style;
-  readonly styleHover?: Style;
+  readonly focusStyle?: Style;
+  readonly hoverStyle?: Style;
   readonly scroll?: ScrollAxis;
   readonly focusable?: boolean;
   readonly disabled?: boolean;
@@ -233,8 +229,8 @@ export function createTextNode(id: NodeId, spec: TextSpec = {}): TextNode {
     alignX: normalizeAlign(spec.alignX),
     alignY: normalizeAlign(spec.alignY),
     style: normalizeStyle(spec.style),
-    styleFocus: normalizeStyle(spec.styleFocus),
-    styleHover: normalizeStyle(spec.styleHover),
+    focusStyle: normalizeStyle(spec.focusStyle),
+    hoverStyle: normalizeStyle(spec.hoverStyle),
     handlers: readHandlers(spec),
     fill: spec.fill === true,
     accessibleLabel: normalizeLabel(spec.accessibleLabel),
@@ -254,11 +250,9 @@ export function createBoxNode(id: NodeId, spec: BoxSpec = {}): BoxNode {
     padding: normalizeInsets(spec.padding),
     border: normalizeBorder(spec.border),
     title: normalizeLabel(spec.title),
-    alignX: normalizeAlign(spec.alignX),
-    alignY: normalizeAlign(spec.alignY),
     style: normalizeStyle(spec.style),
-    styleFocus: normalizeStyle(spec.styleFocus),
-    styleHover: normalizeStyle(spec.styleHover),
+    focusStyle: normalizeStyle(spec.focusStyle),
+    hoverStyle: normalizeStyle(spec.hoverStyle),
     handlers: readHandlers(spec),
     scroll: normalizeScroll(spec.scroll),
     focusable: spec.focusable === true,
@@ -274,8 +268,8 @@ export function updateTextNode(node: TextNode, spec: TextSpec): void {
   node.alignX = normalizeAlign(spec.alignX);
   node.alignY = normalizeAlign(spec.alignY);
   node.style = normalizeStyle(spec.style);
-  node.styleFocus = normalizeStyle(spec.styleFocus);
-  node.styleHover = normalizeStyle(spec.styleHover);
+  node.focusStyle = normalizeStyle(spec.focusStyle);
+  node.hoverStyle = normalizeStyle(spec.hoverStyle);
   node.handlers = readHandlers(spec);
   node.fill = spec.fill === true;
   node.accessibleLabel = normalizeLabel(spec.accessibleLabel);
@@ -289,11 +283,9 @@ export function updateBoxNode(node: BoxNode, spec: BoxSpec): void {
   node.padding = normalizeInsets(spec.padding);
   node.border = normalizeBorder(spec.border);
   node.title = normalizeLabel(spec.title);
-  node.alignX = normalizeAlign(spec.alignX);
-  node.alignY = normalizeAlign(spec.alignY);
   node.style = normalizeStyle(spec.style);
-  node.styleFocus = normalizeStyle(spec.styleFocus);
-  node.styleHover = normalizeStyle(spec.styleHover);
+  node.focusStyle = normalizeStyle(spec.focusStyle);
+  node.hoverStyle = normalizeStyle(spec.hoverStyle);
   node.handlers = readHandlers(spec);
   node.scroll = normalizeScroll(spec.scroll);
   node.focusable = spec.focusable === true;

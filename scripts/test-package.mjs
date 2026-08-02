@@ -91,10 +91,10 @@ try {
   );
   writeFileSync(
     join(fixture, "app.tsx"),
-    `import { Button, Column, Text, useInput } from "@faux-ui/ui";
+    `import { Button, Columns, Rows, Text, useInput } from "@faux-ui/ui";
 export function App() {
   useInput(() => false);
-  return <Column tracks={[1, "1fr"]}><Text>packed</Text><Button label="Run" onPress={() => {}} /></Column>;
+  return <Rows tracks={[1, "1fr"]}><Text>packed</Text><Columns tracks={["1fr", "auto"]}><Text>consumer</Text><Button label="Run" keyHint="r" focusStyle={{background:"focus"}} hoverStyle={{background:"selection"}} onPress={() => {}} /></Columns></Rows>;
 }
 `,
   );

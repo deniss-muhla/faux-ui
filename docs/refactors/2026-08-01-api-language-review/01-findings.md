@@ -79,7 +79,9 @@ The same idea currently appears through several vocabularies:
 - `width` / `height` for root bounds;
 - `tracks` for child sizes.
 
-This is inconsistent in the abstract but clear in context. `{ x, y }` describes coordinates, `axis="y"` describes scrolling, and `orientation="horizontal"` describes a visible line. Forcing full direction words everywhere would make common source longer without improving recall.
+Most of this is clear in context. `{ x, y }` describes coordinates, `axis="y"` describes scrolling, and `orientation="horizontal"` describes a visible line. Forcing full direction words everywhere would make common source longer without improving recall.
+
+The singular layout components are the exception. `Column` follows Flexbox's “vertical direction” meaning, but can naturally be read as “a container containing columns.” Its children actually occupy row tracks. The meaning should not depend on remembering Flexbox or seeing `Row` nearby. Plural `Rows` / `Columns` names what the children become and makes each numeric track's dimension apparent.
 
 ## Concrete misleading or ineffective interfaces
 
@@ -101,7 +103,7 @@ The modifier ordering of `styleFocus` and `styleHover` is the smaller readabilit
 
 The review should not rename merely to appear new.
 
-- `Text`, `Row`, and `Column` are plain, renderer-neutral, and spatially accurate.
+- `Text` and `Box` are plain, renderer-neutral, and spatially accurate.
 - `label`, `disabled`, and `selected` state what they do.
 - `focus`, `pointer`, `key`, `width`, and `height` are broad interface terms, not HTML-only language.
 - `children` is ordinary React composition and not a faux-ui layout promise.
@@ -126,7 +128,7 @@ That omission is defensible for CSS margins because faux-ui should not implement
 
 A deterministic outer-space primitive was considered, but it creates more contract than the current evidence justifies. It must define preferred-size contribution, track ownership, background painting, pointer targeting, clipping, root behavior, and how adjacent spaces combine. The convenience is mainly avoiding occasional wrappers or explicit tracks.
 
-For 1.0, keep only:
+For 0.9.1, keep only:
 
 - `padding`: space inside a component boundary;
 - `gap`: uniform space between sequential children.
@@ -135,9 +137,10 @@ Do not add `margin`, `spaceOutside`, or a generic `space` prop. Revisit only if 
 
 ## Overall finding
 
-For the likely React/TypeScript user, the current API is mostly short and readable. A wholesale plain-English rename would trade familiar vocabulary for a larger faux-ui-specific language. The cleanest 1.0 change is deliberately small:
+For the likely React/TypeScript user, most of the current API is short and readable. A wholesale plain-English rename would trade familiar vocabulary for a larger faux-ui-specific language. The focused 0.9.1 result is:
 
-- retain the current component, track, style, geometry, host, and lifecycle names;
+- use `Rows` for child rows and `Columns` for child columns;
+- retain the other component, track, style, geometry, host, and lifecycle names;
 - retain `padding`, `gap`, and public `x` / `y` shorthand;
 - rename display-only `hotkey` to `keyHint`;
 - use `focusStyle` / `hoverStyle` word order;

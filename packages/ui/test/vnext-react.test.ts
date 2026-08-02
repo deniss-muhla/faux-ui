@@ -3,16 +3,21 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   Button,
-  Column,
+  Columns,
   Divider,
-  Row,
+  Rows,
   Text,
   mergePalette,
 } from "../src/components.js";
+import { VERSION } from "../src/index.js";
 import { SemanticMount } from "../src/internal/mount.js";
 import { sceneToText } from "../src/internal/scene.js";
 
 describe("vNext React authoring", () => {
+  it("reports the package evidence version", () => {
+    expect(VERSION).toBe("0.9.1");
+  });
+
   it("validates one cross-host #RRGGBB palette contract", () => {
     expect(mergePalette({ accent: "#00ccee" }).accent).toBe("#00ccee");
     expect(() => mergePalette({ accent: "red" })).toThrow(/#RRGGBB/u);
@@ -22,7 +27,7 @@ describe("vNext React authoring", () => {
     const mount = new SemanticMount({ size: { width: 12, height: 3 } });
     mount.render(
       createElement(
-        Row,
+        Columns,
         { tracks: [4, "1fr"], gap: 1 },
         createElement(Text, null, "left"),
         createElement(Text, { overflow: "ellipsis-end" }, "right panel"),
@@ -40,7 +45,7 @@ describe("vNext React authoring", () => {
     function Counter() {
       const [count, setCount] = useState(0);
       return createElement(
-        Column,
+        Rows,
         { tracks: [1, 1] },
         createElement(Text, null, `Count: ${count}`),
         createElement(Button, {
@@ -87,7 +92,7 @@ describe("vNext React authoring", () => {
 
   it("rejects raw strings outside Text", () => {
     const mount = new SemanticMount({ size: { width: 5, height: 1 } });
-    expect(() => mount.render(createElement(Row, null, "invalid"))).toThrow(
+    expect(() => mount.render(createElement(Columns, null, "invalid"))).toThrow(
       /must be inside <Text>/,
     );
     mount.unmount();

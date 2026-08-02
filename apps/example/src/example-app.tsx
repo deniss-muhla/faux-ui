@@ -2,9 +2,9 @@ import { useCallback, useState } from "react";
 import {
   Box,
   Button,
-  Column,
+  Columns,
   Divider,
-  Row,
+  Rows,
   ScrollView,
   Text,
   useFocusManager,
@@ -76,7 +76,7 @@ export function ExampleApp() {
   );
 
   return (
-    <Column
+    <Rows
       tracks={[3, "1fr", 3]}
       style={{ background: "bg", foreground: "fg" }}
       onKeyDown={(event) => {
@@ -87,18 +87,18 @@ export function ExampleApp() {
       }}
     >
       <Box border="double" title=" faux-ui release review " padding={{ x: 1 }}>
-        <Row tracks={["1fr", "auto"]} gap={1}>
+        <Columns tracks={["1fr", "auto"]} gap={1}>
           <Text overflow="ellipsis-end">
             Deterministic terminal cells · DOM mirror · Unicode 17
           </Text>
           <Text style={{ foreground: "success", bold: true }}>ONLINE</Text>
-        </Row>
+        </Columns>
       </Box>
 
-      <Row tracks={[28, "2fr", 30]} gap={1}>
+      <Columns tracks={[28, "2fr", 30]} gap={1}>
         <Box border title={` Queue (${items.length}) `}>
           <ScrollView axis="y">
-            <Column tracks={items.map(() => 2)}>
+            <Rows tracks={items.map(() => 2)}>
               {items.map((item, index) => (
                 <Button
                   key={item.id}
@@ -107,7 +107,7 @@ export function ExampleApp() {
                   padding={{ x: 1 }}
                   onPress={() => setSelected(index)}
                 >
-                  <Column tracks={[1, 1]}>
+                  <Rows tracks={[1, 1]}>
                     <Text overflow="ellipsis-end">
                       {index === selected ? "› " : "  "}
                       {item.id} {item.title}
@@ -115,15 +115,15 @@ export function ExampleApp() {
                     <Text style={{ foreground: "muted" }} overflow="ellipsis-end">
                       {item.owner} · {item.state}
                     </Text>
-                  </Column>
+                  </Rows>
                 </Button>
               ))}
-            </Column>
+            </Rows>
           </ScrollView>
         </Box>
 
         <Box border="rounded" title={` ${current.id} `} padding={1}>
-          <Column tracks={[2, 1, 1, "1fr", 1]} gap={1}>
+          <Rows tracks={[2, 1, 1, "1fr", 1]} gap={1}>
             <Text style={{ foreground: "accent", bold: true }} overflow="ellipsis-end">
               {current.title}
             </Text>
@@ -131,64 +131,64 @@ export function ExampleApp() {
             <Text style={{ foreground: "muted" }}>Release evidence</Text>
             <Text overflow="ellipsis-end">
               This synthetic fixture proves split panes, explicit tracks, borders,
-              long text clipping, shared focus, global hotkeys, semantic tones,
+              long text clipping, shared focus, global shortcuts, semantic tones,
               scrolling, combining text é, box drawing ─, CJK 古, and emoji 👩‍💻.
             </Text>
             <Text style={{ foreground: "success" }}>✓ parity checks enabled</Text>
-          </Column>
+          </Rows>
         </Box>
 
         <Box border title=" Metadata " padding={{ x: 1 }}>
-          <Column tracks={[1, 1, 1, 1, 1, "1fr"]} gap={1}>
-            <Row tracks={[10, "1fr"]}>
+          <Rows tracks={[1, 1, 1, 1, 1, "1fr"]} gap={1}>
+            <Columns tracks={[10, "1fr"]}>
               <Text style={{ foreground: "muted" }}>Owner</Text>
               <Text>{current.owner}</Text>
-            </Row>
-            <Row tracks={[10, "1fr"]}>
+            </Columns>
+            <Columns tracks={[10, "1fr"]}>
               <Text style={{ foreground: "muted" }}>State</Text>
               <Text>{current.state}</Text>
-            </Row>
-            <Row tracks={[10, "1fr"]}>
+            </Columns>
+            <Columns tracks={[10, "1fr"]}>
               <Text style={{ foreground: "muted" }}>Unicode</Text>
               <Text>17 · 古 é 👩‍💻</Text>
-            </Row>
-            <Row tracks={[10, "1fr"]}>
+            </Columns>
+            <Columns tracks={[10, "1fr"]}>
               <Text style={{ foreground: "muted" }}>Hosts</Text>
               <Text>DOM + TUI</Text>
-            </Row>
-            <Row tracks={[10, "1fr"]}>
+            </Columns>
+            <Columns tracks={[10, "1fr"]}>
               <Text style={{ foreground: "muted" }}>Keys</Text>
               <Text>j/k · n · 0-9</Text>
-            </Row>
+            </Columns>
             <Box style={{ background: "panel" }} padding={1}>
               <Text overflow="ellipsis-middle">
                 scene://release/{current.id}/canonical-cell-output
               </Text>
             </Box>
-          </Column>
+          </Rows>
         </Box>
-      </Row>
+      </Columns>
 
-      <Column tracks={[1, 1, 1]}>
-        <Row tracks={actions.map(() => "1fr")}>
+      <Rows tracks={[1, 1, 1]}>
+        <Columns tracks={actions.map(() => "1fr")}>
           {actions.map(([key, label]) => (
             <Button
               key={key}
               label={label}
-              hotkey={key}
+              keyHint={key}
               padding={{ x: 1 }}
               onPress={() => runAction(key, label)}
             />
           ))}
-        </Row>
+        </Columns>
         <Divider />
-        <Row tracks={["1fr", "auto"]} gap={1}>
+        <Columns tracks={["1fr", "auto"]} gap={1}>
           <Text style={{ foreground: "accent" }} overflow="ellipsis-end">
             {message}
           </Text>
           <Text style={{ foreground: "muted" }}>j/k select · Tab focus · Ctrl+R refresh</Text>
-        </Row>
-      </Column>
-    </Column>
+        </Columns>
+      </Rows>
+    </Rows>
   );
 }

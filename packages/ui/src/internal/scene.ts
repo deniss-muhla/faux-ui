@@ -196,10 +196,10 @@ function paintNode(
 
   let style = mergeStyle(inheritedStyle, node.style);
   if (state.hoveredIds?.has(node.id) === true) {
-    style = mergeStyle(style, node.styleHover);
+    style = mergeStyle(style, node.hoverStyle);
   }
   if (state.focusedId === node.id) {
-    style = mergeStyle(style, node.styleFocus);
+    style = mergeStyle(style, node.focusStyle);
   }
 
   fillRect(scene, frame, clip, style, node.id);

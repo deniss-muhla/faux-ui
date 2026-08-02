@@ -2,7 +2,7 @@
 
 ## Status
 
-This document describes the currently implemented 1.0 candidate architecture. Historical prototype analysis is in the [TUI-first reset dossier](refactors/2026-07-31-tui-first-reset/README.md). The selected public-language changes are documented separately and remain pending in the [API language review](refactors/2026-08-01-api-language-review/README.md).
+This document describes the implemented 0.9.1 evidence-candidate architecture. Historical prototype analysis is in the [TUI-first reset dossier](refactors/2026-07-31-tui-first-reset/README.md); the current plural layout API and focused naming changes are recorded in the implemented [API language review](refactors/2026-08-01-api-language-review/README.md).
 
 ## System shape
 
@@ -61,7 +61,7 @@ Only `@faux-ui/ui` is installed by app authors. Internal file boundaries preserv
 
 ### `@faux-ui/ui`
 
-Exports renderer-neutral components, hooks, geometry/layout/event/theme types, and the package version. It imports no DOM or Node host.
+Exports renderer-neutral components, hooks, geometry/layout/event/theme types, and the package version. `Rows` compiles to the internal vertical axis; `Columns` compiles to the internal horizontal axis. It imports no DOM or Node host.
 
 ### `@faux-ui/ui/dom`
 

@@ -1,10 +1,10 @@
 export {
   Box,
   Button,
-  Column,
+  Columns,
   Divider,
   Fill,
-  Row,
+  Rows,
   ScrollView,
   Text,
   ThemeProvider,
@@ -14,10 +14,10 @@ export {
   type BoxProps,
   type ButtonProps,
   type ButtonTone,
-  type ColumnProps,
+  type ColumnsProps,
   type DividerProps,
   type FillProps,
-  type RowProps,
+  type RowsProps,
   type ScrollViewProps,
   type TextContent,
   type TextProps,
@@ -58,4 +58,4 @@ export type {
 } from "./internal/model.js";
 export type { TextOverflow } from "./internal/unicode.js";
 
-export const VERSION = "1.0.0";
+export const VERSION = "0.9.1";

@@ -22,7 +22,7 @@ A dated refactor decision is not implemented reality until the source, specifica
 | --- | --- | --- | --- |
 | 2026-07-31 | TUI-first clean-break reset | Implemented on `refactor/tui-first-reset` | [Dossier](refactors/2026-07-31-tui-first-reset/README.md), commits `7758468` and `91eef1d` |
 | 2026-08-01 | DOM/TUI rendering stabilization | Implemented | Commits `740333f` through `fa852c9`; [changelog](../CHANGELOG.md) and [testing matrix](testing.md) |
-| 2026-08-01 | Public-language and spacing review | Decision recorded; implementation pending | [Dossier](refactors/2026-08-01-api-language-review/README.md) |
+| 2026-08-01 | Public-language and spacing review | Implemented in 0.9.1 candidate | [Dossier](refactors/2026-08-01-api-language-review/README.md) |
 
 ## Refactor dossier convention
 

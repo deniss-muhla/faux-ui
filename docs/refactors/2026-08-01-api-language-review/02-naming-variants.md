@@ -216,7 +216,7 @@ Goal: optimize for the likely React + TypeScript user, keep established terms, a
 
 | Concept | Variant C |
 | --- | --- |
-| Components | Keep `Text`, `Box`, `Row`, `Column`, `Fill`, `Divider`, `ScrollView`, `Button`, `ThemeProvider` |
+| Components | Keep familiar names except use plural `Rows` / `Columns` for sequential layout |
 | Hooks | Keep `useTheme`, `useInput`, `useFocusManager` |
 | Allocation | Keep `tracks`, `Track`, `auto`, `Nfr` |
 | Spacing | Keep `padding` and `gap`; add no outer spacing |
@@ -233,32 +233,33 @@ Goal: optimize for the likely React + TypeScript user, keep established terms, a
 ### Example
 
 ```tsx
-<Column
+<Rows
   tracks={[3, "1fr", 3]}
   style={{ background: "bg", foreground: "fg" }}
 >
   <Box border="double" title="faux-ui release review" padding={{ x: 1 }}>
-    <Row tracks={["1fr", "auto"]} gap={1}>
+    <Columns tracks={["1fr", "auto"]} gap={1}>
       <Text overflow="ellipsis-end">Deterministic terminal cells</Text>
       <Text style={{ foreground: "success", bold: true }}>ONLINE</Text>
-    </Row>
+    </Columns>
   </Box>
 
-  <Row tracks={[28, "2fr", 30]} gap={1}>
+  <Columns tracks={[28, "2fr", 30]} gap={1}>
     <Box border title="Queue" />
     <Box border="rounded" title="Details" padding={1} />
     <Box border title="Metadata" />
-  </Row>
+  </Columns>
 
   <Button keyHint="2" tone="primary" onPress={approve}>Approve</Button>
-</Column>
+</Rows>
 ```
 
 ### Strengths
 
-- Shortest learning path and smallest cutover.
+- Short learning path and small cutover.
 - Uses terms already familiar to React/TypeScript students.
-- `tracks` describes allocation rules equally on rows and columns.
+- `Rows` names child rows and makes numeric tracks heights; `Columns` names child columns and makes them widths.
+- `tracks` remains one allocation grammar for both components.
 - `1fr` is compact; replacing it with `share()` does not remove the need to learn one small concept.
 - `padding`, `gap`, and `x` / `y` are easy to read and remember.
 - Avoids adding outer-spacing semantics without evidence.
@@ -287,4 +288,4 @@ Scores are relative (`1` weak, `5` strong) for the likely React/TypeScript user:
 
 ## Variant result
 
-Variant C is selected. Variant A is linguistically systematic but over-renames familiar concepts, and `share()` is not a meaningful readability improvement over `fr`. Variant B remains compact but asks a React-oriented audience to learn more terminal/stack jargon. The selected approach keeps the current API shape and makes only the few correctness-oriented changes listed in the decision.
+Variant C is selected with one follow-up refinement: singular direction-oriented `Row` / `Column` became plural child-oriented `Columns` / `Rows`. Variant A is linguistically systematic but over-renames familiar concepts, and `share()` is not a meaningful readability improvement over `fr`. Variant B remains compact but asks a React-oriented audience to learn more terminal/stack jargon. The final approach keeps the familiar API shape while fixing the few concrete readability and correctness problems listed in the decision.

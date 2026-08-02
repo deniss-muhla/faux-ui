@@ -1,13 +1,15 @@
 # Changelog
 
-## 1.0.0 — 2026-07-31
+## 0.9.1 — Unreleased
 
-First release-ready implementation.
+Pre-1.0 evidence candidate for gathering more real-use data before the stable contract.
 
 ### Added
 
 - One `@faux-ui/ui` package with isolated `/dom`, `/tui`, `/testing`, and JSX runtime entrypoints.
-- React foundation: `Text`, `Box`, `Row`, `Column`, `Fill`, `Divider`, `ScrollView`, `Button`, `ThemeProvider`, `useInput`, and `useFocusManager`.
+- React foundation: `Text`, `Box`, `Rows`, `Columns`, `Fill`, `Divider`, `ScrollView`, `Button`, `ThemeProvider`, `useInput`, and `useFocusManager`.
+- Plural one-axis layout names: `Rows` creates child rows with height tracks; `Columns` creates child columns with width tracks.
+- Display-only `Button.keyHint` plus modifier-first `focusStyle` and `hoverStyle` props.
 - Pure preferred-size and exact one-axis cell layout.
 - Generated/vendored Unicode 17 grapheme and terminal-width data with no Unicode runtime dependency.
 - Shared canonical cell scene and interaction controller.
@@ -31,4 +33,4 @@ First release-ready implementation.
 - Generic/inspect/canvas renderer experiments.
 - General grid/named placement, compact schema, action strings, and duplicated DOM/TUI interaction state.
 
-No compatibility aliases were retained because the prototype had not been released.
+No compatibility aliases were retained because the package had not been published. Ineffective `Box.alignX` / `Box.alignY` props and the misleading pre-release `hotkey`, `styleFocus`, and `styleHover` names were removed.

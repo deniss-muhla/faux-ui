@@ -1,8 +1,8 @@
-# faux-ui vNext specification
+# faux-ui 0.9.1 specification
 
 ## Status
 
-This is the normative contract implemented by the current faux-ui 1.0 candidate. Delivery history belongs in [roadmap.md](roadmap.md); reset rationale belongs in the [TUI-first dossier](refactors/2026-07-31-tui-first-reset/README.md). The [public-language decision](refactors/2026-08-01-api-language-review/03-decision.md) is not normative until its source cutover is complete.
+This is the normative contract implemented by the unreleased faux-ui 0.9.1 evidence candidate. Delivery history belongs in [roadmap.md](roadmap.md); reset rationale belongs in the [TUI-first dossier](refactors/2026-07-31-tui-first-reset/README.md), and the implemented public names belong in the [API language decision](refactors/2026-08-01-api-language-review/03-decision.md).
 
 Frozen implementation decisions:
 
@@ -58,7 +58,7 @@ Rules:
 - `/tui` may import Node terminal modules.
 - There is no environment-detecting render entrypoint.
 - No old package name is retained as an alias.
-- React is a peer; `react-reconciler` is the only direct implementation dependency in 1.0.
+- React is a peer; `react-reconciler` is the only direct implementation dependency.
 - Unicode, layout, scene, controller, and host projection add no runtime package dependencies.
 
 ## Core terminology
@@ -140,13 +140,15 @@ The initial conforming surface contains:
 
 - `Text`
 - `Box`
-- `Row`
-- `Column`
+- `Rows`
+- `Columns`
 - `Fill` plus a thin `Divider` convenience
 - `ScrollView`
 - `Button`
 - renderer-neutral input/focus hooks
 - a palette/theme provider
+
+`Rows` places each source child in one row; its tracks control heights. `Columns` places each source child in one column; its tracks control widths. Both compile to the same internal one-axis box node.
 
 Higher-level app shell, panel, toolbar, split layout, status, loading, error, and empty-state patterns are compositions first.
 
@@ -158,12 +160,12 @@ type Track = number | "auto" | `${number}fr`;
 
 Rules:
 
-- Fixed tracks are non-negative integers.
+- Fixed tracks are non-negative integer display cells on the component's main axis: heights in `Rows`, widths in `Columns`.
 - Fraction weights are finite and greater than zero.
 - `auto` uses the corresponding child's preferred main-axis size.
 - Named tracks, explicit child row/column placement, spans, and implicit two-dimensional grids do not exist.
 - When an explicit track list is provided, its length equals the child count.
-- A row/column with no explicit tracks treats each child as `auto`.
+- `Rows` / `Columns` with no explicit tracks treat each child as `auto`.
 
 ## Preferred-size pass
 
@@ -243,7 +245,7 @@ These are semantic fixed-cell features, not CSS emulation.
 
 - Gap is a non-negative integer between sequential children.
 - Padding is a non-negative integer per edge or shorthand.
-- Alignment is `start`, `center`, or `end` per axis.
+- Text alignment is `start`, `center`, or `end` per axis.
 - A border is shared glyph data plus semantic style and consumes enabled edge cells.
 - Border titles replace a clipped run of top-border cells.
 - Unsupported combinations fail deterministically rather than falling back to browser layout.
@@ -379,6 +381,7 @@ The shared controller owns interaction state and dispatch.
 - Enter, Space, and a completed primary pointer click synthesize one press.
 - A single host action must not call `onPress` twice.
 - Disabled buttons are not focusable or activatable.
+- `keyHint` is display-only; shortcut registration remains explicit through `useInput`.
 
 ### Pointer and hover
 

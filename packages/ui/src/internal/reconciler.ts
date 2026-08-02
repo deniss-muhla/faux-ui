@@ -282,7 +282,7 @@ export function createReconcilerRoot(
     HostTransitionContext: createContext(null) as never,
     resetFormInstance(): void {},
     rendererPackageName: "@faux-ui/ui",
-    rendererVersion: "1.0.0",
+    rendererVersion: "0.9.1",
     applyViewTransitionName(): void {},
     restoreViewTransitionName(): void {},
     cancelViewTransitionName(): void {},

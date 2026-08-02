@@ -24,8 +24,10 @@ React supplies familiar state and composition. faux-ui supplies a constrained se
 Agents and humans can reason more reliably about this:
 
 ```tsx
-<Row tracks={[30, "2fr", "3fr"]} gap={1}>
+<Columns tracks={[30, "2fr", "3fr"]} gap={1}>
 ```
+
+Here each child occupies one column, so numeric tracks are widths. `Rows` similarly creates child rows whose numeric tracks are heights.
 
 than about an open-ended combination of HTML, CSS, browser defaults, and responsive negotiation.
 
@@ -70,7 +72,7 @@ App shell, toolbar, inspector layout, status panel, and empty/loading/error surf
 
 ### 8. Do not regrow accidental complexity
 
-The unreleased prototype was replaced without compatibility layers. After 1.0, preserve the singular public surface with SemVer and do not reintroduce deleted package boundaries or speculative adapters.
+The unreleased prototype was replaced without compatibility layers. Version 0.9.1 remains an evidence-gathering contract; after 1.0, preserve the singular public surface with SemVer and do not reintroduce deleted package boundaries or speculative adapters.
 
 ### 9. Profile before caching
 
@@ -85,7 +87,7 @@ A feature is not delivered if it works only through workspace aliases. Packed-pa
 A shared app should look like normal React:
 
 ```tsx
-import { Box, Button, Column, Row, Text } from "@faux-ui/ui";
+import { Box, Button, Rows, Columns, Text } from "@faux-ui/ui";
 ```
 
 A browser entry should be target-specific and tiny:
@@ -109,8 +111,8 @@ No other faux-ui package, provider, bridge, renderer object, constraint reader, 
 The first foundation is intentionally narrow:
 
 - text with explicit lines and deterministic clipping/ellipsis;
-- rectangular boxes with semantic style, padding, border, title, and alignment;
-- sequential rows and columns with fixed/auto/fraction tracks and gap;
+- rectangular boxes with semantic style, padding, border, and title;
+- sequential child `Rows` and `Columns` with fixed/auto/fraction tracks and gap;
 - fill/divider using allocated extents;
 - scroll viewport with shared offset behavior;
 - button with one pointer/keyboard activation contract;
@@ -182,9 +184,9 @@ The synthetic real-tool fixture is the initial product benchmark. Future real ap
 
 Roadmap changes should cite this evidence rather than speculative ecosystem completeness.
 
-## 1.0 baseline
+## 0.9 evidence baseline
 
-The first implementation establishes:
+The pre-1.0 implementation establishes:
 
 - one faux-ui package installed by app authors;
 - one-call DOM and TUI mounting;
@@ -198,6 +200,6 @@ The first implementation establishes:
 
 ## What “done” does not mean
 
-The 1.0 foundation does not imply a large widget catalog, renderer marketplace, compact protocol, MCP server, virtualized table, or browser-responsive system.
+The 0.9 foundation does not imply a large widget catalog, renderer marketplace, compact protocol, MCP server, virtualized table, or browser-responsive system.
 
 Future scope must keep the coherent text-first path easier to use while preserving deterministic terminal/browser behavior.

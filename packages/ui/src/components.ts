@@ -8,7 +8,6 @@ import {
 } from "react";
 
 import {
-  type BoxSpec,
   type BorderInput,
   type EventHandlers,
   type InsetsInput,
@@ -32,8 +31,8 @@ const PaletteContext = createContext<Palette>(defaultPalette);
 interface CommonProps extends EventHandlers {
   readonly key?: Key | null;
   readonly style?: Style;
-  readonly styleFocus?: Style;
-  readonly styleHover?: Style;
+  readonly focusStyle?: Style;
+  readonly hoverStyle?: Style;
   readonly accessibleLabel?: string;
 }
 
@@ -42,18 +41,21 @@ export interface BoxProps extends CommonProps {
   readonly padding?: InsetsInput;
   readonly border?: BorderInput;
   readonly title?: string;
-  readonly alignX?: BoxSpec["alignX"];
-  readonly alignY?: BoxSpec["alignY"];
   readonly focusable?: boolean;
   readonly disabled?: boolean;
 }
 
-export interface RowProps extends BoxProps {
+export interface ColumnsProps extends BoxProps {
+  /** Width allocation for each child column. */
   readonly tracks?: readonly Track[];
   readonly gap?: number;
 }
 
-export type ColumnProps = RowProps;
+export interface RowsProps extends BoxProps {
+  /** Height allocation for each child row. */
+  readonly tracks?: readonly Track[];
+  readonly gap?: number;
+}
 
 export type TextContent =
   | string
@@ -95,7 +97,7 @@ export interface ButtonProps
   extends Omit<BoxProps, "focusable" | "disabled" | "onPress"> {
   readonly children?: ReactNode;
   readonly label?: string;
-  readonly hotkey?: string;
+  readonly keyHint?: string;
   readonly tone?: ButtonTone;
   readonly selected?: boolean;
   readonly disabled?: boolean;
@@ -125,22 +127,39 @@ export function Box({ children, ...props }: BoxProps): ReactNode {
   return hostBox(props, children, useContext(PaletteContext));
 }
 
-export function Row({ children, tracks, gap, ...props }: RowProps): ReactNode {
+/** Places each child in one column from left to right. */
+export function Columns({
+  children,
+  tracks,
+  gap,
+  ...props
+}: ColumnsProps): ReactNode {
   return hostBox(
-    { ...props, axis: "row", ...(tracks === undefined ? {} : { tracks }), ...(gap === undefined ? {} : { gap }) },
+    {
+      ...props,
+      axis: "row",
+      ...(tracks === undefined ? {} : { tracks }),
+      ...(gap === undefined ? {} : { gap }),
+    },
     children,
     useContext(PaletteContext),
   );
 }
 
-export function Column({
+/** Places each child in one row from top to bottom. */
+export function Rows({
   children,
   tracks,
   gap,
   ...props
-}: ColumnProps): ReactNode {
+}: RowsProps): ReactNode {
   return hostBox(
-    { ...props, axis: "column", ...(tracks === undefined ? {} : { tracks }), ...(gap === undefined ? {} : { gap }) },
+    {
+      ...props,
+      axis: "column",
+      ...(tracks === undefined ? {} : { tracks }),
+      ...(gap === undefined ? {} : { gap }),
+    },
     children,
     useContext(PaletteContext),
   );
@@ -198,24 +217,26 @@ export function ScrollView({
 export function Button({
   children,
   label,
-  hotkey,
+  keyHint,
   tone = "neutral",
   selected = false,
   disabled = false,
   onPress,
   padding = { x: 1 },
   style,
-  styleHover,
-  styleFocus,
+  hoverStyle,
+  focusStyle,
   accessibleLabel,
   ...props
 }: ButtonProps): ReactNode {
   const visible = children ?? label ?? "";
-  const text = hotkey === undefined
+  const text = keyHint === undefined
     ? visible
-    : createElement(Row, { tracks: ["1fr", "auto"], gap: 1 },
+    : createElement(
+        Columns,
+        { tracks: ["1fr", "auto"], gap: 1 },
         createElement(Text, { overflow: "ellipsis-end" }, visible),
-        createElement(Text, { style: { foreground: "muted" } }, hotkey),
+        createElement(Text, { style: { foreground: "muted" } }, keyHint),
       );
   const base = buttonStyle(tone, selected, disabled);
   return hostBox(
@@ -226,10 +247,10 @@ export function Button({
       disabled,
       accessibleLabel: accessibleLabel ?? label ?? plainText(children),
       style: { ...base, ...style },
-      styleHover: disabled
-        ? { ...base, ...styleHover }
-        : { background: "selection", ...styleHover },
-      styleFocus: { background: "focus", ...styleFocus },
+      hoverStyle: disabled
+        ? { ...base, ...hoverStyle }
+        : { background: "selection", ...hoverStyle },
+      focusStyle: { background: "focus", ...focusStyle },
       ...(disabled || onPress === undefined ? {} : { onPress }),
     },
     typeof text === "string" || typeof text === "number"

@@ -1,6 +1,6 @@
 # @faux-ui/ui
 
-Deterministic terminal-first React UI with a browser mirror.
+Deterministic terminal-first React UI with a browser mirror. Version 0.9.1 is a pre-1.0 evidence candidate.
 
 ```bash
 bun add @faux-ui/ui react
@@ -20,14 +20,14 @@ Configure TypeScript:
 Author one shared application:
 
 ```tsx
-import { Button, Column, Text } from "@faux-ui/ui";
+import { Button, Rows, Text } from "@faux-ui/ui";
 
 export function App() {
   return (
-    <Column tracks={[1, 1]}>
+    <Rows tracks={[1, 1]}>
       <Text>Hello from cells</Text>
       <Button label="Run" onPress={() => console.log("run")} />
-    </Column>
+    </Rows>
   );
 }
 ```
@@ -49,6 +49,8 @@ import { App } from "./App.js";
 
 render(<App />);
 ```
+
+`Rows` gives each child a row track (height); `Columns` gives each child a column track (width). Both accept fixed-cell, `auto`, and fraction tracks.
 
 Static tests use `@faux-ui/ui/testing`.
 

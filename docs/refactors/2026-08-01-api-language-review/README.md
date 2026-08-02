@@ -1,8 +1,8 @@
 # 2026-08-01 — Public-language and spacing review
 
-Status: **recommendation recorded; source implementation pending**.
+Status: **implemented in the unreleased 0.9.1 candidate**.
 
-No 1.0 contract has been merged to `main`, tagged, or published. This review therefore treats every public name as changeable and does not propose aliases or a migration layer.
+No package version had been published, so the review changed the public surface directly without aliases or a migration layer. Version 0.9.1 remains pre-1.0 so real-use evidence can still refine the contract.
 
 ## Question
 
@@ -12,10 +12,10 @@ The review also decides whether the foundation needs deterministic space outside
 
 ## Reading order
 
-1. [Findings](01-findings.md) — public-vocabulary inventory, readability test, false expectations, and outer-spacing semantics.
-2. [Three naming variants](02-naming-variants.md) — complete alternatives, examples, and comparison.
-3. [Decision](03-decision.md) — selected language, exact rename map, spacing result, and implementation order.
+1. [Findings](01-findings.md) — public-vocabulary inventory, readability problems, false expectations, and spacing evidence.
+2. [Three naming variants](02-naming-variants.md) — initial complete alternatives and comparison.
+3. [Decision](03-decision.md) — final audience-adjusted language, follow-up `Rows` / `Columns` choice, spacing result, and implemented contract.
 
-## Result in one paragraph
+## Result
 
-The revised recommendation is **Variant C: restrained React/TypeScript vocabulary**. Optimize for the likely React + TypeScript user: keep short familiar components, `tracks`, `auto`/fraction tracks, `padding`, `gap`, `x`/`y`, `style`, `/dom`, `/tui`, and existing lifecycle names. Make only correctness-oriented changes: `hotkey` → `keyHint`, `styleFocus` / `styleHover` → `focusStyle` / `hoverStyle`, and remove ineffective `Box.alignX` / `Box.alignY`. Do not add outer spacing for 1.0. The existing source still uses the old names until this small cutover is implemented end to end.
+Keep the familiar React/TypeScript surface, `tracks`, `auto`/fraction tracks, `padding`, `gap`, `x`/`y`, `/dom`, `/tui`, and existing lifecycle names. Use plural `Rows` and `Columns`: children of `Rows` occupy row tracks whose numbers are heights; children of `Columns` occupy column tracks whose numbers are widths. Rename display-only `hotkey` to `keyHint`, use `focusStyle` / `hoverStyle`, remove ineffective `Box.alignX` / `Box.alignY`, and add no outer-spacing feature.

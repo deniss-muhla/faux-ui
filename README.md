@@ -3,14 +3,16 @@
 Deterministic terminal-cell UI for React, with terminal and browser hosts driven by the same logical scene.
 
 ```tsx
-<Row tracks={[28, "2fr", 30]} gap={1}>
+<Columns tracks={[28, "2fr", 30]} gap={1}>
   <Queue />
   <Details />
   <Metadata />
-</Row>
+</Columns>
 ```
 
 faux-ui favors explicit integer-cell layout over CSS/Yoga-style negotiation. It is intended for review queues, dashboards, inspectors, logs, and keyboard-first operational tools authored by humans or coding agents.
+
+Version 0.9.1 is an unreleased pre-1.0 evidence candidate. The project will gather more real-use data before freezing the 1.0 public contract.
 
 ## Install
 
@@ -44,8 +46,8 @@ HTML/SVG intrinsic elements are intentionally rejected in faux-ui JSX.
 import {
   Box,
   Button,
-  Column,
-  Row,
+  Columns,
+  Rows,
   ScrollView,
   Text,
   useInput,
@@ -54,35 +56,40 @@ import { useState } from "react";
 
 export function App() {
   const [selected, setSelected] = useState(0);
+  const approve = () => {};
 
   useInput((input) => {
     if (input.key === "j") {
       setSelected((value) => value + 1);
       return true;
     }
+    if (input.key === "a") {
+      approve();
+      return true;
+    }
     return false;
   });
 
   return (
-    <Column tracks={[3, "1fr", 2]}>
+    <Rows tracks={[3, "1fr", 2]}>
       <Box border="double" title=" Review " padding={{ x: 1 }}>
         <Text>Shared terminal/browser application</Text>
       </Box>
 
-      <Row tracks={[24, "1fr"]} gap={1}>
+      <Columns tracks={[24, "1fr"]} gap={1}>
         <ScrollView axis="y" border title=" Queue ">
-          <Column>
+          <Rows>
             <Button label="First" selected={selected === 0} onPress={() => setSelected(0)} />
             <Button label="Second" selected={selected === 1} onPress={() => setSelected(1)} />
-          </Column>
+          </Rows>
         </ScrollView>
         <Box border title=" Detail " padding={1}>
           <Text overflow="ellipsis-end">Selected item {selected}</Text>
         </Box>
-      </Row>
+      </Columns>
 
-      <Button label="Approve" hotkey="a" onPress={() => {}} />
-    </Column>
+      <Button label="Approve" keyHint="a" onPress={approve} />
+    </Rows>
   );
 }
 ```
@@ -146,7 +153,7 @@ All dimensions are non-negative integer cells.
 type Track = number | "auto" | `${number}fr`;
 ```
 
-- fixed tracks reserve exact cells;
+- fixed tracks reserve exact main-axis cells: heights in `Rows`, widths in `Columns`;
 - `auto` uses preferred content size;
 - fractions divide positive remaining space;
 - remainder cells are assigned from the first fraction track onward;
@@ -154,7 +161,7 @@ type Track = number | "auto" | `${number}fr`;
 - base text uses explicit newlines and never auto-wraps;
 - margin, percentages, named tracks, spans, overlap, and responsive breakpoints do not exist.
 
-Use nested `Row` and `Column` components instead of a general two-dimensional grid.
+`Rows` places each child in a row; `Columns` places each child in a column. Use nested `Rows` and `Columns` instead of a general two-dimensional grid.
 
 ## Foundation
 
@@ -162,7 +169,7 @@ Use nested `Row` and `Column` components instead of a general two-dimensional gr
 | --- | --- |
 | `Text` | Explicit-line text with clip/start/middle/end ellipsis |
 | `Box` | Single-child surface with padding, border, title, style, and handlers |
-| `Row` / `Column` | Sequential fixed/auto/fraction allocation |
+| `Rows` / `Columns` | Child rows (height tracks) / child columns (width tracks) |
 | `Fill` / `Divider` | Paint an allocated frame without guessed string lengths |
 | `ScrollView` | Shared viewport/content/offset semantics |
 | `Button` | One focus, pointer, Enter, Space, and `onPress` contract |
@@ -172,10 +179,11 @@ App shells, panels, action bars, split panes, key hints, and status states are c
 
 ## Input and focus
 
-- `useInput(handler)` registers renderer-neutral app hotkeys. Return `true` to consume a key.
+- `useInput(handler)` registers renderer-neutral keyboard shortcuts. Return `true` to consume a key.
 - `useFocusManager()` exposes next, previous, and clear focus operations.
 - `Tab` and `Shift+Tab` traverse focusable nodes.
 - Enter, Space, and completed primary clicks synthesize one `onPress`.
+- `Button.keyHint` only displays a hint; shortcut behavior remains explicit in `useInput`.
 - events bubble target-to-root and support `preventDefault()` and `stopPropagation()`.
 - wheel, terminal mouse, arrows, Page Up/Down, Home, and End use shared scroll offsets when a scroll viewport is targeted.
 
@@ -261,4 +269,4 @@ Further documentation:
 - [Changelog](CHANGELOG.md)
 - [Third-party notices](THIRD_PARTY_NOTICES.md)
 - [Implemented reset history](docs/refactors/2026-07-31-tui-first-reset/README.md)
-- [Pending public-language decision](docs/refactors/2026-08-01-api-language-review/README.md)
+- [Implemented public-language decision](docs/refactors/2026-08-01-api-language-review/README.md)

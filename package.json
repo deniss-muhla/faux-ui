@@ -1,7 +1,7 @@
 {
   "name": "faux-ui",
   "private": true,
-  "version": "1.0.0",
+  "version": "0.9.1",
   "type": "module",
   "description": "Deterministic terminal-first React UI with a browser mirror",
   "license": "MIT",

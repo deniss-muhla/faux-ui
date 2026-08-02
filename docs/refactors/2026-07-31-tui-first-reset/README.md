@@ -21,4 +21,4 @@ Later rendering fixes did not change the semantic kernel; see the timeline in [d
 
 ## Supersession note
 
-The package/host boundaries and TUI-first semantics remain current. The public component/prop vocabulary proposed here was reopened by the [2026-08-01 public-language review](../2026-08-01-api-language-review/README.md), because no 1.0 release was merged or published.
+The package/host boundaries and TUI-first semantics remain current. The public component/prop vocabulary proposed here was reopened and replaced by the implemented [2026-08-01 public-language review](../2026-08-01-api-language-review/README.md), because no package version was published. Although this historical dossier records the original 1.0.0 target, current manifests intentionally use 0.9.1 while more evidence is gathered before 1.0.

@@ -28,7 +28,7 @@ test.describe("vNext DOM scene spike", () => {
           focusable: true,
           onPress: () => {},
           accessibleLabel: "Approve",
-          styleFocus: { background: "focus" },
+          focusStyle: { background: "focus" },
         });
         const label = createTextNode(3, { text: "A古é👩‍💻│█▗" });
         replaceChildren(action, [label]);
@@ -180,7 +180,7 @@ test.describe("vNext DOM scene spike", () => {
         const react = await import(reactUrl);
         const createElement = react.createElement ?? react.default?.createElement;
         if (createElement === undefined) throw new Error("Missing React.createElement");
-        const { Column, ScrollView, Text } = await import(componentsUrl);
+        const { Rows, ScrollView, Text } = await import(componentsUrl);
         const { render } = await import(domUrl);
         const { sceneToText } = await import(sceneUrl);
 
@@ -193,7 +193,7 @@ test.describe("vNext DOM scene spike", () => {
           createElement(
             ScrollView,
             { axis: "y" },
-            createElement(Column, { tracks: rows.map(() => 1) }, ...rows),
+            createElement(Rows, { tracks: rows.map(() => 1) }, ...rows),
           ),
           { width: 8, height: 2 },
         );
@@ -265,14 +265,14 @@ test.describe("vNext DOM scene spike", () => {
         const react = await import(reactUrl);
         const createElement = react.createElement ?? react.default?.createElement;
         if (createElement === undefined) throw new Error("Missing React.createElement");
-        const { Row, Text } = await import(componentsUrl);
+        const { Columns, Text } = await import(componentsUrl);
         const { render } = await import(domUrl);
         document.body.replaceChildren();
         document.body.setAttribute("style", "color: rgb(1, 2, 3)");
         const original = document.body.getAttribute("style");
         let failure = "";
         try {
-          render(createElement(Row, null, "raw text"), {
+          render(createElement(Columns, null, "raw text"), {
             width: 8,
             height: 1,
           });
