@@ -5,6 +5,7 @@
 - The repository contains an unreleased `@faux-ui/ui` 1.0 candidate; it has not been merged to `main`, tagged, or published.
 - Public names may break before the first release. Follow the pending language decision in `docs/refactors/2026-08-01-api-language-review/` and do not add compatibility aliases.
 - The current exports remain source truth until that decision is implemented end to end.
+- The selected cutover retains components, tracks, `padding`, `gap`, `x` / `y`, `/dom`, and `/tui`; it only fixes `hotkey`, focus/hover style ordering, and ineffective `Box` alignment props. Do not add outer spacing.
 - Do not reintroduce deleted prototype package names or compatibility aliases.
 - `/home/den/Source/g-calendar-cleanup` is a historical one-time evidence case study. Do not modify or upgrade it.
 

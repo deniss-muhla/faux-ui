@@ -128,7 +128,9 @@ import {
 
 - More verbose than the current API.
 - `Area` and `Action` have fewer existing UI-library priors than `Box` and `Button`.
-- `share()` adds one helper import.
+- `widths` / `heights` can sound like measured results rather than allocation rules.
+- `share()` / `share(2)` is nearly as unfamiliar as `1fr` / `2fr`, while also adding call syntax and a helper import.
+- The three spacing concepts add semantics before real use has proved the third is needed.
 - Renaming lifecycle and test surfaces increases the cutover size.
 
 ## Variant B — Terminal-native compact vocabulary
@@ -206,24 +208,27 @@ import {
 - `/dom` and `/tui` remain implementation abbreviations.
 - Less approachable for agents trained mainly on general React applications.
 
-## Variant C — Explicit CSS-like subset
+## Variant C — Restrained React/TypeScript vocabulary
 
-Goal: maximize transfer from React/CSS and accept that faux-ui is a deliberately restricted cell version of familiar layout vocabulary.
+Goal: optimize for the likely React + TypeScript user, keep established terms, and change only names that are false, ineffective, or awkwardly ordered.
 
 ### Vocabulary
 
 | Concept | Variant C |
 | --- | --- |
 | Components | Keep `Text`, `Box`, `Row`, `Column`, `Fill`, `Divider`, `ScrollView`, `Button`, `ThemeProvider` |
-| Allocation | Keep `tracks`, `auto`, `Nfr` |
-| Spacing | `gap`, `padding`, add `margin` |
-| Frame / caption | `border`, `title` |
-| Paint | `style`, `focusStyle`, `hoverStyle` |
-| Text shortening | `overflow="ellipsis-*|clip"` |
-| Direction | standardize on `horizontal`, `vertical`, `both` |
-| Displayed shortcut | rename to `shortcutHint` |
-| Activation | `onPress` |
-| Hosts | keep `/dom`, `/tui`, `render`, `unmount` |
+| Hooks | Keep `useTheme`, `useInput`, `useFocusManager` |
+| Allocation | Keep `tracks`, `Track`, `auto`, `Nfr` |
+| Spacing | Keep `padding` and `gap`; add no outer spacing |
+| Edge shorthand | Keep `x`, `y`, and named sides |
+| Frame / caption | Keep `border`, `title` |
+| Paint | Keep `style`; use `focusStyle`, `hoverStyle` |
+| Text shortening | Keep `overflow="ellipsis-*|clip"` |
+| Direction | Keep `axis="x|y|both"`; keep divider `orientation="horizontal|vertical"` |
+| Displayed shortcut | rename `hotkey` to `keyHint` |
+| Activation | Keep `onPress` |
+| Hosts/lifecycle | Keep `/dom`, `/tui`, `render`, `rerender`, `unmount` |
+| Ineffective props | Remove `Box.alignX` / `Box.alignY` |
 
 ### Example
 
@@ -232,11 +237,7 @@ Goal: maximize transfer from React/CSS and accept that faux-ui is a deliberately
   tracks={[3, "1fr", 3]}
   style={{ background: "bg", foreground: "fg" }}
 >
-  <Box
-    border="double"
-    title="faux-ui release review"
-    padding={{ horizontal: 1 }}
-  >
+  <Box border="double" title="faux-ui release review" padding={{ x: 1 }}>
     <Row tracks={["1fr", "auto"]} gap={1}>
       <Text overflow="ellipsis-end">Deterministic terminal cells</Text>
       <Text style={{ foreground: "success", bold: true }}>ONLINE</Text>
@@ -249,41 +250,41 @@ Goal: maximize transfer from React/CSS and accept that faux-ui is a deliberately
     <Box border title="Metadata" />
   </Row>
 
-  <Button shortcutHint="2" tone="primary" onPress={approve}>Approve</Button>
+  <Button keyHint="2" tone="primary" onPress={approve}>Approve</Button>
 </Column>
 ```
 
 ### Strengths
 
-- Smallest source/documentation migration.
-- Highest immediate familiarity for web React developers and coding models.
-- `padding`, `margin`, and `gap` form a familiar spacing family.
+- Shortest learning path and smallest cutover.
+- Uses terms already familiar to React/TypeScript students.
+- `tracks` describes allocation rules equally on rows and columns.
+- `1fr` is compact; replacing it with `share()` does not remove the need to learn one small concept.
+- `padding`, `gap`, and `x` / `y` are easy to read and remember.
+- Avoids adding outer-spacing semantics without evidence.
 - Existing examples remain recognizable.
 
 ### Weaknesses
 
-- The API still looks like incomplete CSS Grid and the CSS box model.
-- Adding restricted `margin` increases expectations of collapse, `auto`, percentages, and negative values.
-- `style`, `overflow`, `border`, `fr`, and `auto` invite many unsupported props/values.
-- `/dom` encourages expectations of semantic/native DOM elements that faux-ui deliberately does not create.
-- Documentation must repeatedly explain what familiar words do *not* mean.
+- The API remains a mixture of React, CSS, geometry, and terminal vocabulary.
+- Familiar terms may prompt guesses such as arbitrary CSS styles or full CSS Grid.
+- Documentation and narrow TypeScript types must make the cell-based subset obvious.
 
-Variant C is coherent only if faux-ui commits to steadily filling the expected CSS-shaped capability cluster. That conflicts with the small deterministic product boundary.
+For the target audience, these costs are smaller than introducing a complete faux-ui synonym set.
 
 ## Comparison
 
-Scores are relative (`1` weak, `5` strong):
+Scores are relative (`1` weak, `5` strong) for the likely React/TypeScript user:
 
-| Criterion | A: Plain spatial | B: Terminal-native | C: CSS-like subset |
+| Criterion | A: Plain spatial | B: Terminal-native | C: Restrained React/TS |
 | --- | ---: | ---: | ---: |
-| Understandable without HTML/CSS | 5 | 3 | 3 |
-| Avoids false platform expectations | 5 | 5 | 2 |
-| Terminal precision | 4 | 5 | 3 |
-| Compact source | 3 | 5 | 4 |
-| General React/agent approachability | 5 | 3 | 5 initially, 2 when guessing missing CSS |
-| Spacing-language completeness | 5 | 4 | 4 |
-| Long-term fit with narrow product scope | 5 | 4 | 2 |
+| Immediate recognition | 3 | 2 | 5 |
+| Short, scannable JSX | 3 | 5 | 5 |
+| Few new names to learn | 2 | 2 | 5 |
+| Avoids false behavior claims | 5 | 5 | 4 |
+| Avoids speculative features | 2 | 3 | 5 |
+| Fits the narrow product scope | 4 | 4 | 5 |
 
 ## Variant result
 
-Variant A best satisfies the stated thought experiment and product boundary. Variant B is a credible fallback if compact TUI vocabulary becomes more important than broad readability. Variant C explains why retaining the current hybrid names is attractive, but it also preserves the exact expectation problem this review was opened to solve.
+Variant C is selected. Variant A is linguistically systematic but over-renames familiar concepts, and `share()` is not a meaningful readability improvement over `fr`. Variant B remains compact but asks a React-oriented audience to learn more terminal/stack jargon. The selected approach keeps the current API shape and makes only the few correctness-oriented changes listed in the decision.

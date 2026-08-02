@@ -6,9 +6,9 @@ No 1.0 contract has been merged to `main`, tagged, or published. This review the
 
 ## Question
 
-Can a developer who does not know HTML/CSS read a faux-ui application in plain English, while developers who do know the web avoid assuming unsupported CSS/DOM behavior?
+Which vocabulary is shortest and easiest for the likely React + TypeScript user to read, distinguish, and remember without claiming behavior faux-ui does not provide?
 
-The review also decides whether the foundation needs deterministic space outside a component in addition to space inside it and space between sequential children.
+The review also decides whether the foundation needs deterministic space outside a component in addition to padding and gap.
 
 ## Reading order
 
@@ -18,4 +18,4 @@ The review also decides whether the foundation needs deterministic space outside
 
 ## Result in one paragraph
 
-The recommended direction is **Variant A: plain spatial English**. Keep universally clear `Text`, `Row`, and `Column`; replace the mixed CSS/engine dialect with `Area`, `ScrollArea`, `Action`, `spaceInside`, `spaceOutside`, `spaceBetween`, axis-specific `widths`/`heights`, `content`, and `share()`. Rename misleading `hotkey` to `keyHint`, remove ineffective container alignment props, use one full-word direction vocabulary, and rename host subpaths to `/browser` and `/terminal`. The existing source still uses the old names until the decision is implemented end to end.
+The revised recommendation is **Variant C: restrained React/TypeScript vocabulary**. Optimize for the likely React + TypeScript user: keep short familiar components, `tracks`, `auto`/fraction tracks, `padding`, `gap`, `x`/`y`, `style`, `/dom`, `/tui`, and existing lifecycle names. Make only correctness-oriented changes: `hotkey` → `keyHint`, `styleFocus` / `styleHover` → `focusStyle` / `hoverStyle`, and remove ineffective `Box.alignX` / `Box.alignY`. Do not add outer spacing for 1.0. The existing source still uses the old names until this small cutover is implemented end to end.

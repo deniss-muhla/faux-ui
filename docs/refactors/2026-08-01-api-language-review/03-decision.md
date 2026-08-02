@@ -2,229 +2,140 @@
 
 ## Status
 
-**Select Variant A: plain spatial English. Implementation is pending.**
+**Select Variant C: restrained React/TypeScript vocabulary. Implementation is pending.**
 
-The current 1.0 candidate is unreleased and unmerged, so implementation will be a direct replacement. There will be no aliases such as `Box = Area`, no deprecated props, and no old `/dom` or `/tui` export paths.
+This revises the earlier plain-spatial recommendation after audience review. The likely user is a React + TypeScript developer, often at student or early-career level. Familiar names are therefore an advantage unless they are false or ineffective.
 
-## Decision principles
+The 1.0 candidate is still unreleased and unmerged. The few selected changes will be direct replacements without aliases or deprecated props.
 
-1. Keep a current name when it is already plain and accurate.
-2. Rename a familiar platform term when faux-ui intentionally omits most behavior associated with it.
-3. Name behavior, not implementation (`browser`, not `dom`; `keyHint`, not `hotkey`).
-4. Use one full-word direction vocabulary publicly.
-5. Make spacing a complete inside/outside/between family.
-6. Remove ineffective props instead of carrying them through a rename.
-7. Preserve terse internal names where they are not public; this decision concerns app-author language.
+## Rule
 
-## Selected public vocabulary
+Prefer the shortest familiar name that describes the actual behavior.
+
+That means:
+
+1. keep common React/UI terms when their local meaning is clear;
+2. do not rename working concepts merely to create a unique faux-ui dialect;
+3. fix names that claim behavior they do not provide;
+4. remove public props that do nothing;
+5. accept small local vocabulary differences when they read better than forced global consistency;
+6. add no new layout concept without repeated real-use evidence.
+
+## Keep the current foundation language
 
 ### Components and hooks
 
-| Current | Selected | Reason |
+Keep:
+
+- `Text`, `Box`, `Row`, `Column`;
+- `Fill`, `Divider`, `ScrollView`, `Button`;
+- `ThemeProvider`, `useTheme`;
+- `useInput`, `useFocusManager`.
+
+These names are short, recognizable to the target audience, and easy to distinguish in JSX. Renaming them to `Area`, `Pattern`, `Separator`, `ScrollArea`, `Action`, `ColorTheme`, `useKeys`, and `useFocusControls` adds vocabulary without making normal source easier to read.
+
+### Layout
+
+Keep:
+
+```ts
+type Track = number | "auto" | `${number}fr`;
+```
+
+Keep `tracks` on both `Row` and `Column`.
+
+`widths` and `heights` sound like final measured dimensions, while tracks are allocation rules. One shared prop is also easier to remember when changing a `Row` into a `Column`.
+
+`share()` / `share(2)` is not simpler than `1fr` / `2fr`: both require learning one allocation concept, while the helper adds an import and call syntax. Keep the compact fraction notation.
+
+Keep:
+
+- `padding` for space inside a box;
+- `gap` for space between `Row` or `Column` children;
+- `x` and `y` in points, scroll axes, and padding shorthand;
+- `width` and `height` where actual dimensions are meant;
+- `horizontal` and `vertical` for a divider's visible orientation.
+
+The public API does not need one verbose direction dialect everywhere. For the intended audience, `{ x, y }`, `axis="y"`, and `orientation="horizontal"` are already familiar and locally clear.
+
+### Visual and interaction language
+
+Keep:
+
+- `style`, `Style`, `foreground`, `background`, `bold`, `dim`, `inverse`;
+- `border`, `title`, `overflow`, `alignX`, and `alignY` on `Text`;
+- `tone`, `selected`, `disabled`, `onPress`;
+- `accessibleLabel`;
+- `Palette`, `SemanticColor`, `Point`, `Size`, and `Rect`.
+
+These are conventional development terms. The narrow TypeScript types define the supported subset more effectively than a new synonym family would.
+
+### Hosts and lifecycle
+
+Keep:
+
+- `@faux-ui/ui/dom` and `@faux-ui/ui/tui`;
+- `render`, `rerender`, `setSize`, `getScene`, and `unmount`;
+- `renderStatic` and `StaticRenderHandle`;
+- current render-option and handle type names.
+
+React developers know DOM, and TUI is the product's central term. `/browser`, `/terminal`, `start`, `update`, `getScreen`, and `stop` would be longer without being more precise.
+
+## Make only correctness-oriented changes
+
+| Current | Decision | Reason |
 | --- | --- | --- |
-| `Text` | `Text` | Already plain and exact |
-| `Box` | `Area` | Neutral rectangular region without CSS box-model promise |
-| `Row` | `Row` | Already plain and exact |
-| `Column` | `Column` | Already plain and exact |
-| `Fill` | `Pattern` | Repeats one character; avoids collision with background fill |
-| `Divider` | `Separator` | Plain relationship rather than layout implementation |
-| `ScrollView` | `ScrollArea` | States that one area can scroll without React Native/DOM view implications |
-| `Button` | `Action` | Represents shared activation, not an HTML form control |
-| `ThemeProvider` | `ColorTheme` | The current “theme” contains only a color palette |
-| `useTheme` | `useColors` | Matches the actual data |
-| `useInput` | `useKeys` | Avoids form-input interpretation |
-| `useFocusManager` | `useFocusControls` | States that the hook returns imperative traversal controls |
+| `Button.hotkey` | `Button.keyHint` | It displays text; it does not register a key handler. |
+| `styleFocus` | `focusStyle` | Conventional modifier-first reading. |
+| `styleHover` | `hoverStyle` | Conventional modifier-first reading. |
+| `Box.alignX` | remove | It currently has no effect. |
+| `Box.alignY` | remove | It currently has no effect. |
 
-`children`, React `key`, `label`, `disabled`, and `selected` remain unchanged. `FocusControls` exposes `next()`, `previous()`, and `clear()` instead of `focusNext()`, `focusPrevious()`, and `clearFocus()`.
+`Text.alignX` and `Text.alignY` remain because they work and match the short coordinate vocabulary.
 
-### Layout and spacing
+`keyHint` remains display-only. An application registers shortcuts through `useInput` and can call the same action used by `onPress`.
 
-| Current | Selected |
-| --- | --- |
-| `tracks` on `Row` | `widths` |
-| `tracks` on `Column` | `heights` |
-| `Track` | `Length` |
-| `"auto"` | `"content"` |
-| `"1fr"`, `"2fr"`, … | `share()`, `share(2)`, … |
-| `gap` | `spaceBetween` |
-| `padding` | `spaceInside` |
-| no equivalent | `spaceOutside` |
-| `Insets` / `InsetsInput` | `EdgeSpace` / `EdgeSpaceInput` |
-| edge `x` / `y` | `horizontal` / `vertical` |
+No other public component, prop, type, hook, host path, or lifecycle rename is approved by this review.
 
-Selected length contract:
+## Spacing decision
 
-```ts
-interface ShareLength {
-  readonly share: number;
-}
+Do **not** add margin, `spaceOutside`, or another outer-spacing prop for 1.0.
 
-type Length = number | "content" | ShareLength;
+The foundation keeps two spacing concepts:
 
-declare function share(weight?: number): ShareLength;
+```tsx
+<Box padding={{ x: 1 }}>
+  <Row gap={1}>{children}</Row>
+</Box>
 ```
 
-`share()` defaults to weight `1`; weights are finite and positive. This removes CSS Grid syntax and makes “share the remaining cells” explicit.
+- `padding`: space inside the component boundary;
+- `gap`: uniform space between sequential children.
 
-### Space semantics
+A generic `space` prop would not say whether the space is inside, outside, or between items. `padding` and `gap` are more recognizable to the target audience.
 
-`spaceInside`, `spaceOutside`, and `spaceBetween` accept non-negative integer cells.
-
-```ts
-type EdgeSpaceInput =
-  | number
-  | {
-      horizontal?: number;
-      vertical?: number;
-      top?: number;
-      right?: number;
-      bottom?: number;
-      left?: number;
-    };
-```
-
-Rules:
-
-- `spaceInside` is available on region-like components and reduces their content frame after outline reservation.
-- `spaceOutside` is available on every layoutable public component.
-- A child track allocates an outer slot; `spaceOutside` insets the component's painted/layout frame within that slot.
-- Content preferred size includes outside space.
-- Outside cells retain parent paint and hit ownership.
-- Neighboring outside spaces and parent `spaceBetween` add; nothing collapses.
-- Negative, `auto`, percentage, and overlapping outside space are invalid.
-- `spaceOutside` does not become a generic positioning system.
-
-This deliberately solves the useful part of margin without adopting CSS margin semantics or the name `margin`.
-
-### Appearance
-
-| Current | Selected |
-| --- | --- |
-| `style` | `appearance` |
-| `styleFocus` | `focusedAppearance` |
-| `styleHover` | `hoveredAppearance` |
-| `Style` | `Appearance` |
-| `foreground` | `text` |
-| `background` | `fill` |
-| `bold` | `strong` |
-| `dim` | `faint` |
-| `inverse` | `reversed` |
-| `SemanticColor` | `ColorRole` |
-| `Palette` | `ColorPalette` |
-
-Selected initial color-role renames:
-
-| Current role | Selected role |
-| --- | --- |
-| `fg` | `text` |
-| `muted` | `muted` |
-| `inverse` | `contrastText` |
-| `bg` | `canvas` |
-| `panel` | `panel` |
-| `selection` | `selection` |
-| `focus` | `focus` |
-| `accent` | `accent` |
-| `success` | `success` |
-| `warning` | `warning` |
-| `danger` | `danger` |
-| `border` | `outline` |
-
-`ColorTheme` accepts `colors?: Partial<ColorPalette>`; `useColors()` returns the active palette.
-
-### Component-specific props
-
-| Current | Selected |
-| --- | --- |
-| `border` | `outline` |
-| `title` | `caption` |
-| `Border` / `BorderKind` | `Outline` / `OutlineKind` |
-| `Text.overflow` | `Text.truncate` |
-| `alignX` on `Text` | `align` |
-| `alignY` on `Text` | `verticalAlign` |
-| `alignX` / `alignY` on `Box` | remove; currently ineffective |
-| `Fill.glyph` | `Pattern.character` |
-| `Divider.orientation` | `Separator.direction` |
-| `Divider.variant` | `Separator.pattern` |
-| `ScrollView.axis` | `ScrollArea.direction` |
-| `Button.tone` | `Action.intent` |
-| `Button.hotkey` | `Action.keyHint` |
-| `onPress` | `onActivate` |
-| `accessibleLabel` | `accessibilityLabel` |
-
-Public directions use only `horizontal`, `vertical`, and `both`. Internal `x`/`y` coordinates remain unchanged.
-
-`keyHint` remains display-only. Applications register global keys through `useKeys`; the name must not imply hidden behavior.
-
-### Events and geometry types
-
-| Current | Selected |
-| --- | --- |
-| `PressUiEvent` | `ActivateEvent` |
-| press source | activation source (`keyboard` or `pointer`) |
-| `Size` | `CellSize` |
-| `Point` | `CellPoint` |
-| `Rect` | `CellRect` |
-| `ScrollAxis` | `Direction` |
-| `TextOverflow` | `Truncation` |
-| `ButtonTone` | `ActionIntent` |
-
-Low-level `onKeyDown`, `onKeyUp`, pointer event names, `preventDefault`, `stopPropagation`, and React `children` retain their conventional names. They describe actual event operations and do not imply browser-owned semantics.
-
-The public event target kind changes from `"box" | "text"` to `"area" | "text"` so app-visible vocabulary does not leak the deleted component name.
-
-### Host and lifecycle surfaces
-
-| Current | Selected |
-| --- | --- |
-| `@faux-ui/ui/dom` | `@faux-ui/ui/browser` |
-| `@faux-ui/ui/tui` | `@faux-ui/ui/terminal` |
-| host `render()` | `start()` |
-| `rerender()` | `update()` |
-| `setSize()` | `resize()` |
-| `getScene()` | `getScreen()` |
-| `unmount()` | `stop()` |
-| `DomRenderOptions` | `BrowserOptions` |
-| `TuiRenderOptions` | `TerminalOptions` |
-| `DomRenderHandle` | `BrowserApp` |
-| `TuiRenderHandle` | `TerminalApp` |
-| `renderStatic()` | `createTestApp()` |
-| `StaticRenderHandle` | `TestApp` |
-
-The terminal app may expose `pause()` / `resume()` for alternate-screen lifecycle; `start()` itself returns an already running app. `isRunning()` can remain.
-
-Host option language should also become explicit during implementation:
-
-- browser `container` → `mountInto`;
-- browser `fit: "viewport"` → `fit: "window"`;
-- `ariaLabel` → `accessibilityLabel`;
-- terminal `alternateScreen` → `useAlternateScreen`;
-- terminal `mouse` → `trackMouse`;
-- terminal `exitOnCtrlC` → `quitOnCtrlC`.
-
-The exact input/output stream property names can remain because `TerminalInput` and `TerminalOutput` are accurate structural interfaces.
+One-off outer spacing can use composition or explicit tracks. That is slightly more verbose, but it avoids adding rules for preferred size, background ownership, pointer targeting, clipping, root behavior, and adjacent-space combination. Reconsider outer spacing only after repeated real applications show that wrappers or tracks are a material problem.
 
 ## Selected example
 
 ```tsx
 import {
-  Action,
-  Area,
+  Box,
+  Button,
   Column,
   Row,
-  ScrollArea,
-  Separator,
+  ScrollView,
   Text,
-  share,
-  useFocusControls,
-  useKeys,
+  useFocusManager,
+  useInput,
 } from "@faux-ui/ui";
 
 export function ReviewApp() {
-  const focus = useFocusControls();
+  const focus = useFocusManager();
 
-  useKeys((key) => {
+  useInput((key) => {
     if (key.key === "n") {
-      focus.next();
+      focus.focusNext();
       return true;
     }
     return false;
@@ -232,68 +143,62 @@ export function ReviewApp() {
 
   return (
     <Column
-      heights={[3, share(), 3]}
-      appearance={{ fill: "canvas", text: "text" }}
+      tracks={[3, "1fr", 3]}
+      style={{ background: "bg", foreground: "fg" }}
     >
-      <Area
-        outline="double"
-        caption="faux-ui release review"
-        spaceInside={{ horizontal: 1 }}
-      >
-        <Row widths={[share(), "content"]} spaceBetween={1}>
-          <Text truncate="end">Deterministic terminal cells</Text>
-          <Text appearance={{ text: "success", strong: true }}>ONLINE</Text>
+      <Box border="double" title="faux-ui release review" padding={{ x: 1 }}>
+        <Row tracks={["1fr", "auto"]} gap={1}>
+          <Text overflow="ellipsis-end">Deterministic terminal cells</Text>
+          <Text style={{ foreground: "success", bold: true }}>ONLINE</Text>
         </Row>
-      </Area>
+      </Box>
 
-      <Row widths={[28, share(2), 30]} spaceBetween={1}>
-        <Area outline="single" caption="Queue">
-          <ScrollArea direction="vertical">{/* items */}</ScrollArea>
-        </Area>
-        <Area outline="rounded" caption="Details" spaceInside={1} />
-        <Area outline="single" caption="Metadata" spaceInside={{ horizontal: 1 }} />
+      <Row tracks={[28, "2fr", 30]} gap={1}>
+        <Box border title="Queue">
+          <ScrollView axis="y">{/* items */}</ScrollView>
+        </Box>
+        <Box border="rounded" title="Details" padding={1} />
+        <Box border title="Metadata" padding={{ x: 1 }} />
       </Row>
 
-      <Row widths={[share(), share(), share()]}>
-        <Action keyHint="1" onActivate={open}>Open</Action>
-        <Action keyHint="2" intent="primary" onActivate={approve}>Approve</Action>
-        <Action keyHint="3" intent="danger" onActivate={reject}>Reject</Action>
+      <Row tracks={["1fr", "1fr", "1fr"]}>
+        <Button keyHint="1" onPress={open}>Open</Button>
+        <Button keyHint="2" tone="primary" onPress={approve}>Approve</Button>
+        <Button keyHint="3" tone="danger" onPress={reject}>Reject</Button>
       </Row>
     </Column>
   );
 }
 ```
 
-The source contains no HTML element names, CSS Grid tokens, CSS box-model terms, renderer acronyms, or display-only prop that claims behavior.
+For the intended user, this is more readable than introducing a faux-ui-specific synonym for every familiar React/UI term.
 
-## Deliberately unchanged product boundaries
+## Familiarity does not expand the contract
 
-The naming reset does not authorize:
+Keeping familiar names does not authorize:
 
-- CSS properties or HTML intrinsic elements;
-- general grid, spans, named placement, percentages, min/max negotiation, or wrapping by default;
-- margin collapse, negative spacing, overlap, or absolute positioning;
+- arbitrary CSS properties or HTML intrinsic elements;
+- general CSS Grid, percentages, spans, or named placement;
+- margin, negative spacing, overlap, or absolute positioning;
 - automatic key registration from `keyHint`;
-- native browser focus as semantic truth;
-- compatibility aliases.
+- native browser layout or focus as semantic truth.
+
+The package should teach these limits once in its overview and enforce them through narrow TypeScript types, runtime validation, and examples—not by renaming every concept.
 
 ## Implementation order
 
-1. Add executable `spaceOutside` preferred/layout/scene/hit tests under internal names.
-2. Replace public component/type names and remove ineffective container alignment props.
-3. Replace `tracks`/`auto`/`fr` parsing with `widths`/`heights`/`content`/`share()`.
-4. Replace appearance/color vocabulary and action activation names.
-5. Rename browser/terminal entry files, package exports, lifecycle methods, and package-consumer fixtures.
-6. Rewrite the serious example and recipes using only the selected vocabulary.
-7. Update root specification, architecture, strategy examples, README, roadmap, type tests, and package README.
-8. Run the complete release gate and search for every deleted public name outside this historical dossier.
+1. Rename `hotkey` to `keyHint`.
+2. Rename `styleFocus` / `styleHover` to `focusStyle` / `hoverStyle`.
+3. Remove ineffective `Box.alignX` / `Box.alignY` while retaining text alignment.
+4. Update examples, recipes, current docs, type tests, and packed-consumer fixtures.
+5. Search current source and docs for deleted public names; historical analysis may retain them.
+6. Run the complete release gate.
 
 ## Acceptance criteria
 
-- The selected example compiles and runs identically in browser and terminal hosts.
-- One-sided outside spacing needs no wrapper and has explicit cross-host scene tests.
-- Old component, prop, hook, type, host-path, and lifecycle names are not exported.
-- `hotkey`, inert `Area` alignment, `fr`, `auto`, public `x`/`y` direction shorthands, `/dom`, and `/tui` are absent from current docs/examples/types.
-- Historical dossiers remain readable and clearly marked as historical.
-- Packed browser and terminal consumers pass from the renamed subpaths.
-- No compatibility layer is introduced.
+- The selected example compiles and behaves identically in DOM and TUI hosts.
+- `keyHint` is documented and tested as display-only.
+- `Box` exposes no ineffective alignment props.
+- `tracks`, `Track`, `auto`, fraction tracks, `padding`, `gap`, `x`/`y`, `/dom`, and `/tui` remain public.
+- No outer-spacing feature or compatibility alias is introduced.
+- All package, browser, terminal, and type gates pass.
