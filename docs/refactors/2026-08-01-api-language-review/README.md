@@ -18,4 +18,4 @@ The review also decides whether the foundation needs deterministic space outside
 
 ## Result
 
-Keep the familiar React/TypeScript surface, `tracks`, `auto`/fraction tracks, `padding`, `gap`, `x`/`y`, `/dom`, `/tui`, and existing lifecycle names. Use plural `Rows` and `Columns`: children of `Rows` occupy row tracks whose numbers are heights; children of `Columns` occupy column tracks whose numbers are widths. Rename display-only `hotkey` to `keyHint`, use `focusStyle` / `hoverStyle`, remove ineffective `Box.alignX` / `Box.alignY`, and add no outer-spacing feature.
+Keep the familiar React/TypeScript surface, `tracks`, `auto`/fraction tracks, `padding`, `gap`, `x`/`y`, `/dom`, `/tui`, and existing lifecycle names. Use plural `Rows` and `Columns`: children of `Rows` occupy row tracks whose numbers are heights; children of `Columns` occupy column tracks whose numbers are widths. Rename display-only `hotkey` to `keyHint`, use `focusStyle` / `hoverStyle`, replace paired text alignment props with `Text.align={{ x, y }}`, remove ineffective Box alignment, and add no outer-spacing feature.

@@ -18,6 +18,27 @@ export interface Point {
 
 export interface Rect extends Point, Size {}
 
+/** Renderer-neutral input for an advanced custom layout algorithm. */
+export interface LayoutInput {
+  readonly size: Size;
+  readonly children: readonly Size[];
+}
+
+/** Child frames are local to the custom layout's content frame. */
+export interface LayoutOutput {
+  readonly children: readonly Rect[];
+  readonly contentSize?: Size;
+}
+
+/**
+ * Advanced public extension contract used by independently packaged layout
+ * components. Implementations must be pure and return integer cell geometry.
+ */
+export interface LayoutEngine {
+  preferred(children: readonly Size[]): Size;
+  layout(input: LayoutInput): LayoutOutput;
+}
+
 export interface Insets {
   readonly top: number;
   readonly right: number;
@@ -175,6 +196,7 @@ export interface BoxNode extends SemanticNodeBase {
   axis: Axis | null;
   tracks: Track[] | null;
   gap: number;
+  layout: LayoutEngine | null;
   padding: Insets;
   border: Border | null;
   title: string | null;
@@ -203,6 +225,7 @@ export interface BoxSpec extends EventHandlers {
   readonly axis?: Axis | null;
   readonly tracks?: readonly Track[];
   readonly gap?: number;
+  readonly layout?: LayoutEngine;
   readonly padding?: InsetsInput;
   readonly border?: BorderInput;
   readonly title?: string;
@@ -247,6 +270,7 @@ export function createBoxNode(id: NodeId, spec: BoxSpec = {}): BoxNode {
     axis: normalizeAxis(spec.axis),
     tracks: normalizeTracks(spec.tracks),
     gap: normalizeInteger(spec.gap ?? 0, "gap"),
+    layout: normalizeLayout(spec.layout),
     padding: normalizeInsets(spec.padding),
     border: normalizeBorder(spec.border),
     title: normalizeLabel(spec.title),
@@ -280,6 +304,7 @@ export function updateBoxNode(node: BoxNode, spec: BoxSpec): void {
   node.axis = normalizeAxis(spec.axis);
   node.tracks = normalizeTracks(spec.tracks);
   node.gap = normalizeInteger(spec.gap ?? 0, "gap");
+  node.layout = normalizeLayout(spec.layout);
   node.padding = normalizeInsets(spec.padding);
   node.border = normalizeBorder(spec.border);
   node.title = normalizeLabel(spec.title);
@@ -407,6 +432,19 @@ function normalizeTrack(track: Track, index: number): Track {
     throw new Error(`tracks[${index}] must have a positive fraction weight.`);
   }
   return `${weight}fr`;
+}
+
+function normalizeLayout(value: LayoutEngine | undefined): LayoutEngine | null {
+  if (value === undefined) return null;
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    typeof value.preferred !== "function" ||
+    typeof value.layout !== "function"
+  ) {
+    throw new Error("layout must provide preferred() and layout() functions.");
+  }
+  return value;
 }
 
 function normalizeBorder(value: BorderInput | undefined): Border | null {

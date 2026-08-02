@@ -12,7 +12,9 @@ Read these for the source tree as it exists now:
 4. [Roadmap](roadmap.md) — release state and next work.
 5. [Testing](testing.md) — behavior matrix and release gates.
 6. [Recipes](recipes.md) — higher-level compositions over the foundation.
-7. [Small improvements](improvements.md) — unstructured minor fixes only.
+7. [`@faux-ui/grid` package guide](../packages/grid/README.md) — optional CSS-grid-like layout and third-party component example.
+8. [Cross-agent Skill packaging](agent-skill-packaging.md) — Agent Skills, Pi, Codex/ChatGPT, and Claude Code discovery/distribution reference.
+9. [Small improvements](improvements.md) — unstructured minor fixes only.
 
 A dated refactor decision is not implemented reality until the source, specification, architecture, examples, tests, and package checks have been changed together. Until then, the root specification and architecture remain authoritative.
 
@@ -23,6 +25,8 @@ A dated refactor decision is not implemented reality until the source, specifica
 | 2026-07-31 | TUI-first clean-break reset | Implemented on `refactor/tui-first-reset` | [Dossier](refactors/2026-07-31-tui-first-reset/README.md), commits `7758468` and `91eef1d` |
 | 2026-08-01 | DOM/TUI rendering stabilization | Implemented | Commits `740333f` through `fa852c9`; [changelog](../CHANGELOG.md) and [testing matrix](testing.md) |
 | 2026-08-01 | Public-language and spacing review | Implemented in 0.9.1 candidate | [Dossier](refactors/2026-08-01-api-language-review/README.md) |
+| 2026-08-01 | Standalone CSS-grid-like extension and public layout contract | Implemented; unreleased | [Dossier](refactors/2026-08-01-standalone-grid/README.md), [`@faux-ui/grid`](../packages/grid/README.md) |
+| 2026-08-02 | Cross-agent package Skill packaging | Implemented; unreleased | [Packaging reference](agent-skill-packaging.md) |
 
 ## Refactor dossier convention
 

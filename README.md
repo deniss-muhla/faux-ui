@@ -40,6 +40,10 @@ Configure JSX in `tsconfig.json`:
 
 HTML/SVG intrinsic elements are intentionally rejected in faux-ui JSX.
 
+## Agent Skills
+
+`@faux-ui/ui` ships the portable `faux-ui` skill; optional `@faux-ui/grid` ships `faux-ui-grid`. Each package includes Pi, Codex/ChatGPT, and Claude Code discovery metadata while keeping one standards-compatible `SKILL.md` source. Installing an npm dependency does not automatically enable it in Codex or Claude. See the [cross-agent packaging reference](docs/agent-skill-packaging.md).
+
 ## Shared application
 
 ```tsx
@@ -161,13 +165,33 @@ type Track = number | "auto" | `${number}fr`;
 - base text uses explicit newlines and never auto-wraps;
 - margin, percentages, named tracks, spans, overlap, and responsive breakpoints do not exist.
 
-`Rows` places each child in a row; `Columns` places each child in a column. Use nested `Rows` and `Columns` instead of a general two-dimensional grid.
+`Rows` places each child in a row; `Columns` places each child in a column. Use nested `Rows` and `Columns` for ordinary one-axis composition.
+
+For shared two-axis tracks, automatic placement, or spans, install the optional standalone package:
+
+```bash
+bun add @faux-ui/grid
+```
+
+```tsx
+import { Grid, GridItem } from "@faux-ui/grid";
+import { Text } from "@faux-ui/ui";
+
+<Grid columns={[16, "1fr", 20]} rows={[3, "1fr"]} gap={1}>
+  <GridItem columnSpan={3}><Text>Header</Text></GridItem>
+  <Text>Navigation</Text>
+  <Text>Main</Text>
+  <Text>Inspector</Text>
+</Grid>
+```
+
+`@faux-ui/grid` is independently packaged, depends only on public UI entrypoints, and includes its own optional skill. See [`packages/grid`](packages/grid/README.md).
 
 ## Foundation
 
 | Component | Purpose |
 | --- | --- |
-| `Text` | Explicit-line text with clip/start/middle/end ellipsis |
+| `Text` | Explicit-line text with clip/start/middle/end ellipsis and `align={{ x, y }}` |
 | `Box` | Single-child surface with padding, border, title, style, and handlers |
 | `Rows` / `Columns` | Child rows (height tracks) / child columns (width tracks) |
 | `Fill` / `Divider` | Paint an allocated frame without guessed string lengths |
@@ -266,7 +290,9 @@ Further documentation:
 - [Roadmap](docs/roadmap.md)
 - [Testing and release gates](docs/testing.md)
 - [Composition recipes](docs/recipes.md)
+- [Standalone Grid package](packages/grid/README.md)
 - [Changelog](CHANGELOG.md)
 - [Third-party notices](THIRD_PARTY_NOTICES.md)
 - [Implemented reset history](docs/refactors/2026-07-31-tui-first-reset/README.md)
 - [Implemented public-language decision](docs/refactors/2026-08-01-api-language-review/README.md)
+- [Standalone Grid implementation history](docs/refactors/2026-08-01-standalone-grid/README.md)

@@ -50,9 +50,9 @@ For every layout, glyph, focus, activation, or scroll feature, specify terminal 
 
 Both hosts consume the same layout, controller state, and canonical cell scene. Pixel screenshots are secondary evidence; scene and event equality are primary.
 
-### 3. One public door
+### 3. One required public door
 
-App authors install one package and use host-specific subpaths from that package. Internal modularity must not become package-resolution work for consumers.
+Every app installs `@faux-ui/ui` and uses its host-specific subpaths. Specialized, independently useful components may ship as optional peer packages such as `@faux-ui/grid`; they must never make internal modularity package-resolution work for ordinary consumers.
 
 ### 4. Ordinary React, no framework-owned app state
 
@@ -68,7 +68,7 @@ A few composable primitives must handle a serious tool UI cleanly before adding 
 
 ### 7. Recipes before components
 
-App shell, toolbar, inspector layout, status panel, and empty/loading/error surfaces begin as documented compositions. Promote a component only after repeated real use shows stable semantics.
+App shell, toolbar, inspector layout, status panel, and empty/loading/error surfaces begin as documented compositions. Promote a component only after repeated real use shows stable semantics. Specialized components can mature in standalone packages without expanding the required root foundation.
 
 ### 8. Do not regrow accidental complexity
 
@@ -104,7 +104,7 @@ import { render } from "@faux-ui/ui/tui";
 render(<App />);
 ```
 
-No other faux-ui package, provider, bridge, renderer object, constraint reader, or CSS file should be necessary for the default path.
+No other faux-ui package, provider, bridge, renderer object, constraint reader, or CSS file should be necessary for the default path. Applications opt into `@faux-ui/grid` only when they need true shared two-axis placement.
 
 ## Foundation scope
 
@@ -119,7 +119,19 @@ The first foundation is intentionally narrow:
 - root key handling and focus traversal;
 - one theme palette across hosts.
 
-This set is selected because it is both renderer-neutral and directly supported by real-use evidence.
+This set is selected because it is both renderer-neutral and directly supported by real-use evidence. CSS-grid-like shared tracks, numeric placement, and spans remain outside the root in `@faux-ui/grid`.
+
+### Standalone component packages
+
+`@faux-ui/grid` is the reference boundary for third-party components:
+
+- UI and React are peer dependencies;
+- runtime source imports only documented public entrypoints;
+- pure custom layout receives sizes and returns integer rectangles, never engine objects;
+- the tarball ships source, license, README, changelog, tests-by-evidence, and optional Agent Skills;
+- clean packed consumers prove types plus DOM/TUI behavior.
+
+A standalone package must not become a route for leaking internals or duplicating host behavior.
 
 ## Scope filter
 
@@ -143,7 +155,7 @@ If any answer is weak, keep it as a recipe or defer it.
 
 faux-ui should not compete on breadth. Its distinction is:
 
-- a much smaller explicit allocator;
+- a much smaller explicit default allocator, with optional pure layout extensions;
 - browser and terminal from one canonical cell scene;
 - package/API design optimized for agent-generated tools;
 - inspectability as a first-order output;
@@ -188,14 +200,14 @@ Roadmap changes should cite this evidence rather than speculative ecosystem comp
 
 The pre-1.0 implementation establishes:
 
-- one faux-ui package installed by app authors;
+- one required faux-ui foundation package, with optional standalone component peers;
 - one-call DOM and TUI mounting;
 - zero target leakage in browser bundles;
 - zero app CSS/runtime bridge in the serious fixture;
 - one logical scene and controller across hosts;
 - global shortcuts, focus, buttons, pointer input, and scroll on both hosts;
 - deterministic Unicode 17 cell behavior and official grapheme conformance;
-- packed-package consumer checks;
+- packed foundation and extension consumer checks;
 - documentation that starts with external app setup rather than internal package architecture.
 
 ## What “done” does not mean

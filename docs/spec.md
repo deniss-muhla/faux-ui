@@ -41,7 +41,7 @@ The framework intentionally provides less layout power than CSS, Yoga, or genera
 
 ## Public package contract
 
-The only app-author package is `@faux-ui/ui`.
+The only required app-author package is `@faux-ui/ui`. Optional standalone component packages such as `@faux-ui/grid` depend on its public contract and are not part of the root foundation.
 
 Required exports:
 
@@ -49,16 +49,17 @@ Required exports:
 - `@faux-ui/ui/dom`: browser `render()` and browser-only options/handle;
 - `@faux-ui/ui/tui`: terminal `render()` and terminal-only options/handle;
 - `@faux-ui/ui/testing`: logical scene/tree/event inspection helpers;
+- `@faux-ui/ui/layout`: advanced pure custom-layout component/types for independently packaged renderer-neutral components;
 - `@faux-ui/ui/jsx-runtime` and `/jsx-dev-runtime`: restricted JSX runtimes.
 
 Rules:
 
 - The root package must not import either host implementation at runtime.
-- `/dom` must not import Node or TUI modules.
+- `/dom` and `/layout` must not import Node or TUI modules.
 - `/tui` may import Node terminal modules.
 - There is no environment-detecting render entrypoint.
 - No old package name is retained as an alias.
-- React is a peer; `react-reconciler` is the only direct implementation dependency.
+- React is a peer; `react-reconciler` is the foundation's only direct implementation dependency. Optional Grid has UI and React peers and no direct runtime dependency.
 - Unicode, layout, scene, controller, and host projection add no runtime package dependencies.
 
 ## Core terminology
@@ -121,7 +122,7 @@ A text node has no semantic children.
 A box may contain:
 
 - zero or more semantic children;
-- no axis, row axis, or column axis;
+- no axis, row axis, column axis, or one advanced custom layout engine;
 - main-axis tracks;
 - fixed-cell gap;
 - fixed-cell padding;
@@ -150,7 +151,30 @@ The initial conforming surface contains:
 
 `Rows` places each source child in one row; its tracks control heights. `Columns` places each source child in one column; its tracks control widths. Both compile to the same internal one-axis box node.
 
-Higher-level app shell, panel, toolbar, split layout, status, loading, error, and empty-state patterns are compositions first.
+Higher-level app shell, panel, toolbar, split layout, status, loading, error, and empty-state patterns are compositions first. CSS-grid-like layout is supplied by optional `@faux-ui/grid`, not the root foundation.
+
+## Advanced layout extension contract
+
+`@faux-ui/ui/layout` exports `Layout` and a small pure geometry contract for independently packaged components such as `@faux-ui/grid`.
+
+A `LayoutEngine` provides:
+
+1. `preferred(children)` — receives only child preferred `Size` values and returns one preferred content `Size`;
+2. `layout({ size, children })` — receives the concrete content-frame `Size` plus the same preferred child sizes and returns one local `Rect` per child plus optional content size.
+
+Rules:
+
+- callbacks receive no semantic node, ID, controller, scene, DOM, terminal, or host object;
+- every size, coordinate, and extent returned is a finite non-negative integer cell value;
+- child frame count equals semantic child count;
+- returned rectangles are local to the Layout content frame and may overlap or extend beyond it;
+- source order remains paint and focus traversal order; later overlapping children paint later;
+- normal ancestor clipping, scrolling, scene ownership, events, and host projection remain canonical;
+- a custom layout box cannot also define a sequential axis, tracks, or gap;
+- malformed output throws instead of falling back to host layout;
+- algorithms must be pure and renderer-neutral.
+
+The subpath is an advanced component-author surface. Ordinary applications should use `Box`, `Rows`, `Columns`, and optional finished component packages.
 
 ## Track language
 
@@ -163,7 +187,7 @@ Rules:
 - Fixed tracks are non-negative integer display cells on the component's main axis: heights in `Rows`, widths in `Columns`.
 - Fraction weights are finite and greater than zero.
 - `auto` uses the corresponding child's preferred main-axis size.
-- Named tracks, explicit child row/column placement, spans, and implicit two-dimensional grids do not exist.
+- Core `Rows` / `Columns` do not expose named tracks, explicit two-axis placement, spans, or implicit grids; optional Grid implements numeric placement through `/layout`.
 - When an explicit track list is provided, its length equals the child count.
 - `Rows` / `Columns` with no explicit tracks treat each child as `auto`.
 
@@ -245,7 +269,7 @@ These are semantic fixed-cell features, not CSS emulation.
 
 - Gap is a non-negative integer between sequential children.
 - Padding is a non-negative integer per edge or shorthand.
-- Text alignment is `start`, `center`, or `end` per axis.
+- `Text.align={{ x, y }}` accepts `start`, `center`, or `end` on either axis.
 - A border is shared glyph data plus semantic style and consumes enabled edge cells.
 - Border titles replace a clipped run of top-border cells.
 - Unsupported combinations fail deterministically rather than falling back to browser layout.

@@ -6,11 +6,13 @@ This document describes the implemented 0.9.1 evidence-candidate architecture. H
 
 ## System shape
 
-One publishable package contains internal semantic modules and isolated public host entrypoints.
+One required foundation package contains the semantic engine and isolated hosts. One optional standalone package demonstrates third-party component/layout composition without internal imports.
 
 ```mermaid
 flowchart LR
   APP[React application] --> REC[internal React reconciler]
+  GRID[optional @faux-ui/grid] --> PUBLAYOUT[public /layout contract]
+  PUBLAYOUT --> REC
   REC --> SEM[semantic box/text tree]
   SEM --> PREF[preferred-size pass]
   PREF --> LAYOUT[parent-to-child layout]
@@ -28,11 +30,15 @@ There is no generic renderer SDK, environment-detecting facade, schema layer, ru
 
 ```text
 packages/ui/
+  .codex-plugin/             OpenAI plugin metadata
+  .claude-plugin/            Claude Code plugin metadata
+  skills/faux-ui/            packaged foundation Agent Skill
   src/
     index.ts                 public components, hooks, and types
     dom.ts                   browser-only entry
     tui.ts                   Node/terminal-only entry
     testing.ts               static inspection entry
+    layout.ts                advanced pure layout extension entry
     jsx-runtime.ts           restricted JSX namespace
     jsx-dev-runtime.ts
     components.ts            public component compositions
@@ -49,19 +55,26 @@ packages/ui/
       ansi.ts                true-color ANSI projection
       tui-input.ts           terminal protocol parsing
       mount.ts               end-to-end semantic mount lifecycle
+packages/grid/
+  .codex-plugin/             OpenAI plugin metadata
+  .claude-plugin/            Claude Code plugin metadata
+  src/                        Grid components, validation, placement, track/layout algorithm
+  skills/faux-ui-grid/       packaged Grid Agent Skill
+  test/                      unit/property/type/browser coverage
 apps/example/                serious queue/detail/metadata fixture
 scripts/
   generate-unicode-data.mjs  reproducible Unicode table generator
-  test-package.mjs           packed external-consumer gate
+  test-package.mjs           packed foundation consumer gate
+  test-grid-package.mjs      two-tarball external extension gate
 ```
 
-Only `@faux-ui/ui` is installed by app authors. Internal file boundaries preserve separation of concerns without publishing each concern as a package.
+`@faux-ui/ui` remains the only required app dependency. Applications needing true two-axis placement may additionally install `@faux-ui/grid`. Grid declares UI and React as peers, ships no runtime dependency, and its source imports only public package entrypoints.
 
 ## Public entrypoint isolation
 
 ### `@faux-ui/ui`
 
-Exports renderer-neutral components, hooks, geometry/layout/event/theme types, and the package version. `Rows` compiles to the internal vertical axis; `Columns` compiles to the internal horizontal axis. It imports no DOM or Node host.
+Exports renderer-neutral components, hooks, geometry/layout/event/theme types, and the package version. `Rows` compiles to the internal vertical axis; `Columns` compiles to the internal horizontal axis. It imports no DOM or Node host. The canonical `faux-ui` Agent Skill is exposed through Pi package metadata plus Codex and Claude plugin manifests.
 
 ### `@faux-ui/ui/dom`
 
@@ -74,6 +87,14 @@ Exports terminal `render()`, fakeable stream interfaces, and TUI option/handle t
 ### `@faux-ui/ui/testing`
 
 Exports `renderStatic()`, logical scene/layout inspection, text snapshots, event traces, row runs, and Unicode metadata.
+
+### `@faux-ui/ui/layout`
+
+Exports the advanced `Layout` component and pure preferred-size/exact-frame callback types. The shared engine validates callback geometry before normal clipping, painting, hit testing, scrolling, and host projection. It exposes no node, ID, controller, scene, DOM, or terminal object.
+
+### `@faux-ui/grid`
+
+Consumes only React, `@faux-ui/ui`, and `@faux-ui/ui/layout`. It parses numeric `GridItem` placement/spans, computes renderer-neutral track geometry, and returns local integer rectangles through the public layout callback. Implicit tracks are always `auto`; text and scrolling compose through `Text` and `ScrollView` rather than Grid-specific props. One canonical Agent Skill is exposed through Pi package metadata plus Codex and Claude plugin manifests. Packed tests install UI and Grid tarballs in a clean project and bundle/run DOM and TUI hosts.
 
 ### JSX runtimes
 
@@ -154,6 +175,7 @@ Layout is recomputed as pure derived output from the semantic tree and explicit 
 - Text measures newline-delimited lines through the shared cellizer.
 - Sequential boxes combine child preferred sizes, fixed tracks, gaps, padding, and borders.
 - Fraction tracks behave as auto only in this pass.
+- Custom-layout boxes call their pure `preferred()` function with copied child sizes.
 - Scroll content can retain preferred extent beyond its viewport.
 
 The result is an immutable `PreferredNode` tree.
@@ -162,7 +184,7 @@ The result is an immutable `PreferredNode` tree.
 
 The root always receives `{x: 0, y: 0, width, height}`.
 
-For each box:
+For each sequential box:
 
 1. reserve border and padding;
 2. subtract gap cost;
@@ -173,7 +195,7 @@ For each box:
 7. allocate exact source-ordered child frames;
 8. intersect descendant clips with the content viewport.
 
-Fixed/auto overflow is retained geometrically and clipped. There is no sibling renegotiation or second child-layout pass.
+A custom-layout box instead receives the concrete content size and child preferred sizes, returns one local rectangle per child, and has every integer/shape/count validated before those rectangles enter the same recursive layout tree. Fixed/auto or custom-layout overflow is retained geometrically and clipped. There is no sibling renegotiation or second child-layout pass.
 
 The resulting `LayoutNode` tree contains absolute frames, clips, content frames, content extents, and children. Scroll offsets are absent from layout.
 
@@ -283,15 +305,15 @@ Semantic scenes store palette names, not concrete colors. `ThemeProvider` suppli
 The release gate combines:
 
 - TypeScript 7 project and test typechecking;
-- unit tests for Unicode, layout, scene, controller, React, DOM sizing, ANSI, TUI parsing/lifecycle;
-- 1,000 randomized layout property runs;
+- unit tests for Unicode, sequential/custom/Grid layout, scene, controller, React, DOM sizing, ANSI, TUI parsing/lifecycle;
+- 1,000 randomized core layout cases plus 500 randomized Grid placements;
 - all official Unicode 17 grapheme boundary cases;
 - real-Chromium DOM projection/input/resize/accessibility tests;
 - serious queue/detail/metadata fixture tests;
-- packed tarball clean install;
+- packed foundation and standalone Grid tarball clean installs;
 - consumer JSX/typecheck;
 - Bun and Vite browser bundles checked for Node/TUI leakage;
 - fake-terminal execution from the packed artifact;
 - production package/example builds.
 
-The package has one required runtime dependency, `react-reconciler`; `scheduler` is its transitive dependency and React is a peer. Unicode/layout/scene/controller/host behavior adds no runtime package dependency.
+The foundation package has one required runtime dependency, `react-reconciler`; `scheduler` is its transitive dependency and React is a peer. Grid has no direct runtime dependency—UI and React are peers. Unicode/layout/scene/controller/host behavior adds no further runtime package dependency.

@@ -19,6 +19,7 @@ export {
   type FillProps,
   type RowsProps,
   type ScrollViewProps,
+  type TextAlign,
   type TextContent,
   type TextProps,
   type ThemeProviderProps,

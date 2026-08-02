@@ -4,6 +4,7 @@ export default defineConfig({
   testDir: ".",
   testMatch: [
     "packages/ui/test/**/*.pw.spec.ts",
+    "packages/grid/test/**/*.pw.spec.ts",
     "apps/example/test/**/*.pw.spec.ts",
   ],
   fullyParallel: true,

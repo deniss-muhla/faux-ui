@@ -55,7 +55,30 @@ A no-axis `Box` accepts one semantic child. Wrap multiple panel rows in `Rows`.
 </Columns>
 ```
 
-Use nested `Rows` / `Columns` rather than named tracks or two-dimensional placement.
+Use nested `Rows` / `Columns` for ordinary pane composition.
+
+## Shared table columns and spans
+
+When several rows must share column widths, or items span both axes, use the optional standalone Grid package rather than duplicating `Columns` tracks:
+
+```tsx
+import { Grid, GridItem } from "@faux-ui/grid";
+import { Text } from "@faux-ui/ui";
+
+<Grid columns={[12, "1fr", 10]} gap={{ x: 1 }}>
+  <Text style={{ bold: true }}>Name</Text>
+  <Text style={{ bold: true }}>Role</Text>
+  <Text style={{ bold: true }}>Status</Text>
+  {people.flatMap((person) => [
+    <Text key={`${person.id}-name`}>{person.name}</Text>,
+    <Text key={`${person.id}-role`}>{person.role}</Text>,
+    <Text key={`${person.id}-status`}>{person.status}</Text>,
+  ])}
+  <GridItem columnSpan={3}><Text>End of results</Text></GridItem>
+</Grid>
+```
+
+Use core sequences when each split is local. Use Grid for shared tracks, explicit placement, or spans. See [`@faux-ui/grid`](../packages/grid/README.md).
 
 ## Scrollable selectable queue
 

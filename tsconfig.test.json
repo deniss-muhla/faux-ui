@@ -16,6 +16,8 @@
   "include": [
     "packages/ui/test/**/*.ts",
     "packages/ui/test/**/*.tsx",
+    "packages/grid/test/**/*.ts",
+    "packages/grid/test/**/*.tsx",
     "apps/example/test/**/*.ts",
     "apps/example/test/**/*.tsx"
   ]

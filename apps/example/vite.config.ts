@@ -6,6 +6,10 @@ export default defineConfig({
   resolve: {
     alias: [
       {
+        find: "@faux-ui/grid",
+        replacement: resolve(import.meta.dirname, "../../packages/grid/src/index.tsx"),
+      },
+      {
         find: "@faux-ui/ui/dom",
         replacement: resolve(import.meta.dirname, "../../packages/ui/src/dom.ts"),
       },
@@ -16,6 +20,10 @@ export default defineConfig({
       {
         find: "@faux-ui/ui/testing",
         replacement: resolve(import.meta.dirname, "../../packages/ui/src/testing.ts"),
+      },
+      {
+        find: "@faux-ui/ui/layout",
+        replacement: resolve(import.meta.dirname, "../../packages/ui/src/layout.ts"),
       },
       {
         find: "@faux-ui/ui/jsx-runtime",

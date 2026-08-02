@@ -28,6 +28,14 @@
         "vite": "^8.2.0",
       },
     },
+    "packages/grid": {
+      "name": "@faux-ui/grid",
+      "version": "0.1.0",
+      "peerDependencies": {
+        "@faux-ui/ui": "^0.9.1",
+        "react": "^19.2.8",
+      },
+    },
     "packages/ui": {
       "name": "@faux-ui/ui",
       "version": "0.9.1",
@@ -103,6 +111,8 @@
     "@esbuild/win32-x64": ["@esbuild/win32-x64@0.25.12", "", { "os": "win32", "cpu": "x64" }, "sha512-alJC0uCZpTFrSL0CCDjcgleBXPnCrEAhTBILpeAp7M/OFgoqtAetfBzX0xM00MUsVVPpVjlPuMbREqnZCXaTnA=="],
 
     "@faux-ui/example": ["@faux-ui/example@workspace:apps/example"],
+
+    "@faux-ui/grid": ["@faux-ui/grid@workspace:packages/grid"],
 
     "@faux-ui/ui": ["@faux-ui/ui@workspace:packages/ui"],
 

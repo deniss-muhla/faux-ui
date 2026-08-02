@@ -35,7 +35,7 @@ Complete:
 
 Complete:
 
-- `@faux-ui/ui` is the only public package;
+- `@faux-ui/ui` is the only required foundation package;
 - `/dom`, `/tui`, `/testing`, and JSX runtime subpaths are isolated;
 - preferred-size and parent-to-child layout passes are pure derived output;
 - row/column fixed/auto/fraction allocation replaces general grid placement;
@@ -102,17 +102,30 @@ Complete:
 - [x] retain `Track`, `auto`/fraction syntax, `padding`, `gap`, `x` / `y`, and host/lifecycle names;
 - [x] rename `hotkey` to display-only `keyHint`;
 - [x] rename `styleFocus` / `styleHover` to `focusStyle` / `hoverStyle`;
-- [x] remove ineffective `Box.alignX` / `Box.alignY` while retaining text alignment;
+- [x] remove ineffective Box alignment and replace paired `Text.alignX` / `alignY` with `align={{ x, y }}`;
 - [x] defer outer spacing because its contract costs exceed current evidence;
-- [x] update examples, current docs, type tests, and packed consumers without aliases.
+- [x] update examples, current docs, type tests, and packed consumers without aliases;
+- [x] ship a portable `faux-ui` foundation Agent Skill with Pi/Codex/Claude discovery metadata.
 
-See the [public-language dossier](refactors/2026-08-01-api-language-review/README.md).
+See the [public-language dossier](refactors/2026-08-01-api-language-review/README.md) and [cross-agent packaging reference](agent-skill-packaging.md).
+
+## Completed standalone Grid extension
+
+- [x] add browser-safe `@faux-ui/ui/layout` pure geometry extension contract;
+- [x] publish-ready `@faux-ui/grid@0.1.0` workspace package with UI/React peers and no runtime dependency;
+- [x] fixed/auto/fraction tracks, `repeat()`, source-ordered automatic placement, two-axis spans, implicit `auto` tracks, independent gaps, overlap, and clipping;
+- [x] keep text and scrolling in the existing `Text` and `ScrollView` composition primitives;
+- [x] keep Grid outside the required UI foundation and import no UI internals;
+- [x] ship README, changelog, license, reference source, and one portable `faux-ui-grid` Agent Skill with Pi/Codex/Claude discovery metadata;
+- [x] cover pure layout validation, examples, negative types, 500 randomized placement cases, real Chromium behavior, and clean two-tarball consumers.
+
+See the [standalone Grid dossier](refactors/2026-08-01-standalone-grid/README.md) and [package guide](../packages/grid/README.md).
 
 ## 0.9.1 evidence gate
 
 Implemented semantic/host gates:
 
-- [x] one app-author package;
+- [x] one required app-author foundation package;
 - [x] one-call DOM and TUI mounting;
 - [x] direct React state/handlers;
 - [x] deterministic explicit cell layout;
@@ -121,14 +134,14 @@ Implemented semantic/host gates:
 - [x] browser target isolation;
 - [x] fake terminal lifecycle;
 - [x] no-CSS serious browser fixture;
-- [x] packed external-consumer test;
+- [x] packed foundation and standalone Grid external-consumer tests;
 - [x] typecheck, unit/property/conformance, browser, package, and build checks;
 - [x] no compatibility aliases.
 
 Work still required before any release action:
 
 - gather more real-use data with the 0.9.1 contract;
-- record pressure around plural layout names, track readability, spacing, and repeated compositions;
+- record pressure around plural layout names, Grid placement/spans, track readability, spacing, and repeated compositions;
 - rerun all release gates after any resulting change;
 - create the release commit/PR;
 - tag or publish only on an explicit maintainer instruction.
@@ -145,7 +158,7 @@ These are evidence-gated, not promised:
 4. generated readable JSON adapter;
 5. inspection CLI over `/testing`;
 6. MCP integration over the stable inspection contract;
-7. virtualization/tables/trees only after measured real demand;
+7. virtualized data tables/trees only after measured real demand;
 8. third-party renderer API only after a real external renderer exists.
 
 ## Priority rule

@@ -136,7 +136,8 @@ function layoutNode(
 
   const contentFrame = insetRect(frame, node.padding, node.border !== null);
   const childClip = intersectRects(clip, contentFrame);
-  const childFrames = allocateChildFrames(node, preferred.children, contentFrame);
+  const allocation = allocateChildren(node, preferred.children, contentFrame);
+  const childFrames = allocation.frames;
   const children = node.children.map((child, index) => {
     const childPreferred = preferred.children[index];
     const childFrame = childFrames[index];
@@ -152,7 +153,8 @@ function layoutNode(
     frame,
     clip,
     contentFrame,
-    contentSize: deriveContentSize(node, contentFrame, childFrames),
+    contentSize:
+      allocation.contentSize ?? deriveContentSize(node, contentFrame, childFrames),
     children,
   };
 }
@@ -161,6 +163,13 @@ function preferredBoxContent(
   box: BoxNode,
   children: readonly PreferredNode[],
 ): Size {
+  if (box.layout !== null) {
+    return normalizeLayoutSize(
+      box.layout.preferred(children.map((child) => ({ ...child.size }))),
+      "layout preferred size",
+    );
+  }
+
   if (box.axis === null) {
     return children[0]?.size ?? { width: 0, height: 0 };
   }
@@ -189,30 +198,70 @@ function preferredBoxContent(
   };
 }
 
-function allocateChildFrames(
+interface ChildAllocation {
+  readonly frames: Rect[];
+  readonly contentSize?: Size;
+}
+
+function allocateChildren(
   box: BoxNode,
   children: readonly PreferredNode[],
   contentFrame: Rect,
-): Rect[] {
-  if (children.length === 0) return [];
+): ChildAllocation {
+  if (box.layout !== null) {
+    const output = box.layout.layout({
+      size: { width: contentFrame.width, height: contentFrame.height },
+      children: children.map((child) => ({ ...child.size })),
+    });
+    if (
+      typeof output !== "object" ||
+      output === null ||
+      !Array.isArray(output.children)
+    ) {
+      throw new Error("layout() must return an object with child frames.");
+    }
+    if (output.children.length !== children.length) {
+      throw new Error(
+        `layout() returned ${output.children.length} frames for ${children.length} children.`,
+      );
+    }
+    const frames = output.children.map((frame, index) =>
+      absoluteLayoutRect(frame, contentFrame, index),
+    );
+    const derived = deriveContentSize(box, contentFrame, frames);
+    const requested = output.contentSize === undefined
+      ? derived
+      : normalizeLayoutSize(output.contentSize, "layout content size");
+    return {
+      frames,
+      contentSize: {
+        width: Math.max(derived.width, requested.width),
+        height: Math.max(derived.height, requested.height),
+      },
+    };
+  }
+
+  if (children.length === 0) return { frames: [] };
 
   if (box.axis === null) {
     const child = children[0];
-    if (child === undefined) return [];
+    if (child === undefined) return { frames: [] };
     const width = hasScrollAxis(box.scroll, "x")
       ? Math.max(contentFrame.width, child.size.width)
       : contentFrame.width;
     const height = hasScrollAxis(box.scroll, "y")
       ? Math.max(contentFrame.height, child.size.height)
       : contentFrame.height;
-    return [
-      {
-        x: contentFrame.x,
-        y: contentFrame.y,
-        width,
-        height,
-      },
-    ];
+    return {
+      frames: [
+        {
+          x: contentFrame.x,
+          y: contentFrame.y,
+          width,
+          height,
+        },
+      ],
+    };
   }
 
   const tracks = effectiveTracks(box);
@@ -255,7 +304,7 @@ function allocateChildFrames(
     }
     cursor += main + box.gap;
   }
-  return output;
+  return { frames: output };
 }
 
 function resolveTracks(
@@ -339,6 +388,13 @@ function effectiveTracks(box: BoxNode): readonly Track[] {
 }
 
 function validateBoxShape(box: BoxNode): void {
+  if (box.layout !== null) {
+    if (box.axis !== null || box.tracks !== null || box.gap !== 0) {
+      throw new Error("Custom layout boxes cannot also define axis, tracks, or gap.");
+    }
+    return;
+  }
+
   if (box.axis === null) {
     if (box.children.length > 1) {
       throw new Error(`Box ${box.id} without an axis accepts at most one child.`);
@@ -371,6 +427,49 @@ function insetRect(frame: Rect, padding: Insets, border: boolean): Rect {
     width: Math.max(0, frame.width - left - right),
     height: Math.max(0, frame.height - top - bottom),
   };
+}
+
+function absoluteLayoutRect(
+  value: Rect,
+  contentFrame: Rect,
+  index: number,
+): Rect {
+  const rect = normalizeLayoutRect(value, `layout child ${index}`);
+  return {
+    x: contentFrame.x + rect.x,
+    y: contentFrame.y + rect.y,
+    width: rect.width,
+    height: rect.height,
+  };
+}
+
+function normalizeLayoutRect(value: Rect, name: string): Rect {
+  if (typeof value !== "object" || value === null) {
+    throw new Error(`${name} must be a rectangle.`);
+  }
+  return {
+    x: normalizeLayoutInteger(value.x, `${name}.x`),
+    y: normalizeLayoutInteger(value.y, `${name}.y`),
+    width: normalizeLayoutInteger(value.width, `${name}.width`),
+    height: normalizeLayoutInteger(value.height, `${name}.height`),
+  };
+}
+
+function normalizeLayoutSize(value: Size, name: string): Size {
+  if (typeof value !== "object" || value === null) {
+    throw new Error(`${name} must be a size.`);
+  }
+  return {
+    width: normalizeLayoutInteger(value.width, `${name}.width`),
+    height: normalizeLayoutInteger(value.height, `${name}.height`),
+  };
+}
+
+function normalizeLayoutInteger(value: number, name: string): number {
+  if (!Number.isFinite(value) || !Number.isInteger(value) || value < 0) {
+    throw new Error(`${name} must be a finite non-negative integer.`);
+  }
+  return value;
 }
 
 function fractionWeight(track: Track | undefined): number {

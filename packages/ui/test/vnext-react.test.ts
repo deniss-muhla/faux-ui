@@ -41,6 +41,21 @@ describe("vNext React authoring", () => {
     mount.unmount();
   });
 
+  it("aligns Text through one x/y object", () => {
+    const mount = new SemanticMount({ size: { width: 5, height: 2 } });
+    mount.render(
+      createElement(Text, { align: { x: "end", y: "end" } }, "x"),
+    );
+    expect(sceneToText(mount.frame().scene)).toBe("     \n    x");
+    mount.unmount();
+
+    const invalid = new SemanticMount({ size: { width: 1, height: 1 } });
+    expect(() =>
+      invalid.render(createElement(Text, { align: "end" as never }, "x"))
+    ).toThrow(/align must be an object/u);
+    invalid.unmount();
+  });
+
   it("uses ordinary React state and dispatches one press", async () => {
     function Counter() {
       const [count, setCount] = useState(0);

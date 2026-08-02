@@ -1,7 +1,14 @@
 #!/usr/bin/env node
 
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -22,6 +29,9 @@ try {
     ["pack", "./packages/ui", "--pack-destination", packed, "--silent"],
   ).trim();
   const archive = join(packed, archiveName);
+  if (archiveName !== "faux-ui-ui-0.9.1.tgz") {
+    throw new Error(`Unexpected UI archive: ${archiveName}`);
+  }
 
   writeFileSync(
     join(fixture, "package.json"),
@@ -164,6 +174,52 @@ app.unmount();
   ).trim();
   if (fauxPackages !== "ui") {
     throw new Error(`Expected only @faux-ui/ui, found: ${fauxPackages}`);
+  }
+
+  const uiRoot = join(fixture, "node_modules", "@faux-ui", "ui");
+  const installedManifest = JSON.parse(
+    readFileSync(join(uiRoot, "package.json"), "utf8"),
+  );
+  if (installedManifest.version !== "0.9.1") {
+    throw new Error(`Installed UI version is ${installedManifest.version}`);
+  }
+  if (JSON.stringify(installedManifest.pi?.skills) !== '["./skills"]') {
+    throw new Error("UI package does not declare its Pi skill directory.");
+  }
+
+  const codexManifestPath = join(uiRoot, ".codex-plugin", "plugin.json");
+  const claudeManifestPath = join(uiRoot, ".claude-plugin", "plugin.json");
+  if (!existsSync(codexManifestPath) || !existsSync(claudeManifestPath)) {
+    throw new Error("Packed UI cross-agent plugin manifests are missing.");
+  }
+  const codexManifest = JSON.parse(readFileSync(codexManifestPath, "utf8"));
+  const claudeManifest = JSON.parse(readFileSync(claudeManifestPath, "utf8"));
+  for (const [host, manifest] of [
+    ["Codex", codexManifest],
+    ["Claude", claudeManifest],
+  ]) {
+    if (
+      manifest.name !== "faux-ui" ||
+      manifest.version !== installedManifest.version
+    ) {
+      throw new Error(`${host} plugin identity/version does not match UI.`);
+    }
+  }
+  if (codexManifest.skills !== "./skills/") {
+    throw new Error("Codex plugin does not reference the canonical UI skill.");
+  }
+
+  const skillPath = join(uiRoot, "skills", "faux-ui", "SKILL.md");
+  if (!existsSync(skillPath)) throw new Error("Packed UI skill is missing.");
+  const skill = readFileSync(skillPath, "utf8");
+  if (
+    !skill.startsWith("---\nname: faux-ui\n") ||
+    !skill.includes("description:") ||
+    !skill.includes("license: MIT") ||
+    !skill.includes("compatibility:") ||
+    !skill.includes("@faux-ui/ui")
+  ) {
+    throw new Error("Packed UI skill frontmatter is invalid.");
   }
 
   const bunMeta = JSON.parse(

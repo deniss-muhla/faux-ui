@@ -95,8 +95,9 @@ For the intended audience, these names are shorter and easier to recall than a c
 | `styleHover` | `hoverStyle` | Familiar modifier-first order. |
 | `Box.alignX` | none | It had no effect. |
 | `Box.alignY` | none | It had no effect. |
+| `Text.alignX` / `Text.alignY` | `Text.align={{ x, y }}` | One paired-axis prop matches the existing `x`/`y` shorthand pattern. |
 
-`Text.alignX` and `Text.alignY` remain because they work. `keyHint` remains display-only; applications register shortcuts through `useInput`.
+`keyHint` remains display-only; applications register shortcuts through `useInput`.
 
 ## Spacing decision
 

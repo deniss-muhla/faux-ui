@@ -8,13 +8,14 @@ import {
 } from "react";
 
 import {
+  type Align,
   type BorderInput,
   type EventHandlers,
   type InsetsInput,
+  type LayoutEngine,
   type Palette,
   type ScrollAxis,
   type Style,
-  type TextSpec,
   type Track,
 } from "./internal/model.js";
 import { defaultPalette, mergePalette } from "./internal/palette.js";
@@ -45,6 +46,10 @@ export interface BoxProps extends CommonProps {
   readonly disabled?: boolean;
 }
 
+export interface LayoutProps extends BoxProps {
+  readonly layout: LayoutEngine;
+}
+
 export interface ColumnsProps extends BoxProps {
   /** Width allocation for each child column. */
   readonly tracks?: readonly Track[];
@@ -66,14 +71,19 @@ export type TextContent =
   | undefined
   | readonly TextContent[];
 
+export interface TextAlign {
+  readonly x?: Align;
+  readonly y?: Align;
+}
+
 export interface TextProps extends CommonProps {
   readonly children?: TextContent;
   readonly overflow?: TextOverflow;
-  readonly alignX?: TextSpec["alignX"];
-  readonly alignY?: TextSpec["alignY"];
+  readonly align?: TextAlign;
 }
 
-export interface FillProps extends Omit<TextProps, "children" | "overflow"> {
+export interface FillProps
+  extends Omit<TextProps, "children" | "overflow" | "align"> {
   readonly glyph?: string;
 }
 
@@ -127,6 +137,19 @@ export function Box({ children, ...props }: BoxProps): ReactNode {
   return hostBox(props, children, useContext(PaletteContext));
 }
 
+/** Advanced extension point for pure renderer-neutral cell layout packages. */
+export function Layout({
+  children,
+  layout,
+  ...props
+}: LayoutProps): ReactNode {
+  return hostBox(
+    { ...props, layout },
+    children,
+    useContext(PaletteContext),
+  );
+}
+
 /** Places each child in one column from left to right. */
 export function Columns({
   children,
@@ -165,10 +188,14 @@ export function Rows({
   );
 }
 
-export function Text({ children, ...props }: TextProps): ReactNode {
+export function Text({ children, align, ...props }: TextProps): ReactNode {
   return createElement(
     INTERNAL_TEXT_TYPE,
-    { ...props, palette: useContext(PaletteContext) },
+    {
+      ...props,
+      ...textAlignmentProps(align),
+      palette: useContext(PaletteContext),
+    },
     children,
   );
 }
@@ -183,6 +210,20 @@ export function Fill({ glyph = " ", ...props }: FillProps): ReactNode {
     { ...props, fill: true, palette: useContext(PaletteContext) },
     glyph,
   );
+}
+
+function textAlignmentProps(align: TextAlign | undefined): {
+  readonly alignX?: Align;
+  readonly alignY?: Align;
+} {
+  if (align === undefined) return {};
+  if (typeof align !== "object" || align === null) {
+    throw new Error("Text align must be an object with x/y fields.");
+  }
+  return {
+    ...(align.x === undefined ? {} : { alignX: align.x }),
+    ...(align.y === undefined ? {} : { alignY: align.y }),
+  };
 }
 
 export function Divider({
