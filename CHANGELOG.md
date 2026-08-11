@@ -23,6 +23,7 @@ Pre-1.0 evidence candidate for gathering more real-use data before the stable co
 
 ### Fixed
 
+- Pinned transitive `nanoid` to 3.3.18 to resolve GHSA-2v37-7h3g-55p8 in the Vite/PostCSS development graph.
 - Browser font advances are fitted to logical cells, adjacent run backgrounds overlap safely, and Unicode terminal-graphics runs use a connection-safe, low-overhang monospace fallback stack with independent spacing, preventing clipped borders, cumulative row shifts, and fractional-scale seams without geometric overlays.
 - Terminal painting disables autowrap, uses explicit CRLF row boundaries, and re-anchors after non-ASCII graphemes, preventing full-width frames and terminal-specific Unicode widths from shifting later cells.
 - Browser mouse-wheel notches map to one terminal-like cell step while small trackpad deltas accumulate smoothly.

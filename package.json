@@ -33,6 +33,7 @@
     "benchmark": "bun scripts/benchmark.ts"
   },
   "overrides": {
+    "nanoid": "3.3.18",
     "picomatch": "4.0.5",
     "tinyglobby": "0.2.17"
   },
