@@ -1,0 +1,65 @@
+{
+  "name": "@faux-ui/grid",
+  "version": "0.1.0",
+  "description": "Standalone deterministic CSS-grid-like layout for @faux-ui/ui",
+  "keywords": [
+    "faux-ui",
+    "grid",
+    "table",
+    "react",
+    "tui",
+    "terminal",
+    "pi-package"
+  ],
+  "license": "MIT",
+  "author": "Deniss Muhļa",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deniss-muhla/faux-ui.git",
+    "directory": "packages/grid"
+  },
+  "homepage": "https://github.com/deniss-muhla/faux-ui/tree/main/packages/grid#readme",
+  "type": "module",
+  "sideEffects": false,
+  "peerDependencies": {
+    "@faux-ui/ui": "^0.9.1",
+    "react": "^19.2.8"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/**/*.js",
+    "dist/**/*.js.map",
+    "dist/**/*.d.ts",
+    "dist/**/*.d.ts.map",
+    ".codex-plugin",
+    ".claude-plugin",
+    "src",
+    "skills",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "pi": {
+    "skills": [
+      "./skills"
+    ]
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --pretty false"
+  }
+}

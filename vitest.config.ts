@@ -1,55 +1,25 @@
-import { defineConfig } from "vitest/config";
 import { resolve } from "node:path";
+
+import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   resolve: {
-    alias: {
-      "@faux-ui/core": resolve(__dirname, "packages/core/src/index.ts"),
-      "@faux-ui/app": resolve(__dirname, "packages/app/src/index.ts"),
-      "@faux-ui/devtools": resolve(__dirname, "packages/devtools/src/index.ts"),
-      "@faux-ui/renderer": resolve(__dirname, "packages/renderer/src/index.ts"),
-      "@faux-ui/render-dom": resolve(
-        __dirname,
-        "packages/render-dom/src/index.ts",
-      ),
-      "@faux-ui/render-inspect": resolve(
-        __dirname,
-        "packages/render-inspect/src/index.ts",
-      ),
-      "@faux-ui/schema": resolve(__dirname, "packages/schema/src/index.ts"),
-      "@faux-ui/render-tui": resolve(
-        __dirname,
-        "packages/render-tui/src/index.ts",
-      ),
-      "@faux-ui/reconciler/jsx-runtime": resolve(
-        __dirname,
-        "packages/reconciler/src/jsx-runtime.ts",
-      ),
-      "@faux-ui/reconciler/jsx-dev-runtime": resolve(
-        __dirname,
-        "packages/reconciler/src/jsx-dev-runtime.ts",
-      ),
-      "@faux-ui/reconciler": resolve(
-        __dirname,
-        "packages/reconciler/src/index.ts",
-      ),
-      "@faux-ui/ui/jsx-runtime": resolve(
-        __dirname,
-        "packages/ui/src/jsx-runtime.ts",
-      ),
-      "@faux-ui/ui/jsx-dev-runtime": resolve(
-        __dirname,
-        "packages/ui/src/jsx-dev-runtime.ts",
-      ),
-      "@faux-ui/ui": resolve(__dirname, "packages/ui/src/index.ts"),
-      "@faux-ui/mcp": resolve(__dirname, "packages/mcp/src/index.ts"),
-    },
+    alias: [
+      { find: "@faux-ui/grid", replacement: resolve(import.meta.dirname, "packages/grid/src/index.tsx") },
+      { find: "@faux-ui/ui/dom", replacement: resolve(import.meta.dirname, "packages/ui/src/dom.ts") },
+      { find: "@faux-ui/ui/tui", replacement: resolve(import.meta.dirname, "packages/ui/src/tui.ts") },
+      { find: "@faux-ui/ui/testing", replacement: resolve(import.meta.dirname, "packages/ui/src/testing.ts") },
+      { find: "@faux-ui/ui/layout", replacement: resolve(import.meta.dirname, "packages/ui/src/layout.ts") },
+      { find: "@faux-ui/ui/jsx-runtime", replacement: resolve(import.meta.dirname, "packages/ui/src/jsx-runtime.ts") },
+      { find: "@faux-ui/ui/jsx-dev-runtime", replacement: resolve(import.meta.dirname, "packages/ui/src/jsx-dev-runtime.ts") },
+      { find: "@faux-ui/ui", replacement: resolve(import.meta.dirname, "packages/ui/src/index.ts") },
+    ],
   },
   test: {
     environment: "node",
     include: [
-      "packages/*/test/**/*.test.ts",
-      "apps/*/test/**/*.test.ts",
+      "packages/*/test/**/*.test.{ts,tsx}",
+      "apps/*/test/**/*.test.{ts,tsx}",
     ],
     exclude: ["**/dist/**", "**/node_modules/**"],
   },

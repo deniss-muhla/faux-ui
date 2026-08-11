@@ -1,0 +1,24 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "incremental": false,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "noEmit": true,
+    "rootDir": ".",
+    "jsx": "react-jsx",
+    "jsxImportSource": "@faux-ui/ui",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["node", "@playwright/test", "vitest/globals"]
+  },
+  "include": [
+    "packages/ui/test/**/*.ts",
+    "packages/ui/test/**/*.tsx",
+    "packages/grid/test/**/*.ts",
+    "packages/grid/test/**/*.tsx",
+    "apps/example/test/**/*.ts",
+    "apps/example/test/**/*.tsx"
+  ]
+}

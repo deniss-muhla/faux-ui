@@ -1,0 +1,14 @@
+{
+  "name": "faux-ui-grid",
+  "displayName": "faux-ui Grid",
+  "version": "0.1.0",
+  "description": "Author deterministic two-axis layouts with @faux-ui/grid",
+  "author": {
+    "name": "Deniss Muhļa",
+    "url": "https://github.com/deniss-muhla"
+  },
+  "homepage": "https://github.com/deniss-muhla/faux-ui/tree/main/packages/grid",
+  "repository": "https://github.com/deniss-muhla/faux-ui",
+  "license": "MIT",
+  "keywords": ["faux-ui", "grid", "react", "tui"]
+}

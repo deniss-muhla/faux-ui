@@ -4,3 +4,5 @@ coverage/
 *.tsbuildinfo
 .playwright-mcp/
 test-results/
+*.log
+*.tgz

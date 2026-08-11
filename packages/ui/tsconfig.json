@@ -5,12 +5,8 @@
     "outDir": "dist",
     "tsBuildInfoFile": "dist/.tsbuildinfo",
     "jsx": "react-jsx",
-    "jsxImportSource": "@faux-ui/reconciler",
-    "lib": ["ES2023"]
+    "jsxImportSource": "@faux-ui/ui",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"],
-  "references": [
-    { "path": "../core" },
-    { "path": "../reconciler" }
-  ]
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
 }

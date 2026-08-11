@@ -1,425 +1,319 @@
-# faux-ui Architecture
+# faux-ui architecture
 
-This document explains the current implementation architecture of faux-ui. It complements [docs/spec.md](docs/spec.md): the spec freezes semantic rules, while this document describes how those rules are currently realized across packages.
+## Status
 
-## Goals
+This document describes the implemented 0.9.1 evidence-candidate architecture. Historical prototype analysis is in the [TUI-first reset dossier](refactors/2026-07-31-tui-first-reset/README.md); the current plural layout API and focused naming changes are recorded in the implemented [API language review](refactors/2026-08-01-api-language-review/README.md).
 
-faux-ui is organized around a small set of architectural constraints:
+## System shape
 
-- one semantic model shared across renderers
-- a small public authoring surface built around `@faux-ui/app` and `@faux-ui/ui`
-- TUI-first semantics with DOM as a projection, not a source of layout truth
-- deterministic fixed-cell layout with no CSS-style negotiation
-- strict separation between layout and render phases
-- event dispatch based on a renderer-neutral render tree
-- renderer packages that stay thin by delegating semantics to `@faux-ui/core`
-- authoring formats that can differ at the edges while converging on the same runtime model
-
-Those constraints are visible throughout the repository structure and in the main runtime pipeline.
-
-## System Overview
+One required foundation package contains the semantic engine and isolated hosts. One optional standalone package demonstrates third-party component/layout composition without internal imports.
 
 ```mermaid
 flowchart LR
-  A[JSX authoring] --> U[@faux-ui/ui]
-  U --> B[@faux-ui/reconciler]
-  A --> Q[@faux-ui/app]
-  J[JSON authoring] --> K[@faux-ui/schema]
-  Q --> F[@faux-ui/render-dom]
-  Q --> G[@faux-ui/render-tui]
-  B --> C[UINode tree]
-  K --> C
-  C --> D[layoutNode]
-  D --> E[buildRenderTree]
-  E --> F
-  E --> G
-  E --> H[event hit testing]
-  H --> I[direct handlers owned by the app]
+  APP[React application] --> REC[internal React reconciler]
+  GRID[optional @faux-ui/grid] --> PUBLAYOUT[public /layout contract]
+  PUBLAYOUT --> REC
+  REC --> SEM[semantic box/text tree]
+  SEM --> PREF[preferred-size pass]
+  PREF --> LAYOUT[parent-to-child layout]
+  INPUT[DOM/TUI input] --> CTRL[shared interaction controller]
+  LAYOUT --> SCENE[canonical cell scene]
+  CTRL --> SCENE
+  SCENE --> DOM[row/style-run DOM projection]
+  SCENE --> ANSI[ANSI projection]
+  SCENE --> TEST[static inspection]
 ```
 
-In practice, the runtime is centered on three progressively more concrete layers:
+There is no generic renderer SDK, environment-detecting facade, schema layer, runtime bridge, or duplicated host interaction engine.
 
-1. Authoring data: JSX props or JSON document specs.
-2. Semantic runtime state: the mutable `UINode` tree in `@faux-ui/core`.
-3. Render state: a visible-only render tree used for painting, clipping, hit testing, and event targeting.
+## Repository boundaries
 
-The architecture deliberately avoids pushing renderer-specific behavior into the semantic layer. DOM and TUI share the same fixed-cell layout, render-tree, and dispatch semantics. DOM differs only in projection and native input plumbing.
+```text
+packages/ui/
+  .codex-plugin/             OpenAI plugin metadata
+  .claude-plugin/            Claude Code plugin metadata
+  skills/faux-ui/            packaged foundation Agent Skill
+  src/
+    index.ts                 public components, hooks, and types
+    dom.ts                   browser-only entry
+    tui.ts                   Node/terminal-only entry
+    testing.ts               static inspection entry
+    layout.ts                advanced pure layout extension entry
+    jsx-runtime.ts           restricted JSX namespace
+    jsx-dev-runtime.ts
+    components.ts            public component compositions
+    runtime.ts               renderer-neutral input/focus hooks
+    internal/
+      model.ts               semantic nodes and public value types
+      reconciler.ts          React-to-semantic-tree mutation bridge
+      layout.ts              preferred and exact layout passes
+      unicode-data.ts        generated Unicode 17 tables
+      unicode.ts             grapheme segmentation/cellization
+      controller.ts          focus/key/pointer/press/scroll state
+      scene.ts               canonical painting and row runs
+      dom-scene.ts           DOM projection primitives
+      ansi.ts                true-color ANSI projection
+      tui-input.ts           terminal protocol parsing
+      mount.ts               end-to-end semantic mount lifecycle
+packages/grid/
+  .codex-plugin/             OpenAI plugin metadata
+  .claude-plugin/            Claude Code plugin metadata
+  src/                        Grid components, validation, placement, track/layout algorithm
+  skills/faux-ui-grid/       packaged Grid Agent Skill
+  test/                      unit/property/type/browser coverage
+apps/example/                serious queue/detail/metadata fixture
+scripts/
+  generate-unicode-data.mjs  reproducible Unicode table generator
+  test-package.mjs           packed foundation consumer gate
+  test-grid-package.mjs      two-tarball external extension gate
+```
 
-## Package Responsibilities
+`@faux-ui/ui` remains the only required app dependency. Applications needing true two-axis placement may additionally install `@faux-ui/grid`. Grid declares UI and React as peers, ships no runtime dependency, and its source imports only public package entrypoints.
 
-### `@faux-ui/core`
-
-`@faux-ui/core` is the semantic source of truth.
-
-It owns:
-
-- normalized track and constraint types
-- `UINode` creation and mutation helpers
-- layout computation and layout cache reuse
-- render-tree construction and render-tree cache reuse
-- renderer-neutral hit testing and bubbling-oriented event dispatch
-- default semantic colors used by both DOM and TUI renderers
-
-No renderer package redefines these rules. That is the main architectural guardrail in the repository.
+## Public entrypoint isolation
 
 ### `@faux-ui/ui`
 
-`@faux-ui/ui` is the public JSX authoring surface.
+Exports renderer-neutral components, hooks, geometry/layout/event/theme types, and the package version. `Rows` compiles to the internal vertical axis; `Columns` compiles to the internal horizontal axis. It imports no DOM or Node host. The canonical `faux-ui` Agent Skill is exposed through Pi package metadata plus Codex and Claude plugin manifests.
 
-It provides:
+### `@faux-ui/ui/dom`
 
-- the public JSX import source (`jsxImportSource: "@faux-ui/ui"`)
-- a minimal primitive set such as `AppShell`, `Button`, and `Panel`
-- optional low-level escape hatches via `View` and `Text`
+Exports browser `render()` and DOM option/handle types. Its dependency graph contains no Node or TUI module.
 
-This package exists so application code can depend on one UI package instead of multiple low-level packages. Its components compile down to plain faux-ui `view` and `text` semantics.
+### `@faux-ui/ui/tui`
 
-### `@faux-ui/reconciler`
+Exports terminal `render()`, fakeable stream interfaces, and TUI option/handle types. Node terminal imports exist only below this subpath.
 
-`@faux-ui/reconciler` is the internal JSX bridge behind `@faux-ui/ui` and the renderer stack.
+### `@faux-ui/ui/testing`
 
-It converts React host instances into `UINode` objects, exposes the faux-ui intrinsic host types, and maps shorthand event props such as `onClick` and `onKeyDown` into core binding slots. JSX event props can now be either direct application-owned handler functions or semantic action identifiers. The reconciler does not perform layout, rendering, or app-state orchestration. Its job is to maintain the semantic tree and preserve the framework's authoring constraints, such as raw text only being legal inside `text`.
+Exports `renderStatic()`, logical scene/layout inspection, text snapshots, event traces, row runs, and Unicode metadata.
 
-The public JSX runtime lives in `@faux-ui/ui`, but it uses the same reconciler-backed intrinsic restrictions so only `view` and `text` are legal host tags at compile time.
+### `@faux-ui/ui/layout`
 
-### `@faux-ui/app`
+Exports the advanced `Layout` component and pure preferred-size/exact-frame callback types. The shared engine validates callback geometry before normal clipping, painting, hit testing, scrolling, and host projection. It exposes no node, ID, controller, scene, DOM, or terminal object.
 
-`@faux-ui/app` is the public app-facing facade.
+### `@faux-ui/grid`
 
-It provides:
+Consumes only React, `@faux-ui/ui`, and `@faux-ui/ui/layout`. It parses numeric `GridItem` placement/spans, computes renderer-neutral track geometry, and returns local integer rectangles through the public layout callback. Implicit tracks are always `auto`; text and scrolling compose through `Text` and `ScrollView` rather than Grid-specific props. One canonical Agent Skill is exposed through Pi package metadata plus Codex and Claude plugin manifests. Packed tests install UI and Grid tarballs in a clean project and bundle/run DOM and TUI hosts.
 
-- `render()` as the single app entrypoint
-- renderer selection through registered renderer definitions rather than direct platform checks in app code
-- a boundary that keeps app code away from renderer-specific packages by default
+### JSX runtimes
 
-This package exists to reduce boilerplate without moving renderer-specific behavior into `@faux-ui/core`.
+The package forwards React's JSX functions but exposes an empty intrinsic-element namespace. Apps compose exported React components; HTML/SVG and internal `faux-box`/`faux-text` tags are rejected by TypeScript.
 
-### `@faux-ui/renderer`
+## React reconciliation
 
-`@faux-ui/renderer` defines the neutral renderer contract.
+The internal custom reconciler supports two host instances:
 
-It provides:
+- `faux-box` → `BoxNode`;
+- `faux-text` → `TextNode`.
 
-- a stable `RendererDefinition` shape for environment detection, render entry, and optional renderer-owned theme application
-- a shared `mountRendererApp()` helper that turns React commits into mounted faux-ui roots without duplicating renderer bootstrap code
-- selection helpers so `@faux-ui/app` can pick a renderer without embedding platform-specific checks itself
+Public components create those host instances with `React.createElement`; their tag names are not public JSX.
 
-This package is intentionally host-neutral. It knows how to orchestrate renderer definitions, not how any specific platform works.
+Reconciler rules:
 
-### `@faux-ui/render-dom`
+- one semantic root per mounted app;
+- raw strings/numbers only under `Text`;
+- boxes contain semantic nodes;
+- direct function handlers only;
+- instance IDs remain stable across ordinary React updates;
+- derived layout/paint state is never stored on semantic nodes;
+- React commits trigger one semantic recomputation.
 
-`@faux-ui/render-dom` turns the shared render tree into browser-shaped output.
+`useState`, effects, contexts, and ordinary component composition remain React-owned.
 
-It provides:
+## Semantic model
 
-- DOM model projection from the render tree
-- a live mounting runtime for a host container
-- browser-style pointer, wheel, keyboard, and focus routing back into core dispatch helpers
-- a `domRenderer` definition that owns browser detection and browser-specific theme installation
-- `render()` for the common browser path, with auto-body mounting, auto-cell-constraint measurement, auto-resize via `ResizeObserver`, auto-installation of core default colors as CSS variables, and auto-rerender on React state changes via the shared renderer app helper
-- `applyDomTheme()` for manual theme control
-- optional re-exports of `View`, `Text`, `ViewProps`, and `TextProps` for `createElement`-style usage, while normal JSX can use `<view>` and `<text>` directly
+### Text node
 
-DOM remains a projection target, not the semantic authority. It renders the same text, cell coordinates, clipping, and pseudo-graphics as TUI using monospace metrics.
+Contains:
 
-### `@faux-ui/render-tui`
+- explicit string content;
+- clip/ellipsis mode;
+- horizontal/vertical alignment;
+- semantic style and focus/hover overlays;
+- direct handlers and optional accessibility label;
+- an internal fill flag used by `Fill`/`Divider`.
 
-`@faux-ui/render-tui` turns the shared render tree into a character-cell framebuffer.
+### Box node
 
-It provides:
+Contains:
 
-- framebuffer painting
-- coordinate-based input dispatch helpers for cell positions
-- a `tuiRenderer` definition that owns non-browser detection for the terminal path
-- `render()` for the common interactive terminal path, with auto-rerender on React state changes via the shared renderer app helper
-- optional re-exports of `View`, `Text`, `ViewProps`, and `TextProps` for `createElement`-style usage, while normal JSX can use `<view>` and `<text>` directly
+- source-ordered children;
+- no axis, row, or column axis;
+- fixed/auto/fraction tracks;
+- integer gap and normalized padding;
+- optional four-edge border/title;
+- semantic style and interaction overlays;
+- optional scroll axis;
+- focusability/disabled state and direct handlers.
 
-Like DOM, it depends on the shared render tree instead of reimplementing layout or event semantics.
+Parent/child pointers support ancestry dispatch. Nodes contain no layout cache, dirty flags, renderer handles, or host objects.
 
-### `@faux-ui/render-inspect`
+## Unicode cellization
 
-`@faux-ui/render-inspect` is a first-party reference renderer built on the same neutral contract that external contributors use.
+Runtime Unicode behavior has no third-party dependency.
 
-It provides:
+`scripts/generate-unicode-data.mjs` downloads the pinned Unicode 17.0.0 Character Database and generates compact lookup tables for:
 
-- a deterministic text snapshot of the mounted `UINode` tree
-- an example theme-target helper that stores renderer-applied semantic tokens for tests and tooling
-- an exported capability and metadata object that shows one way to keep renderer-specific surface details close to the renderer package itself
+- grapheme-break properties;
+- Indic conjunct properties;
+- extended pictographic and emoji-presentation properties;
+- East Asian wide/fullwidth ranges.
 
-This package is intentionally simple. It exists to prove the contributor template shape against a real first-party package and a real first-party app.
+`unicode.ts` implements UAX #29 extended grapheme boundaries and terminal cell policy. The complete official Unicode 17 grapheme conformance fixture runs in tests.
 
-### `@faux-ui/schema`
+Cellization produces width-1/width-2 graphemes. Scene painting creates an explicit continuation cell for width-2 output. Ambiguous characters are narrow, tabs use four-cell stops, controls become `�`, and leading combining clusters receive a dotted-circle base.
 
-`@faux-ui/schema` defines the portable document format for non-JSX authoring.
+A Unicode table change is observable semantic behavior and requires regenerated data plus updated tests.
 
-It contains:
+## Layout
 
-- readable document types
-- validation
-- compact encode/decode support
+Layout is recomputed as pure derived output from the semantic tree and explicit root size.
 
-This package describes authoring data, not live runtime state.
+### Pass 1: preferred sizes
 
-### Tooling packages
+- Text measures newline-delimited lines through the shared cellizer.
+- Sequential boxes combine child preferred sizes, fixed tracks, gaps, padding, and borders.
+- Fraction tracks behave as auto only in this pass.
+- Custom-layout boxes call their pure `preferred()` function with copied child sizes.
+- Scroll content can retain preferred extent beyond its viewport.
 
-Several packages intentionally remain thin but already define architectural seams:
+The result is an immutable `PreferredNode` tree.
 
-- `@faux-ui/devtools`: formatting helpers such as layout dumps for inspection and debugging
-- `@faux-ui/mcp`: command types for future model-context and inspection workflows
-- `create-faux-ui`: starter generator for JSX apps, schema-authored documents, hybrid starters, and contributor-facing renderer package templates
-- `exec-faux-ui`: execution and inspection CLI for schema-authored documents and TUI demos
+### Pass 2: exact allocation
 
-These packages matter architecturally because they show the intended integration surface without forcing runtime concerns into the core engine yet.
+The root always receives `{x: 0, y: 0, width, height}`.
 
-## Runtime Layers
+For each sequential box:
 
-### Authoring Layer
+1. reserve border and padding;
+2. subtract gap cost;
+3. resolve fixed tracks;
+4. resolve auto tracks from preferred sizes;
+5. divide positive remainder among fractions;
+6. floor proportional shares and distribute remainder from first to last;
+7. allocate exact source-ordered child frames;
+8. intersect descendant clips with the content viewport.
 
-The repository currently supports two authoring directions:
+A custom-layout box instead receives the concrete content size and child preferred sizes, returns one local rectangle per child, and has every integer/shape/count validated before those rectangles enter the same recursive layout tree. Fixed/auto or custom-layout overflow is retained geometrically and clipped. There is no sibling renegotiation or second child-layout pass.
 
-- JSX through `@faux-ui/ui` (backed by `@faux-ui/reconciler`)
-- JSON-compatible documents through `@faux-ui/schema`
+The resulting `LayoutNode` tree contains absolute frames, clips, content frames, content extents, and children. Scroll offsets are absent from layout.
 
-Both paths are intended to converge on the same semantic runtime rules. The authoring layer is allowed to be ergonomic, but it is not allowed to invent alternate layout or dispatch semantics.
+## Shared interaction controller
 
-### Semantic Layer: `UINode`
+One `InteractionController` owns:
 
-`UINode` is the mutable tree used by reconciliation and caches.
+- focused node;
+- hover ancestry;
+- active pointer press;
+- per-scroll-box offsets;
+- normalized event traces.
 
-Important characteristics:
+Hosts send normalized commands. The controller performs target-to-root dispatch, focus traversal, Enter/Space/pointer activation, hover transitions, and scroll clamping.
 
-- it stores semantic props and child relationships
-- it stores dirty flags and subtree revisions
-- it stores cached layout results
-- it does not store absolute screen coordinates
-- it does not treat scroll offset as layout state
+Key behavior:
 
-This separation keeps layout deterministic and allows scroll changes to remain render-phase updates.
+- app-level `useInput` handlers run before semantic key dispatch;
+- Tab/Shift+Tab traverse visible focusable nodes;
+- one physical activation emits one `press`;
+- pointer points are already logical cells;
+- wheel, SGR mouse, arrows, Page Up/Down, Home, and End share offsets;
+- disappearing focused/hovered nodes are reconciled on the next commit;
+- handlers can prevent default behavior or stop propagation.
 
-### Render Layer: `RenderTree`
+Controller changes repaint the same scene regardless of host.
 
-The render tree is built from the `UINode` tree after layout.
+## Canonical scene
 
-Each render node carries:
+`paintScene()` creates a row-major `width × height` cell array. Each cell contains:
 
-- absolute frame
-- effective clip rectangle
-- content size
-- render-phase scroll offset
-- visible children only
+- final grapheme or blank;
+- continuation marker;
+- resolved semantic style;
+- owning semantic node ID.
 
-The render tree is the bridge between semantic state and renderer-specific painting. It is also the structure used for hit testing and event target resolution.
+Paint order is:
 
-## Main Data Flow
+1. default surface;
+2. box backgrounds/ownership;
+3. borders and titles;
+4. text/fill content;
+5. focus/hover style overlays selected before node paint.
 
-### 1. Tree Construction
+Nested scroll offsets translate painting, not layout. Every write checks the active clip. A width-2 grapheme is omitted if both cells cannot be written, preventing half glyphs.
 
-Reconciliation or document loading produces a `UINode` tree.
+Scene ownership drives host-independent hit testing. `sceneRows()` groups adjacent equal-style cells into runs; owner changes do not force visual DOM fragmentation.
 
-At this point the tree contains semantic information only: tracks, text content, styles, focusability, and bound actions. In JSX those actions can be direct handler functions. In schema-authored documents they remain semantic action identifiers. The tree does not yet have absolute positions.
+## Mount lifecycle
 
-### 2. Layout
+`SemanticMount` connects reconciliation, layout, controller, and scene:
 
-`layoutNode()` in `@faux-ui/core` computes sizes under max-only constraints.
+1. wrap the app in the internal input/focus context;
+2. commit one semantic root;
+3. compute preferred/layout output for the current explicit size;
+4. reconcile controller state;
+5. paint the canonical scene;
+6. notify host frame subscribers.
 
-The layout pipeline follows these rules:
+React commits, controller changes, and size changes all enter the same recomputation path. Re-entrancy is coalesced. No cache exists before profiling demonstrates a need.
 
-- the root always starts with explicit bounded constraints
-- text extent is computed in core from character counts and newline counts
-- view tracks are normalized into a simple grid model
-- content and fixed tracks are resolved before fraction tracks
-- scrollable axes pass unbounded constraints into descendants while retaining bounded viewport size at the container
-- child placement is strictly index-based
-- each node tracks both an allocated frame size and an intrinsic content extent for scroll overflow
-- the resulting layout state is cached on each node
+## DOM host
 
-For views, layout records more than final size. It also stores:
+The browser host creates one application surface and two internal layers:
 
-- resolved row sizes
-- resolved column sizes
-- child frames relative to the parent
-- content size used by scroll containers
+- a visual row/style-run layer marked `aria-hidden`;
+- a clipped accessibility layer with one semantic node per labeled action.
 
-That cached structure is later consumed by render-tree construction.
+The root is one focusable `role="application"` element. Shared focus updates `aria-activedescendant`; native focus never becomes semantic state.
 
-### 3. Render-Tree Build
+The host uses inline-owned styles, disabled ligatures, fixed physical cell calibration, and no app CSS. Each scene row becomes a positioned row and each style run a positioned span. Ordinary text keeps the default monospace stack; Unicode box-drawing, block, legacy-computing, and Powerline ranges are split into terminal-graphics runs that prefer connection-safe fonts without horizontal endpoint overhang. Those runs use zero letter spacing and whole-run horizontal fitting; normal text keeps its independently calibrated spacing. The projector fits residual runs to their canonical width and slightly overlaps adjacent backgrounds. Glyph height is never stretched and no geometric border overlay or per-cell DOM projection exists.
 
-`buildRenderTree()` converts cached layout output into an absolute, clipped render tree.
+Mouse-wheel line/page events and conventional large pixel notches become one logical cell step, matching one terminal wheel command. Small pixel deltas accumulate to a cell so trackpads remain smooth without skipping short scroll content.
 
-This phase:
+Pointer conversion uses the actual surface rectangle and logical scene dimensions:
 
-- starts from the root frame at `(0, 0)`
-- applies scroll offsets as render transforms
-- intersects each child with its inherited clip rectangle
-- drops fully clipped descendants
-- preserves only the visible hierarchy needed for painting and hit testing
+```text
+cellX = floor((clientX - rect.left) * logicalWidth / rect.width)
+cellY = floor((clientY - rect.top)  * logicalHeight / rect.height)
+```
 
-This is a key design choice: painting and interaction operate on visible output, not on the full semantic tree.
+Default body mounting resets margin/overflow and derives bounds from the viewport at 8×16 pixels per cell. Custom containers can fit their content box; explicit width/height bypass fitting. Resizing resolves a new explicit size before semantic layout.
 
-### 4. Renderer Projection
+Unmount removes listeners/observers/surface and restores host inline styles. Failed initial renders follow the same cleanup path.
 
-Renderers consume the shared render tree.
+## TUI host
 
-For DOM:
+The terminal entry owns all Node-specific behavior:
 
-- `renderToDomModel()` projects the tree into absolute-positioned DOM model nodes in cell units
-- `mountDomRoot()` turns that model into live elements inside a host container
-- `render()` provides a renderer-owned successful path above raw root management
+- terminal column/row sizing;
+- raw mode;
+- alternate screen and cursor visibility;
+- SGR mouse negotiation/parsing;
+- key/CSI parsing;
+- true-color ANSI serialization;
+- full-frame redraw and resize;
+- lifecycle restoration.
 
-For TUI:
+Input/output are structural interfaces, enabling fake streams without a real terminal. Full-frame painting disables terminal autowrap and uses explicit CRLF row boundaries, so writing the final terminal column cannot insert or shift rows. After each non-ASCII grapheme, ANSI horizontal positioning re-anchors subsequent cells; a terminal that assigns a different width to an emoji, combining, ambiguous, or CJK sequence therefore cannot move later borders. Ctrl+C can unmount or route as a shared key. Cleanup restores autowrap and is idempotent.
 
-- `renderToFrameBuffer()` paints the tree into a framebuffer using the same fixed-cell coordinates used by layout
-- `render()` provides a renderer-owned successful path above raw host wiring
+## Palette
 
-The renderer packages stay narrow because core has already solved placement, clipping, and hit-test geometry.
+Semantic scenes store palette names, not concrete colors. `ThemeProvider` supplies one concrete `#RRGGBB` mapping used by both hosts. DOM converts names to CSS colors; TUI converts the same values to ANSI true color.
 
-### 5. Event Dispatch
+## Verification architecture
 
-Input is mapped back into render-space coordinates and dispatched through core helpers.
+The release gate combines:
 
-The dispatch flow is:
+- TypeScript 7 project and test typechecking;
+- unit tests for Unicode, sequential/custom/Grid layout, scene, controller, React, DOM sizing, ANSI, TUI parsing/lifecycle;
+- 1,000 randomized core layout cases plus 500 randomized Grid placements;
+- all official Unicode 17 grapheme boundary cases;
+- real-Chromium DOM projection/input/resize/accessibility tests;
+- serious queue/detail/metadata fixture tests;
+- packed foundation and standalone Grid tarball clean installs;
+- consumer JSX/typecheck;
+- Bun and Vite browser bundles checked for Node/TUI leakage;
+- fake-terminal execution from the packed artifact;
+- production package/example builds.
 
-1. hit test the render tree at a point
-2. recover the render-path from target to root
-3. collect matching bindings from target outward
-4. return tokens to application-owned handling code
-
-Focus targeting uses the same path but resolves the nearest focusable view. This keeps event routing renderer-neutral while letting each runtime adapt native events into common bindings.
-
-## Layout and Cache Model
-
-The cache model is intentionally explicit.
-
-Each node tracks:
-
-- `dirtyLayout`
-- `dirtyIntrinsic`
-- `dirtyPaint`
-- cached constraints
-- cached size
-- cached subtree revision
-- optional content and child-frame data
-
-Layout cache reuse requires all of the following:
-
-- layout is not dirty
-- cached constraints match the requested constraints
-- cached subtree revision matches the current subtree revision
-
-Render-tree cache reuse is slightly different. It depends on:
-
-- paint not being dirty
-- subtree revision stability
-- identical root constraints
-- identical scroll offsets
-
-This split allows style and scroll changes to invalidate cheaper stages than full semantic reconstruction.
-
-## Scroll Model
-
-Scroll is modeled semantically on `View`, but its offset is not part of layout state.
-
-Current behavior:
-
-- scrollable containers measure content on an unbounded scroll axis
-- the container still reports a bounded viewport size when constrained
-- content size is cached for later render and interaction use
-- scroll offsets are injected when building the render tree or mounting DOM
-- changing scroll offset should not require re-running layout
-
-This is one of the clearest examples of the architecture's phase separation: layout computes geometry for the full content, while rendering applies the viewport transform.
-
-## Event and Focus Architecture
-
-Bindings are stored on semantic nodes but resolved through render hits.
-
-That gives the system two useful properties:
-
-- bubbling follows visible targeting rather than stale semantic geometry
-- renderer runtimes can stay dumb about ancestor traversal rules
-
-Current binding surface includes:
-
-- focus and blur
-- key down and key up
-- press
-- click
-- mouse down, mouse up, mouse enter, mouse leave, mouse move
-- scroll
-
-Binding values in core are stable string or numeric tokens. The application owns what those tokens mean and can resolve dispatch results into its own handler objects through a renderer-neutral core helper.
-
-## Renderer-Specific Notes
-
-### DOM
-
-The DOM runtime is the most complete integration layer today.
-
-It keeps responsibility boundaries relatively clean:
-
-- browser measurement stays in DOM-specific adapters
-- layout and clipping stay in core
-- native events are translated into core binding dispatch
-- focus state is tracked by node id while native focus and blur events are synchronized back into that runtime state
-
-The DOM runtime also keeps a map of focusable nodes, supports managed scroll offset updates from wheel input, tracks hover transitions over the shared render tree, projects hover and focus state into DOM styles, and flushes stale interaction state during rerender and unmount transitions.
-
-### TUI
-
-The TUI package now includes a runtime controller around the framebuffer renderer.
-
-It provides:
-
-- character-cell text measurement
-- framebuffer painting
-- coordinate-based input dispatch helpers for cell positions
-- focus traversal, key dispatch, pointer dispatch, and managed scroll offset updates for host-driven terminal loops
-
-This keeps the architectural claim intact: the same layout and render tree can drive a browser-shaped runtime and a character-cell runtime with only measurement, painting, and host event plumbing swapped out.
-
-## Schema and Portability
-
-`@faux-ui/schema` exists to keep authoring portable and explicit.
-
-The readable schema mirrors the same concepts exposed in JSX:
-
-- `view` and `text` nodes
-- tracks and scroll axes
-- semantic colors and style states
-- binding names
-
-The compact format is optimized for transfer or storage, but it still describes semantic input. It is not a serialized form of `UINode` or the render tree.
-
-That distinction prevents accidental coupling between interchange format and runtime cache structures.
-
-## Tooling and Inspection Direction
-
-The repository already hints at the intended tooling architecture:
-
-- devtools can inspect derived runtime state such as layout dumps without becoming a renderer
-- MCP-facing types can expose validation, rendering, and inspection commands without changing engine semantics
-- CLI packages can sit above the shared engine and choose authoring format plus renderer target at runtime
-
-These are useful seams because they keep the core packages reusable from tests, CLIs, editors, and future automation surfaces.
-
-## Current Gaps
-
-The architecture is established, but several edges are intentionally unfinished:
-
-- no full TUI event loop yet
-- no browser visual regression layer yet
-- no completed scaffold or execution CLI flow
-- no hydration or persistence story in the reconciler
-
-These gaps do not change the core layering; they mainly affect integration completeness.
-
-## Architectural Summary
-
-The repository is already organized around a stable center of gravity:
-
-- `@faux-ui/core` owns semantics, layout, render-tree construction, and dispatch
-- authoring packages feed that core
-- renderer packages project from the same render tree
-- tooling packages inspect or orchestrate the system from the outside
-
-That is the main implementation bet in faux-ui: one deterministic semantic engine, multiple render targets, and strict phase boundaries so behavior stays portable across environments.
+The foundation package has one required runtime dependency, `react-reconciler`; `scheduler` is its transitive dependency and React is a peer. Grid has no direct runtime dependency—UI and React are peers. Unicode/layout/scene/controller/host behavior adds no further runtime package dependency.

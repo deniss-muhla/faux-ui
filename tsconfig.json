@@ -1,21 +1,8 @@
 {
   "files": [],
   "references": [
-    { "path": "./packages/core" },
-    { "path": "./packages/reconciler" },
-    { "path": "./packages/renderer" },
-    { "path": "./packages/render-dom" },
-    { "path": "./packages/render-inspect" },
-    { "path": "./packages/render-tui" },
     { "path": "./packages/ui" },
-    { "path": "./packages/app" },
-    { "path": "./packages/schema" },
-    { "path": "./packages/devtools" },
-    { "path": "./packages/mcp" },
-    { "path": "./packages/create-faux-ui" },
-    { "path": "./packages/exec-faux-ui" },
-    { "path": "./apps/example" },
-    { "path": "./apps/example-renderer" },
-    { "path": "./apps/design-system-gallery" }
+    { "path": "./packages/grid" },
+    { "path": "./apps/example" }
   ]
 }

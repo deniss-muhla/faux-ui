@@ -1,13 +1,23 @@
 {
   "name": "@faux-ui/ui",
-  "version": "0.1.0",
+  "version": "0.9.1",
+  "description": "Deterministic terminal-first React UI with a browser mirror",
+  "keywords": ["tui", "terminal", "react", "ui", "dom", "cli", "pi-package"],
+  "license": "MIT",
+  "author": "Deniss Muhļa",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deniss-muhla/faux-ui.git",
+    "directory": "packages/ui"
+  },
+  "homepage": "https://github.com/deniss-muhla/faux-ui#readme",
   "type": "module",
+  "sideEffects": false,
   "dependencies": {
-    "@faux-ui/core": "workspace:*",
-    "@faux-ui/reconciler": "workspace:*"
+    "react-reconciler": "0.33.0"
   },
   "peerDependencies": {
-    "react": "^19.2.0"
+    "react": "^19.2.8"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -16,6 +26,22 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./dom": {
+      "types": "./dist/dom.d.ts",
+      "default": "./dist/dom.js"
+    },
+    "./tui": {
+      "types": "./dist/tui.d.ts",
+      "default": "./dist/tui.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "default": "./dist/testing.js"
+    },
+    "./layout": {
+      "types": "./dist/layout.d.ts",
+      "default": "./dist/layout.js"
+    },
     "./jsx-runtime": {
       "types": "./dist/jsx-runtime.d.ts",
       "default": "./dist/jsx-runtime.js"
@@ -23,11 +49,32 @@
     "./jsx-dev-runtime": {
       "types": "./dist/jsx-dev-runtime.d.ts",
       "default": "./dist/jsx-dev-runtime.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
-    "dist"
+    "dist/**/*.js",
+    "dist/**/*.js.map",
+    "dist/**/*.d.ts",
+    "dist/**/*.d.ts.map",
+    ".codex-plugin",
+    ".claude-plugin",
+    "skills",
+    "README.md",
+    "LICENSE",
+    "UNICODE-LICENSE.txt"
   ],
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "pi": {
+    "skills": [
+      "./skills"
+    ]
+  },
   "scripts": {
     "build": "tsc -b",
     "typecheck": "tsc -b --pretty false"

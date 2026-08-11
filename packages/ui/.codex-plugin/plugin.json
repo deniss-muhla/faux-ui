@@ -1,0 +1,14 @@
+{
+  "name": "faux-ui",
+  "version": "0.9.1",
+  "description": "Author deterministic terminal-first React interfaces with @faux-ui/ui",
+  "author": {
+    "name": "Deniss Muhļa",
+    "url": "https://github.com/deniss-muhla"
+  },
+  "homepage": "https://github.com/deniss-muhla/faux-ui/tree/main/packages/ui",
+  "repository": "https://github.com/deniss-muhla/faux-ui",
+  "license": "MIT",
+  "keywords": ["faux-ui", "react", "tui", "terminal", "dom"],
+  "skills": "./skills/"
+}
