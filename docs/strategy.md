@@ -181,7 +181,7 @@ Do not independently deepen schema, CLI, DOM, and TUI layers before an end-to-en
 
 ### TUI first, DOM immediately after
 
-“TUI first” must not mean DOM parity is postponed indefinitely. Every semantic milestone is accepted in TUI, then projected and contract-tested in DOM before moving to the next semantic feature.
+"TUI first" must not mean DOM parity is postponed indefinitely. Every semantic milestone is accepted in TUI, then projected and contract-tested in DOM before moving to the next semantic feature.
 
 ### Consumer evidence loop
 
@@ -210,7 +210,7 @@ The pre-1.0 implementation establishes:
 - packed foundation and extension consumer checks;
 - documentation that starts with external app setup rather than internal package architecture.
 
-## What “done” does not mean
+## What "done" does not mean
 
 The 0.9 foundation does not imply a large widget catalog, renderer marketplace, compact protocol, MCP server, virtualized table, or browser-responsive system.
 

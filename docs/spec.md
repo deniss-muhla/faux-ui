@@ -159,8 +159,8 @@ Higher-level app shell, panel, toolbar, split layout, status, loading, error, an
 
 A `LayoutEngine` provides:
 
-1. `preferred(children)` — receives only child preferred `Size` values and returns one preferred content `Size`;
-2. `layout({ size, children })` — receives the concrete content-frame `Size` plus the same preferred child sizes and returns one local `Rect` per child plus optional content size.
+1. `preferred(children)` receives only child preferred `Size` values and returns one preferred content `Size`.
+2. `layout({ size, children })` receives the concrete content-frame `Size` plus the same preferred child sizes and returns one local `Rect` per child plus optional content size.
 
 Rules:
 
@@ -319,6 +319,8 @@ Logical cell equality is guaranteed. Physical glyph artwork may still vary by te
 - On a scroll axis, content extent is at least viewport extent and may be larger.
 - On a non-scroll axis, the child uses the viewport extent.
 - Offset is controller state, not a semantic prop or layout input.
+- `followEnd` is an optional controller policy: the initial viewport starts at the enabled-axis end and growing content remains followed only while the prior effective offset was already at that end.
+- Manual scrolling away from the end suspends following; returning to the end resumes it on the next content growth.
 - Effective offset is clamped to `0...max(0, content - viewport)` per enabled axis.
 - Changing offset does not change the layout tree.
 - Wheel, terminal mouse, keyboard commands, and testing controls all update the same controller state.

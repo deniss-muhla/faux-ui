@@ -94,6 +94,8 @@ export interface DividerProps extends Omit<FillProps, "glyph"> {
 
 export interface ScrollViewProps extends BoxProps {
   readonly axis?: ScrollAxis;
+  /** Follow growing content only while the viewport is already at its end. */
+  readonly followEnd?: boolean;
 }
 
 export type ButtonTone =
@@ -242,6 +244,7 @@ export function Divider({
 
 export function ScrollView({
   axis = "y",
+  followEnd = false,
   children,
   ...props
 }: ScrollViewProps): ReactNode {
@@ -249,7 +252,7 @@ export function ScrollView({
     throw new Error("ScrollView accepts exactly one semantic child.");
   }
   return hostBox(
-    { ...props, scroll: axis },
+    { ...props, scroll: axis, followEnd },
     children,
     useContext(PaletteContext),
   );

@@ -36,6 +36,8 @@
 
 Update documentation in the same change when public behavior, architecture, release state, or commands change.
 
+Write current documentation in plain language. Use sentence-case headings, straight quotes, active voice, and concrete claims. Avoid em dashes, promotional phrasing, and generic conclusions. Check commands, paths, links, and stated release status against the repository before finishing. Preserve changelogs and dated refactor records as history unless the record itself is wrong.
+
 ## Implementation rules
 
 - Preserve boundaries between reconciliation, semantic tree, preferred size/layout, controller, canonical scene, and host adapters.

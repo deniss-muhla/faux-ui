@@ -1,4 +1,5 @@
 import {
+  type LayoutNode,
   type LayoutResult,
   findLayoutNode,
 } from "./layout.js";
@@ -61,6 +62,7 @@ export class InteractionController {
 
   update(root: SemanticNode, layout: LayoutResult, scene: CellScene): void {
     const oldRoot = this.#root;
+    const oldLayout = this.#layout;
     const oldFocused =
       oldRoot === null || this.#focusedId === null
         ? null
@@ -87,6 +89,30 @@ export class InteractionController {
     }
     if (this.#activePressId !== null && !validIds.has(this.#activePressId)) {
       this.#activePressId = null;
+    }
+
+    for (const node of walkTree(root)) {
+      if (
+        node.kind !== "box" ||
+        node.scroll === null ||
+        !node.followEnd
+      ) {
+        continue;
+      }
+      const nodeLayout = findLayoutNode(layout.root, node.id);
+      if (nodeLayout === null) continue;
+      const requested = this.#offsets.get(node.id) ?? { x: 0, y: 0 };
+      const oldNodeLayout =
+        oldLayout === null ? null : findLayoutNode(oldLayout.root, node.id);
+      const wasAtEnd =
+        oldNodeLayout === null ||
+        pointsEqual(requested, scrollEndOffset(node, oldNodeLayout));
+      if (!wasAtEnd) continue;
+      const next = scrollEndOffset(node, nodeLayout);
+      if (!pointsEqual(requested, next)) {
+        this.#offsets.set(node.id, next);
+        changed = true;
+      }
     }
 
     for (const [id, requested] of this.#offsets) {
@@ -598,6 +624,13 @@ function normalizeKey(key: string): string {
   if (key === "Esc") return "Escape";
   if (key.length === 1) return key;
   return key;
+}
+
+function scrollEndOffset(node: BoxNode, layout: LayoutNode): Point {
+  return clampScrollOffset(node, layout, {
+    x: Number.MAX_SAFE_INTEGER,
+    y: Number.MAX_SAFE_INTEGER,
+  });
 }
 
 function pointsEqual(a: Point, b: Point): boolean {

@@ -20,12 +20,12 @@ The skills themselves are not Pi-specific. `packages/ui/skills/faux-ui/SKILL.md`
 
 There is no universal `package.json` field that activates an installed npm package in every agent. Each host has its own discovery or plugin manifest:
 
-| Host | Direct skill discovery | Packaged distribution |
-| --- | --- | --- |
-| Pi | `.agents/skills/`, `.pi/skills/`, user skill directories | `package.json#pi.skills` or conventional `skills/` in a Pi package |
-| Codex / ChatGPT | `.agents/skills/`, `~/.agents/skills/` | `.codex-plugin/plugin.json` and a plugin marketplace/directory |
-| Claude Code | `.claude/skills/`, `~/.claude/skills/` | `.claude-plugin/plugin.json` and a Claude plugin marketplace |
-| Other compatible agents | Host-defined skill directory | Host-defined; the canonical `SKILL.md` remains reusable |
+| Host                    | Direct skill discovery                                   | Packaged distribution                                              |
+| ----------------------- | -------------------------------------------------------- | ------------------------------------------------------------------ |
+| Pi                      | `.agents/skills/`, `.pi/skills/`, user skill directories | `package.json#pi.skills` or conventional `skills/` in a Pi package |
+| Codex / ChatGPT         | `.agents/skills/`, `~/.agents/skills/`                   | `.codex-plugin/plugin.json` and a plugin marketplace/directory     |
+| Claude Code             | `.claude/skills/`, `~/.claude/skills/`                   | `.claude-plugin/plugin.json` and a Claude plugin marketplace       |
+| Other compatible agents | Host-defined skill directory                             | Host-defined; the canonical `SKILL.md` remains reusable            |
 
 A normal `npm install` only puts files in `node_modules`; it does not automatically enable them in Codex or Claude Code.
 
@@ -160,7 +160,7 @@ For each release:
 
 ## Security
 
-Skills are instructions with the same practical authority as the host agent. Plugins may additionally carry executable hooks, scripts, MCP servers, or tools. Consumers must review third-party packages before enabling them.
+Skills are instructions with the same practical authority as the host agent. Plugins may also carry executable hooks, scripts, MCP servers, or tools. Consumers must review third-party packages before enabling them.
 
 Both faux-ui packages intentionally ship only documentation-style skill instructions and static plugin metadata. They do not add hooks, executable skill scripts, MCP servers, or automatic installation side effects.
 

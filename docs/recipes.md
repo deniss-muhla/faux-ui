@@ -49,9 +49,15 @@ A no-axis `Box` accepts one semantic child. Wrap multiple panel rows in `Rows`.
 
 ```tsx
 <Columns tracks={[28, "2fr", 30]} gap={1}>
-  <Panel title="Queue"><Queue /></Panel>
-  <Panel title="Details"><Details /></Panel>
-  <Panel title="Metadata"><Metadata /></Panel>
+  <Panel title="Queue">
+    <Queue />
+  </Panel>
+  <Panel title="Details">
+    <Details />
+  </Panel>
+  <Panel title="Metadata">
+    <Metadata />
+  </Panel>
 </Columns>
 ```
 
@@ -74,8 +80,10 @@ import { Text } from "@faux-ui/ui";
     <Text key={`${person.id}-role`}>{person.role}</Text>,
     <Text key={`${person.id}-status`}>{person.status}</Text>,
   ])}
-  <GridItem columnSpan={3}><Text>End of results</Text></GridItem>
-</Grid>
+  <GridItem columnSpan={3}>
+    <Text>End of results</Text>
+  </GridItem>
+</Grid>;
 ```
 
 Use core sequences when each split is local. Use Grid for shared tracks, explicit placement, or spans. See [`@faux-ui/grid`](../packages/grid/README.md).
@@ -103,7 +111,7 @@ Use core sequences when each split is local. Use Grid for shared tracks, explici
 </ScrollView>
 ```
 
-Give repeated entries explicit heights when secondary lines are required. Base `Text` never wraps.
+Give repeated entries explicit heights when secondary lines are required. Base `Text` never wraps. For append-only chats or logs, add `followEnd`; growth follows the live tail only while the viewport is already at its end, and manual upward scrolling suspends following.
 
 ## Compact action bar
 
@@ -124,7 +132,7 @@ const actions = [
       onPress={() => runAction(key)}
     />
   ))}
-</Columns>
+</Columns>;
 ```
 
 For global hotkeys, call the same action function from `useInput`; do not synthesize host events.
@@ -150,7 +158,9 @@ function Status({ state }: { state: "empty" | "loading" | "error" | "ready" }) {
     return <Text style={{ foreground: "accent" }}>Loading…</Text>;
   }
   if (state === "error") {
-    return <Text style={{ foreground: "danger", bold: true }}>Failed to load</Text>;
+    return (
+      <Text style={{ foreground: "danger", bold: true }}>Failed to load</Text>
+    );
   }
   if (state === "empty") {
     return <Text style={{ foreground: "muted" }}>No matching items</Text>;
@@ -165,17 +175,20 @@ Keep state in React; visual status is just semantic text/style.
 
 ```tsx
 useInput(
-  useCallback((input) => {
-    if (input.key === "j") {
-      selectNext();
-      return true;
-    }
-    if (input.key === "k") {
-      selectPrevious();
-      return true;
-    }
-    return false;
-  }, [selectNext, selectPrevious]),
+  useCallback(
+    (input) => {
+      if (input.key === "j") {
+        selectNext();
+        return true;
+      }
+      if (input.key === "k") {
+        selectPrevious();
+        return true;
+      }
+      return false;
+    },
+    [selectNext, selectPrevious],
+  ),
 );
 ```
 

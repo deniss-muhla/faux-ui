@@ -4,29 +4,29 @@ faux-ui treats logical parity and packed-consumer behavior as primary evidence. 
 
 ## Behavior matrix
 
-| Contract | Primary coverage |
-| --- | --- |
-| Unicode 17 extended grapheme boundaries | `vnext-unicode-conformance.test.ts` against the complete official fixture |
-| ASCII/CJK/combining/emoji/control/tab widths | `vnext-unicode.test.ts` |
-| Fixed/auto/fraction allocation and overflow | `vnext-kernel.test.ts` |
-| Integer/non-negative/stable fraction geometry | `vnext-layout.property.test.ts` (1,000 generated cases) |
-| Public custom-layout geometry validation | `vnext-layout-extension.test.tsx` |
-| Standalone Grid placement, spans, implicit tracks, interaction, and `Text`/`ScrollView` composition | `packages/grid/test/grid.test.tsx` |
-| Randomized non-overlapping deterministic Grid auto-placement | `packages/grid/test/grid.property.test.tsx` (500 generated cases) |
-| Border, ellipsis, clipping, continuation cells | `vnext-kernel.test.ts` |
-| Scroll as paint transform, not layout input | `vnext-kernel.test.ts` |
-| Focus, bubbling, global keys, activation, scroll | `vnext-kernel.test.ts` and `vnext-react.test.ts` |
-| DOM/TUI logical command/scene/event parity | `vnext-host-parity.test.ts` |
-| Ordinary React state and restricted text nesting | `vnext-react.test.ts` |
-| DOM fit/pixel conversion | `vnext-dom-spike.test.ts` |
-| DOM wheel-notch/trackpad normalization | `vnext-dom-spike.pw.spec.ts` in Chromium |
-| Grouped DOM projection, terminal-graphics font runs, exact fitting/background seams, and accessibility | `vnext-dom-spike.pw.spec.ts` in Chromium |
-| Serious browser authoring/input/resize path | `apps/example/test/example-dom.pw.spec.ts` |
-| Standalone Grid through the public DOM host | `packages/grid/test/grid.pw.spec.ts` |
-| Terminal input, ANSI, Unicode cursor anchoring, right-margin/autowrap safety, fake IO, cleanup | `vnext-tui.test.ts` |
-| Public JSX exposes `Rows` / `Columns` and rejects HTML, named tracks, removed singular layouts, old style/hint props, and inert Box alignment | `public-api.typecheck.tsx` through `tsconfig.test.json` |
-| Packed foundation tarball install/types/skill/plugin manifests/Bun/Vite/TUI | `scripts/test-package.mjs` |
-| Packed Grid + UI tarballs, source/skill/plugin manifests, public-import isolation, Bun/Vite/TUI | `scripts/test-grid-package.mjs` |
+| Contract                                                                                                                                      | Primary coverage                                                          |
+| --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Unicode 17 extended grapheme boundaries                                                                                                       | `vnext-unicode-conformance.test.ts` against the complete official fixture |
+| ASCII/CJK/combining/emoji/control/tab widths                                                                                                  | `vnext-unicode.test.ts`                                                   |
+| Fixed/auto/fraction allocation and overflow                                                                                                   | `vnext-kernel.test.ts`                                                    |
+| Integer/non-negative/stable fraction geometry                                                                                                 | `vnext-layout.property.test.ts` (1,000 generated cases)                   |
+| Public custom-layout geometry validation                                                                                                      | `vnext-layout-extension.test.tsx`                                         |
+| Standalone Grid placement, spans, implicit tracks, interaction, and `Text`/`ScrollView` composition                                           | `packages/grid/test/grid.test.tsx`                                        |
+| Randomized non-overlapping deterministic Grid auto-placement                                                                                  | `packages/grid/test/grid.property.test.tsx` (500 generated cases)         |
+| Border, ellipsis, clipping, continuation cells                                                                                                | `vnext-kernel.test.ts`                                                    |
+| Scroll as paint transform, not layout input                                                                                                   | `vnext-kernel.test.ts`                                                    |
+| Focus, bubbling, global keys, activation, scroll, follow-end suspension/resume                                                                | `vnext-kernel.test.ts` and `vnext-react.test.ts`                          |
+| DOM/TUI logical command/scene/event parity                                                                                                    | `vnext-host-parity.test.ts`                                               |
+| Ordinary React state and restricted text nesting                                                                                              | `vnext-react.test.ts`                                                     |
+| DOM fit/pixel conversion                                                                                                                      | `vnext-dom-spike.test.ts`                                                 |
+| DOM wheel-notch/trackpad normalization                                                                                                        | `vnext-dom-spike.pw.spec.ts` in Chromium                                  |
+| Grouped DOM projection, terminal-graphics font runs, exact fitting/background seams, and accessibility                                        | `vnext-dom-spike.pw.spec.ts` in Chromium                                  |
+| Serious browser authoring/input/resize path                                                                                                   | `apps/example/test/example-dom.pw.spec.ts`                                |
+| Standalone Grid through the public DOM host                                                                                                   | `packages/grid/test/grid.pw.spec.ts`                                      |
+| Terminal input, ANSI, Unicode cursor anchoring, right-margin/autowrap safety, fake IO, cleanup                                                | `vnext-tui.test.ts`                                                       |
+| Public JSX exposes `Rows` / `Columns` and rejects HTML, named tracks, removed singular layouts, old style/hint props, and inert Box alignment | `public-api.typecheck.tsx` through `tsconfig.test.json`                   |
+| Packed foundation tarball install/types/skill/plugin manifests/Bun/Vite/TUI                                                                   | `scripts/test-package.mjs`                                                |
+| Packed Grid + UI tarballs, source/skill/plugin manifests, public-import isolation, Bun/Vite/TUI                                               | `scripts/test-grid-package.mjs`                                           |
 
 ## Commands
 
@@ -102,7 +102,7 @@ A renderer-neutral behavior change needs, at minimum:
 - DOM and TUI adapter coverage when input/projection changes;
 - packed-consumer coverage when exports or dependencies change.
 
-Unicode updates additionally require regenerated tables and the matching official conformance fixture. Public type changes require positive and negative assertions in the typecheck fixture.
+Unicode updates also require regenerated tables and the matching official conformance fixture. Public type changes require positive and negative assertions in the typecheck fixture.
 
 ## Test artifact policy
 

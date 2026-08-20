@@ -10,7 +10,7 @@ The authoritative implemented behavior is [spec.md](spec.md), implemented struct
 
 ## Completed reset milestones
 
-### 0 — Analysis and direction reset
+### 0. Analysis and direction reset
 
 Complete:
 
@@ -20,7 +20,7 @@ Complete:
 - external framework comparison;
 - clean-break report, specification, strategy, and task plan.
 
-### 1 — Decision spikes and parity gates
+### 1. Decision spikes and parity gates
 
 Complete:
 
@@ -31,7 +31,7 @@ Complete:
 - serious synthetic queue/detail/metadata fixture added;
 - package/browser isolation gate added.
 
-### 2 — Single-package semantic kernel
+### 2. Single-package semantic kernel
 
 Complete:
 
@@ -42,7 +42,7 @@ Complete:
 - scroll viewport/content geometry is shared;
 - UTF-16 string length is not used as display width.
 
-### 3 — Canonical scene and interaction
+### 3. Canonical scene and interaction
 
 Complete:
 
@@ -52,7 +52,7 @@ Complete:
 - dividers use their allocated frame;
 - direct handlers and app hotkeys work without DOM globals.
 
-### 4 — TUI-first vertical slice
+### 4. TUI-first vertical slice
 
 Complete:
 
@@ -62,7 +62,7 @@ Complete:
 - terminal key/CSI/SGR mouse/resize input uses the shared controller;
 - raw mode, cursor, mouse, alternate screen, and fake IO lifecycle are covered.
 
-### 5 — DOM mirror
+### 5. DOM mirror
 
 Complete:
 
@@ -73,7 +73,7 @@ Complete:
 - accessibility actions mirror shared focus through `aria-activedescendant`;
 - Bun and Vite DOM bundles contain no Node/TUI code.
 
-### 6 — Public authoring proof
+### 6. Public authoring proof
 
 Complete:
 
@@ -83,7 +83,7 @@ Complete:
 - official Unicode conformance and randomized layout properties run;
 - packed-package consumer installs, typechecks, bundles with Bun/Vite, and executes fake TUI IO.
 
-### 7 — Prototype deletion and pre-1.0 preparation
+### 7. Prototype deletion and pre-1.0 preparation
 
 Complete:
 

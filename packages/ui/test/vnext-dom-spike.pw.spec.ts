@@ -257,6 +257,73 @@ test.describe("vNext DOM scene spike", () => {
     });
   });
 
+  test("follows growing content only while the DOM viewport remains at the end", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const result = await page.evaluate(
+      async ({ componentsUrl, domUrl, sceneUrl }) => {
+        const reactUrl: string = "/@id/react";
+        const react = await import(reactUrl);
+        const createElement = react.createElement ?? react.default?.createElement;
+        if (createElement === undefined) throw new Error("Missing React.createElement");
+        const { ScrollView, Text } = await import(componentsUrl);
+        const { render } = await import(domUrl);
+        const { sceneToText } = await import(sceneUrl);
+        const view = (lines: string[]) =>
+          createElement(
+            ScrollView,
+            { axis: "y", followEnd: true },
+            createElement(Text, null, lines.join("\n")),
+          );
+
+        document.body.replaceChildren();
+        document.body.style.margin = "0";
+        const handle = render(view(["A", "B", "C"]), {
+          width: 8,
+          height: 2,
+        });
+        const visibleRows = () =>
+          sceneToText(handle.getScene())
+            .split("\n")
+            .map((line: string) => line.trimEnd());
+        const wheel = (deltaY: number) => {
+          handle.element.dispatchEvent(
+            new WheelEvent("wheel", {
+              bubbles: true,
+              cancelable: true,
+              clientX: 4,
+              clientY: 4,
+              deltaY,
+            }),
+          );
+        };
+
+        const initial = visibleRows();
+        wheel(-100);
+        handle.rerender(view(["A", "B", "C", "D"]));
+        const suspended = visibleRows();
+        wheel(100);
+        wheel(100);
+        handle.rerender(view(["A", "B", "C", "D", "E"]));
+        const resumed = visibleRows();
+        handle.unmount();
+        return { initial, suspended, resumed };
+      },
+      {
+        componentsUrl: src("../components"),
+        domUrl: src("../dom"),
+        sceneUrl: src("scene"),
+      },
+    );
+
+    expect(result).toEqual({
+      initial: ["B", "C"],
+      suspended: ["A", "B"],
+      resumed: ["D", "E"],
+    });
+  });
+
   test("cleans up failed and successful DOM mounts", async ({ page }) => {
     await page.goto("/");
     const result = await page.evaluate(

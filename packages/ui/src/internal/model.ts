@@ -201,6 +201,7 @@ export interface BoxNode extends SemanticNodeBase {
   border: Border | null;
   title: string | null;
   scroll: ScrollAxis | null;
+  followEnd: boolean;
   focusable: boolean;
   disabled: boolean;
 }
@@ -233,6 +234,7 @@ export interface BoxSpec extends EventHandlers {
   readonly focusStyle?: Style;
   readonly hoverStyle?: Style;
   readonly scroll?: ScrollAxis;
+  readonly followEnd?: boolean;
   readonly focusable?: boolean;
   readonly disabled?: boolean;
   readonly accessibleLabel?: string;
@@ -279,6 +281,7 @@ export function createBoxNode(id: NodeId, spec: BoxSpec = {}): BoxNode {
     hoverStyle: normalizeStyle(spec.hoverStyle),
     handlers: readHandlers(spec),
     scroll: normalizeScroll(spec.scroll),
+    followEnd: spec.followEnd === true,
     focusable: spec.focusable === true,
     disabled: spec.disabled === true,
     accessibleLabel: normalizeLabel(spec.accessibleLabel),
@@ -313,6 +316,7 @@ export function updateBoxNode(node: BoxNode, spec: BoxSpec): void {
   node.hoverStyle = normalizeStyle(spec.hoverStyle);
   node.handlers = readHandlers(spec);
   node.scroll = normalizeScroll(spec.scroll);
+  node.followEnd = spec.followEnd === true;
   node.focusable = spec.focusable === true;
   node.disabled = spec.disabled === true;
   node.accessibleLabel = normalizeLabel(spec.accessibleLabel);

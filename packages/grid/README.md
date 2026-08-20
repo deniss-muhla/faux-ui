@@ -23,7 +23,9 @@ import { Text } from "@faux-ui/ui";
 <Grid columns={[12, "1fr", 10]} gap={{ x: 1 }}>
   <Text style={{ bold: true }}>Name</Text>
   <Text style={{ bold: true }}>Role</Text>
-  <Text style={{ bold: true }} align={{ x: "end" }}>Status</Text>
+  <Text style={{ bold: true }} align={{ x: "end" }}>
+    Status
+  </Text>
 
   <Text>Ada</Text>
   <Text>Maintainer</Text>
@@ -36,7 +38,7 @@ import { Text } from "@faux-ui/ui";
   <GridItem columnSpan={3}>
     <Text style={{ foreground: "muted" }}>3 people</Text>
   </GridItem>
-</Grid>
+</Grid>;
 ```
 
 Omit `rows` for normal content-sized table rows: each implicit row is `"auto"`, so a one-line `Text` uses one cell.
@@ -96,7 +98,7 @@ import { ScrollView, Text } from "@faux-ui/ui";
   <Grid columns={[16, "1fr", 10]}>
     <Text>...</Text>
   </Grid>
-</ScrollView>
+</ScrollView>;
 ```
 
 Use ordinary `Box` props on `Grid` or `GridItem` for border, padding, style, focus, and direct handlers. A `GridItem` accepts one semantic child and must be a direct Grid child; use `Text` for text and `Rows`/`Columns`/`Box` to group content. Grid fragments are flattened, but wrapper components around `GridItem` are not placement syntax.
@@ -105,15 +107,15 @@ Use ordinary `Box` props on `Grid` or `GridItem` for border, padding, style, foc
 
 ### `Grid`
 
-- `columns` — required explicit tracks;
-- `rows` — optional explicit tracks;
-- `gap` — integer or `{ x, y }` cell gaps;
+- `columns` defines required explicit tracks.
+- `rows` defines optional explicit tracks.
+- `gap` defines integer or `{ x, y }` cell gaps.
 - ordinary `Box` props.
 
 ### `GridItem`
 
-- `row`, `column` — one-based placement;
-- `rowSpan`, `columnSpan` — positive spans;
+- `row` and `column` define one-based placement.
+- `rowSpan` and `columnSpan` define positive spans.
 - ordinary `Box` props.
 
 ### `repeat(count, pattern)`

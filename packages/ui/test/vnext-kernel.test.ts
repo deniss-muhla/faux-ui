@@ -6,6 +6,7 @@ import {
   createBoxNode,
   createTextNode,
   replaceChildren,
+  updateTextNode,
   type BoxNode,
   type PressUiEvent,
   type SemanticNode,
@@ -215,6 +216,36 @@ describe("vNext shared interaction controller", () => {
       defaultPrevented: true,
     });
     expect(controller.snapshot().offsets.get(1)).toEqual({ x: 0, y: 2 });
+  });
+
+  it("follows growing content only while already at the end", () => {
+    const child = createTextNode(2, { text: "one\ntwo\nthree" });
+    const root = append(
+      createBoxNode(1, {
+        scroll: "y",
+        followEnd: true,
+        focusable: true,
+      }),
+      child,
+    );
+    const controller = new InteractionController();
+    const update = (): void => {
+      const layout = computeLayout(root, { width: 8, height: 2 });
+      controller.update(root, layout, paintScene(root, layout));
+    };
+
+    update();
+    expect(controller.snapshot().offsets.get(1)).toEqual({ x: 0, y: 1 });
+
+    controller.setScrollOffset(1, { x: 0, y: 0 });
+    updateTextNode(child, { text: "one\ntwo\nthree\nfour" });
+    update();
+    expect(controller.snapshot().offsets.get(1)).toEqual({ x: 0, y: 0 });
+
+    controller.setScrollOffset(1, { x: 0, y: 2 });
+    updateTextNode(child, { text: "one\ntwo\nthree\nfour\nfive" });
+    update();
+    expect(controller.snapshot().offsets.get(1)).toEqual({ x: 0, y: 3 });
   });
 
   it("clamps one shared scroll offset and emits a trace", () => {

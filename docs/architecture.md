@@ -68,7 +68,7 @@ scripts/
   test-grid-package.mjs      two-tarball external extension gate
 ```
 
-`@faux-ui/ui` remains the only required app dependency. Applications needing true two-axis placement may additionally install `@faux-ui/grid`. Grid declares UI and React as peers, ships no runtime dependency, and its source imports only public package entrypoints.
+`@faux-ui/ui` remains the only required app dependency. Applications needing true two-axis placement may also install `@faux-ui/grid`. Grid declares UI and React as peers, ships no runtime dependency, and its source imports only public package entrypoints.
 
 ## Public entrypoint isolation
 
@@ -209,7 +209,7 @@ One `InteractionController` owns:
 - per-scroll-box offsets;
 - normalized event traces.
 
-Hosts send normalized commands. The controller performs target-to-root dispatch, focus traversal, Enter/Space/pointer activation, hover transitions, and scroll clamping.
+Hosts send normalized commands. The controller performs target-to-root dispatch, focus traversal, Enter/Space/pointer activation, hover transitions, scroll clamping, and optional follow-end suspension/resume from prior viewport state.
 
 Key behavior:
 
@@ -316,4 +316,4 @@ The release gate combines:
 - fake-terminal execution from the packed artifact;
 - production package/example builds.
 
-The foundation package has one required runtime dependency, `react-reconciler`; `scheduler` is its transitive dependency and React is a peer. Grid has no direct runtime dependency—UI and React are peers. Unicode/layout/scene/controller/host behavior adds no further runtime package dependency.
+The foundation package has one required runtime dependency, `react-reconciler`; `scheduler` is its transitive dependency and React is a peer. Grid has no direct runtime dependency. UI and React are peers. Unicode/layout/scene/controller/host behavior adds no further runtime package dependency.
