@@ -58,5 +58,6 @@ export type {
   UiEventTarget,
 } from "./internal/model.js";
 export type { TextOverflow } from "./internal/unicode.js";
+export { lineCellWidth, splitGraphemes } from "./internal/unicode.js";
 
 export const VERSION = "0.9.1";

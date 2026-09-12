@@ -64,7 +64,7 @@ The tarball includes one standards-compatible `faux-ui` skill plus thin discover
 
 Installing the npm dependency does not automatically enable it in Codex or Claude. Enable the corresponding plugin, or link `skills/faux-ui` into `.agents/skills/faux-ui` or `.claude/skills/faux-ui`. See the [cross-agent packaging reference](https://github.com/deniss-muhla/faux-ui/blob/main/docs/agent-skill-packaging.md) for details and official references.
 
-Static tests use `@faux-ui/ui/testing`.
+Static tests use `@faux-ui/ui/testing`. Production applications that pre-wrap text can import `splitGraphemes` and `lineCellWidth` from `@faux-ui/ui`; these helpers use the same grapheme and terminal-cell rules as rendering.
 
 See the [repository README](https://github.com/deniss-muhla/faux-ui#readme) for layout, interaction, Unicode, theming, and host options.
 

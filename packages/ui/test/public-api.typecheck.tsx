@@ -1,5 +1,14 @@
 import * as Ui from "@faux-ui/ui";
-import { Box, Button, Columns, Rows, Text, type Track } from "@faux-ui/ui";
+import {
+  Box,
+  Button,
+  Columns,
+  lineCellWidth,
+  Rows,
+  splitGraphemes,
+  Text,
+  type Track,
+} from "@faux-ui/ui";
 import { render as renderDom } from "@faux-ui/ui/dom";
 import { Layout, type LayoutEngine } from "@faux-ui/ui/layout";
 import { renderStatic } from "@faux-ui/ui/testing";
@@ -46,6 +55,8 @@ renderStatic(rows, { width: 40, height: 1 });
 renderStatic(extension, { width: 1, height: 1 });
 void renderDom;
 void renderTui;
+void lineCellWidth("A古é👩‍💻");
+void splitGraphemes("A古é👩‍💻");
 
 // @ts-expect-error Advanced Layout is isolated to @faux-ui/ui/layout.
 void Ui.Layout;
