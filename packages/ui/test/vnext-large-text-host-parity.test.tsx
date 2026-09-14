@@ -100,6 +100,17 @@ describe("large text static and TUI parity", () => {
         expect(canonicalHostScene(tuiScene), step).toEqual(
           canonicalHostScene(staticScene),
         );
+        expect(Object.keys(staticScene).sort(), step).toEqual([
+          "cells",
+          "height",
+          "width",
+        ]);
+        expect(Object.keys(tuiScene).sort(), step).toEqual([
+          "cells",
+          "height",
+          "width",
+        ]);
+        expect(tuiScene, step).toEqual(staticScene);
         expect(sceneToText(tuiScene), step).toBe(sceneToText(staticScene));
         expect(tuiRecorder.events, step).toEqual(staticRecorder.events);
         const rootId = staticApp.getLayout().root.nodeId;

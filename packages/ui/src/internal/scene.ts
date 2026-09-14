@@ -179,7 +179,11 @@ export function paintScene(
     }
   }
 
-  return mutable;
+  return {
+    width: mutable.width,
+    height: mutable.height,
+    cells: mutable.cells,
+  };
 }
 
 export function sceneRows(scene: CellScene): SceneRow[] {
