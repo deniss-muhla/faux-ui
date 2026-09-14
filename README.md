@@ -12,7 +12,7 @@ Deterministic terminal-cell UI for React, with terminal and browser hosts driven
 
 faux-ui favors explicit integer-cell layout over CSS/Yoga-style negotiation. It is intended for review queues, dashboards, inspectors, logs, and keyboard-first operational tools authored by humans or coding agents.
 
-Version 0.9.1 is an unreleased pre-1.0 evidence candidate. The project will gather more real-use data before freezing the 1.0 public contract.
+Version 0.10.0 is an unreleased pre-1.0 evidence candidate. The project will gather more real-use data before freezing the 1.0 public contract.
 
 ## Install
 

@@ -1,6 +1,6 @@
 # Composition recipes
 
-These patterns intentionally use the 0.9.1 evidence foundation rather than adding specialized core components.
+These patterns intentionally use the 0.10.0 evidence foundation rather than adding specialized core components.
 
 ## App shell
 

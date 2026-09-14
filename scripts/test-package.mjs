@@ -13,6 +13,9 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
+const uiSourceManifest = JSON.parse(
+  readFileSync(join(root, "packages", "ui", "package.json"), "utf8"),
+);
 const temporary = mkdtempSync(join(tmpdir(), "faux-ui-package-"));
 const packed = join(temporary, "packed");
 const fixture = join(temporary, "consumer");
@@ -32,7 +35,7 @@ try {
     "--silent",
   ]).trim();
   const archive = join(packed, archiveName);
-  if (archiveName !== "faux-ui-ui-0.9.1.tgz") {
+  if (archiveName !== `faux-ui-ui-${uiSourceManifest.version}.tgz`) {
     throw new Error(`Unexpected UI archive: ${archiveName}`);
   }
 
@@ -193,7 +196,7 @@ app.unmount();
   const installedManifest = JSON.parse(
     readFileSync(join(uiRoot, "package.json"), "utf8"),
   );
-  if (installedManifest.version !== "0.9.1") {
+  if (installedManifest.version !== uiSourceManifest.version) {
     throw new Error(`Installed UI version is ${installedManifest.version}`);
   }
   if (JSON.stringify(installedManifest.pi?.skills) !== '["./skills"]') {

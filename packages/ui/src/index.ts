@@ -68,4 +68,4 @@ export {
 export type { TextOverflow } from "./internal/unicode.js";
 export { lineCellWidth, splitGraphemes } from "./internal/unicode.js";
 
-export const VERSION = "0.9.1";
+export { VERSION } from "./version.js";

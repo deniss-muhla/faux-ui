@@ -1,6 +1,6 @@
 # @faux-ui/ui
 
-Deterministic terminal-first React UI with a browser mirror. Version 0.9.1 is a pre-1.0 evidence candidate.
+Deterministic terminal-first React UI with a browser mirror. Version 0.10.0 is a pre-1.0 evidence candidate.
 
 ```bash
 bun add @faux-ui/ui react

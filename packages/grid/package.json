@@ -22,7 +22,7 @@
   "type": "module",
   "sideEffects": false,
   "peerDependencies": {
-    "@faux-ui/ui": "^0.9.1",
+    "@faux-ui/ui": "^0.10.0",
     "react": "^19.2.8"
   },
   "main": "./dist/index.js",

@@ -2,8 +2,8 @@
 
 ## Release status
 
-- The repository implements an unreleased `@faux-ui/ui@0.9.1` evidence candidate; it has not been merged to `main`, tagged, or published.
-- Version 0.9.1 is intentionally pre-1.0 so real-use data can still refine the public contract.
+- The repository implements an unreleased `@faux-ui/ui@0.10.0` evidence candidate; it has not been merged to `main`, tagged, or published.
+- Version 0.10.0 is intentionally pre-1.0 so real-use data can still refine the public contract.
 - The current source exports are authoritative. Use plural `Rows` / `Columns`, `Text.align={{ x, y }}`, `keyHint`, `focusStyle`, and `hoverStyle`; do not add compatibility aliases or ineffective `Box` alignment props.
 - Keep tracks, `padding`, `gap`, `x` / `y`, `/dom`, and `/tui`. Do not add outer spacing.
 - Do not reintroduce deleted prototype package names or compatibility aliases.

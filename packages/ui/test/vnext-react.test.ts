@@ -9,15 +9,10 @@ import {
   Text,
   mergePalette,
 } from "../src/components.js";
-import { VERSION } from "../src/index.js";
 import { SemanticMount } from "../src/internal/mount.js";
 import { sceneToText } from "../src/internal/scene.js";
 
 describe("vNext React authoring", () => {
-  it("reports the package evidence version", () => {
-    expect(VERSION).toBe("0.9.1");
-  });
-
   it("validates one cross-host #RRGGBB palette contract", () => {
     expect(mergePalette({ accent: "#00ccee" }).accent).toBe("#00ccee");
     expect(() => mergePalette({ accent: "red" })).toThrow(/#RRGGBB/u);

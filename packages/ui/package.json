@@ -1,6 +1,6 @@
 {
   "name": "@faux-ui/ui",
-  "version": "0.9.1",
+  "version": "0.10.0",
   "description": "Deterministic terminal-first React UI with a browser mirror",
   "keywords": ["tui", "terminal", "react", "ui", "dom", "cli", "pi-package"],
   "license": "MIT",

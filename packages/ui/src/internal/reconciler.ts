@@ -6,6 +6,7 @@ import {
 } from "react-reconciler/constants.js";
 
 import { INTERNAL_BOX_TYPE, INTERNAL_TEXT_TYPE } from "../components.js";
+import { VERSION } from "../version.js";
 import {
   type BoxNode,
   type BoxSpec,
@@ -286,7 +287,7 @@ export function createReconcilerRoot(
     HostTransitionContext: createContext(null) as never,
     resetFormInstance(): void {},
     rendererPackageName: "@faux-ui/ui",
-    rendererVersion: "0.9.1",
+    rendererVersion: VERSION,
     applyViewTransitionName(): void {},
     restoreViewTransitionName(): void {},
     cancelViewTransitionName(): void {},

@@ -1,8 +1,8 @@
-# faux-ui 0.9.1 specification
+# faux-ui 0.10.0 specification
 
 ## Status
 
-This is the normative contract implemented by the unreleased faux-ui 0.9.1 evidence candidate. Delivery history belongs in [roadmap.md](roadmap.md); reset rationale belongs in the [TUI-first dossier](refactors/2026-07-31-tui-first-reset/README.md), and the implemented public names belong in the [API language decision](refactors/2026-08-01-api-language-review/03-decision.md).
+This is the normative contract implemented by the unreleased faux-ui 0.10.0 evidence candidate. Delivery history belongs in [roadmap.md](roadmap.md); reset rationale belongs in the [TUI-first dossier](refactors/2026-07-31-tui-first-reset/README.md), and the implemented public names belong in the [API language decision](refactors/2026-08-01-api-language-review/03-decision.md).
 
 Frozen implementation decisions:
 

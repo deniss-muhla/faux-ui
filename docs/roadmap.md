@@ -2,9 +2,9 @@
 
 ## Current position
 
-Status: **0.9.1 implementation complete; large-text windowing implemented and unreleased; gathering evidence before release and 1.0**
+Status: **0.10.0 implementation complete; large-text windowing implemented and unreleased; gathering evidence before release and 1.0**
 
-The destructive TUI-first reset, rendering stabilization, and focused public-language cutover are implemented on `refactor/tui-first-reset`. The branch has not been merged, tagged, or published. Version 0.9.1 intentionally leaves room for further evidence before the stable 1.0 contract.
+The destructive TUI-first reset, rendering stabilization, and focused public-language cutover are implemented on `refactor/tui-first-reset`. The branch has not been merged, tagged, or published. Version 0.10.0 intentionally leaves room for further evidence before the stable 1.0 contract.
 
 The authoritative implemented behavior is [spec.md](spec.md), implemented structure is [architecture.md](architecture.md), and product scope is [strategy.md](strategy.md). Development history is indexed in [docs/README.md](README.md). The implemented plural-layout rationale is in the [2026-08-01 API language decision](refactors/2026-08-01-api-language-review/03-decision.md).
 
@@ -104,7 +104,7 @@ Complete:
 - package metadata, license, package README, root guides, and architecture updated;
 - Bun requirement/package-manager metadata and TypeScript, React, Vite, Vitest, Playwright, types, and fast-check updated to current stable versions.
 
-## Completed 0.9.1 public API polish
+## Completed public API polish
 
 - [x] inventory the component, prop, type, host, lifecycle, and testing language;
 - [x] evaluate three broad naming variants against the likely React/TypeScript audience;
@@ -131,7 +131,7 @@ See the [public-language dossier](refactors/2026-08-01-api-language-review/READM
 
 See the [standalone Grid dossier](refactors/2026-08-01-standalone-grid/README.md) and [package guide](../packages/grid/README.md).
 
-## 0.9.1 evidence gate
+## 0.10.0 evidence gate
 
 Implemented semantic/host gates:
 
@@ -150,7 +150,7 @@ Implemented semantic/host gates:
 
 Work still required before any release action:
 
-- gather more real-use data with the 0.9.1 contract;
+- gather more real-use data with the 0.10.0 contract;
 - record pressure around plural layout names, Grid placement/spans, track readability, spacing, and repeated compositions;
 - rerun all release gates after any resulting change;
 - create the release commit/PR;

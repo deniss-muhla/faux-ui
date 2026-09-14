@@ -72,7 +72,7 @@ App shell, toolbar, inspector layout, status panel, and empty/loading/error surf
 
 ### 8. Do not regrow accidental complexity
 
-The unreleased prototype was replaced without compatibility layers. Version 0.9.1 remains an evidence-gathering contract; after 1.0, preserve the singular public surface with SemVer and do not reintroduce deleted package boundaries or speculative adapters.
+The unreleased prototype was replaced without compatibility layers. Version 0.10.0 remains an evidence-gathering contract; after 1.0, preserve the singular public surface with SemVer and do not reintroduce deleted package boundaries or speculative adapters.
 
 ### 9. Profile before caching
 
@@ -196,7 +196,7 @@ The synthetic real-tool fixture is the initial product benchmark. Future real ap
 
 Roadmap changes should cite this evidence rather than speculative ecosystem completeness.
 
-## 0.9 evidence baseline
+## 0.10 evidence baseline
 
 The pre-1.0 implementation establishes:
 
@@ -212,6 +212,6 @@ The pre-1.0 implementation establishes:
 
 ## What "done" does not mean
 
-The 0.9 foundation does not imply a large widget catalog, renderer marketplace, compact protocol, MCP server, virtualized table, or browser-responsive system.
+The 0.10 foundation does not imply a large widget catalog, renderer marketplace, compact protocol, MCP server, virtualized table, or browser-responsive system.
 
 Future scope must keep the coherent text-first path easier to use while preserving deterministic terminal/browser behavior.

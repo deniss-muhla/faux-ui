@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.9.1 — Unreleased
+## 0.10.0 — Unreleased
 
-Pre-1.0 evidence candidate for gathering more real-use data before the stable contract.
+Pre-1.0 evidence candidate for gathering more real-use data before the stable contract. This candidate adds the public `TextSource` contract and axis-specific `ScrollView.followEnd` on top of the 0.9.1 evidence work.
 
 ### Added
 

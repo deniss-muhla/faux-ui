@@ -14,6 +14,12 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
+const uiSourceManifest = JSON.parse(
+  readFileSync(join(root, "packages", "ui", "package.json"), "utf8"),
+);
+const gridSourceManifest = JSON.parse(
+  readFileSync(join(root, "packages", "grid", "package.json"), "utf8"),
+);
 const temporary = mkdtempSync(join(tmpdir(), "faux-ui-grid-package-"));
 const packed = join(temporary, "packed");
 const fixture = join(temporary, "consumer");
@@ -37,10 +43,10 @@ try {
   const uiArchive = join(packed, uiArchiveName);
   const gridArchive = join(packed, gridArchiveName);
 
-  if (uiArchiveName !== "faux-ui-ui-0.9.1.tgz") {
+  if (uiArchiveName !== `faux-ui-ui-${uiSourceManifest.version}.tgz`) {
     throw new Error(`Unexpected UI archive: ${uiArchiveName}`);
   }
-  if (gridArchiveName !== "faux-ui-grid-0.1.0.tgz") {
+  if (gridArchiveName !== `faux-ui-grid-${gridSourceManifest.version}.tgz`) {
     throw new Error(`Unexpected Grid archive: ${gridArchiveName}`);
   }
 
@@ -159,13 +165,16 @@ app.unmount();
   const installedManifest = JSON.parse(
     readFileSync(join(gridRoot, "package.json"), "utf8"),
   );
-  if (installedManifest.version !== "0.1.0") {
+  if (installedManifest.version !== gridSourceManifest.version) {
     throw new Error(`Installed Grid version is ${installedManifest.version}`);
   }
   if (Object.keys(installedManifest.dependencies ?? {}).length !== 0) {
     throw new Error("Grid package must have no direct runtime dependencies.");
   }
-  if (installedManifest.peerDependencies?.["@faux-ui/ui"] !== "^0.9.1") {
+  if (
+    installedManifest.peerDependencies?.["@faux-ui/ui"] !==
+    `^${uiSourceManifest.version}`
+  ) {
     throw new Error("Grid package has the wrong @faux-ui/ui peer range.");
   }
   if (JSON.stringify(installedManifest.pi?.skills) !== '["./skills"]') {

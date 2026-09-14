@@ -2,7 +2,7 @@
 
 ## Status
 
-This document describes the implemented 0.9.1 evidence-candidate architecture. Historical prototype analysis is in the [TUI-first reset dossier](refactors/2026-07-31-tui-first-reset/README.md); the current plural layout API and focused naming changes are recorded in the implemented [API language review](refactors/2026-08-01-api-language-review/README.md).
+This document describes the implemented 0.10.0 evidence-candidate architecture. Historical prototype analysis is in the [TUI-first reset dossier](refactors/2026-07-31-tui-first-reset/README.md); the current plural layout API and focused naming changes are recorded in the implemented [API language review](refactors/2026-08-01-api-language-review/README.md).
 
 ## System shape
 
