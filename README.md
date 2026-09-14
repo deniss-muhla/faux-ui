@@ -22,7 +22,7 @@ bun add @faux-ui/ui react
 
 Requirements:
 
-- Bun 1.3.14+ for the workspace/recommended toolchain;
+- Bun 1.4.0+ for the workspace/recommended toolchain;
 - Node 22+ for terminal applications;
 - React 19.2.8+;
 - current evergreen browsers.
@@ -195,11 +195,52 @@ import { Text } from "@faux-ui/ui";
 | `Box` | Single-child surface with padding, border, title, style, and handlers |
 | `Rows` / `Columns` | Child rows (height tracks) / child columns (width tracks) |
 | `Fill` / `Divider` | Paint an allocated frame without guessed string lengths |
-| `ScrollView` | Shared viewport/content/offset semantics |
+| `ScrollView` | Shared viewport/content/offset semantics with per-axis `followEnd` |
 | `Button` | One focus, pointer, Enter, Space, and `onPress` contract |
 | `ThemeProvider` | Shared semantic palette override |
 
 App shells, panels, action bars, split panes, key hints, and status states are compositions of these primitives.
+
+## Large text
+
+Base `Text` keeps accepting ordinary string children. A replaced string is re-indexed because its prefix is not proven unchanged. For large or streaming values, build an immutable `TextSource` so Faux UI can prove which ranges are unchanged:
+
+```tsx
+import {
+  appendTextSourceSegment,
+  createTextSource,
+  extendTextSourceSegment,
+  replaceTextSourceSegment,
+  ScrollView,
+  Text,
+} from "@faux-ui/ui";
+
+const transcript = createTextSource([{ id: "row-1", text: "first line" }]);
+const grown = appendTextSourceSegment(transcript, {
+  id: "row-2",
+  text: "second line",
+});
+const streamed = extendTextSourceSegment(grown, "row-2", " more text");
+const reconciled = replaceTextSourceSegment(
+  streamed,
+  "row-2",
+  "authoritative text",
+);
+
+const view = (
+  <ScrollView axis="both" followEnd="y">
+    <Text source={reconciled} overflow="clip" />
+  </ScrollView>
+);
+```
+
+`source` and string children are mutually exclusive. Segment IDs are nonempty and unique. Empty IDs or mixed children and `source` throw `TypeError`; duplicate IDs or a missing extension/replacement target throw `RangeError`, and the prior source stays unchanged.
+
+The first frame indexes the complete current source once to build exact line metrics. Later frames prepare only the visible window plus at most one viewport before and after it on each enabled scroll axis, evict visited windows, and count prepared cell slots separately from copied glyph payload. Complete long lines remain reachable through horizontal scrolling. Reset and replacement rebuild affected derived state; append and extension stay bounded by the changed segment and its unfinished Unicode boundary.
+
+`ScrollView.followEnd` accepts `boolean | "x" | "y" | "both"`. Omission or `false` follows neither axis, `true` follows every enabled axis, and a named axis follows only that axis when it is enabled.
+
+The testing entry exposes compact text index snapshots and deterministic work counters, including source code units inspected and metadata records searched. See [docs/testing.md](docs/testing.md) for the behavior matrix and the `large-text-benchmark-v1` reference protocol.
 
 ## Input and focus
 
@@ -272,6 +313,12 @@ Run everything:
 
 ```bash
 bun run check
+```
+
+Run the large-text diagnostic benchmark (the reference protocol and its recorded environment are in [docs/testing.md](docs/testing.md)):
+
+```bash
+bun run benchmark
 ```
 
 Examples:

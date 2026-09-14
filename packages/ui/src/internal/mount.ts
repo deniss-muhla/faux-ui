@@ -5,10 +5,7 @@ import {
   type InputHandler,
   type RuntimeContextValue,
 } from "../runtime.js";
-import {
-  type DispatchResult,
-  InteractionController,
-} from "./controller.js";
+import { type DispatchResult, InteractionController } from "./controller.js";
 import { computeLayout, type LayoutResult } from "./layout.js";
 import {
   type KeyInput,
@@ -23,7 +20,14 @@ import {
 } from "./model.js";
 import { defaultPalette } from "./palette.js";
 import { createReconcilerRoot, type ReconcilerRoot } from "./reconciler.js";
+import {
+  RenderWorkTracker,
+  type RenderStageDurations,
+  type RenderStageWorkCounts,
+  type RenderWorkCounts,
+} from "./render-work.js";
 import { paintScene, type CellScene } from "./scene.js";
+import { TextStore, type TextIndexSnapshot } from "./text-store.js";
 
 export interface RenderFrame {
   readonly root: SemanticNode;
@@ -36,6 +40,7 @@ export interface SemanticMountOptions {
   readonly size: Size;
   readonly onFrame?: (frame: RenderFrame) => void;
   readonly onRecoverableError?: (error: unknown) => void;
+  readonly measureWork?: boolean;
 }
 
 export class SemanticMount {
@@ -44,6 +49,8 @@ export class SemanticMount {
   readonly #inputHandlers = new Set<InputHandler>();
   readonly #frameListeners = new Set<(frame: RenderFrame) => void>();
   readonly #runtime: RuntimeContextValue;
+  readonly #work: RenderWorkTracker | undefined;
+  readonly #textStore = new TextStore();
   #size: Size;
   #frame: RenderFrame | null = null;
   #computing = false;
@@ -52,6 +59,8 @@ export class SemanticMount {
 
   constructor(options: SemanticMountOptions) {
     this.#size = normalizeSize(options.size);
+    this.#work =
+      options.measureWork === true ? new RenderWorkTracker() : undefined;
     if (options.onFrame !== undefined) {
       this.#frameListeners.add(options.onFrame);
     }
@@ -81,12 +90,20 @@ export class SemanticMount {
 
   render(element: ReactNode): void {
     this.#assertRunning();
-    this.#root.render(
-      createElement(InternalRuntimeProvider, {
-        value: this.#runtime,
-        children: element,
-      }),
-    );
+    try {
+      this.#root.render(
+        createElement(InternalRuntimeProvider, {
+          value: this.#runtime,
+          children: element,
+        }),
+      );
+    } catch (error) {
+      try {
+        this.unmount();
+      } finally {
+        throw error;
+      }
+    }
   }
 
   rerender(element: ReactNode): void {
@@ -103,13 +120,56 @@ export class SemanticMount {
     this.#recompute();
   }
 
+  repaint(): void {
+    this.#assertRunning();
+    this.#recompute();
+  }
+
+  workCounts(): RenderWorkCounts {
+    if (this.#work === undefined) {
+      throw new Error("Render work measurement is not enabled for this mount.");
+    }
+    return this.#work.snapshot();
+  }
+
+  clearWorkCounts(): void {
+    if (this.#work === undefined) {
+      throw new Error("Render work measurement is not enabled for this mount.");
+    }
+    this.#work.clearMeasurements();
+  }
+
+  stageDurations(): RenderStageDurations {
+    if (this.#work === undefined) {
+      throw new Error("Render work measurement is not enabled for this mount.");
+    }
+    return this.#work.stageDurations();
+  }
+
+  stageWorkCounts(): RenderStageWorkCounts {
+    if (this.#work === undefined) {
+      throw new Error("Render work measurement is not enabled for this mount.");
+    }
+    return this.#work.stageWorkCounts();
+  }
+
+  textIndex(nodeId: number): TextIndexSnapshot | null {
+    return this.#textStore.inspect(nodeId);
+  }
+
+  textIndexes(): readonly TextIndexSnapshot[] {
+    return this.#textStore.snapshots();
+  }
+
   size(): Size {
     return this.#size;
   }
 
   frame(): RenderFrame {
     if (this.#frame === null) {
-      throw new Error("The faux-ui application has not committed a semantic root.");
+      throw new Error(
+        "The faux-ui application has not committed a semantic root.",
+      );
     }
     return this.#frame;
   }
@@ -182,10 +242,16 @@ export class SemanticMount {
   unmount(): void {
     if (this.#stopped) return;
     this.#stopped = true;
-    this.#root.unmount();
-    this.#inputHandlers.clear();
-    this.#frameListeners.clear();
-    this.#frame = null;
+    try {
+      this.#root.unmount();
+    } finally {
+      this.#controller.dispose();
+      this.#textStore.dispose(this.#work);
+      this.#work?.dispose();
+      this.#inputHandlers.clear();
+      this.#frameListeners.clear();
+      this.#frame = null;
+    }
   }
 
   #recompute(): void {
@@ -201,13 +267,54 @@ export class SemanticMount {
         this.#pendingCompute = false;
         const root = this.#root.getMountedNode();
         if (root === null) {
+          this.#textStore.clear(this.#work);
+          this.#controller.clear();
+          this.#work?.clearTextScene();
           this.#frame = null;
           continue;
         }
-        const layout = computeLayout(root, this.#size);
-        let scene = paintScene(root, layout, this.#controller.snapshot());
+        const work = this.#work;
+        if (work === undefined) {
+          this.#textStore.sync(root);
+        } else {
+          work.measure("indexing", () => this.#textStore.sync(root, work));
+        }
+        const layout = computeLayout(root, this.#size, this.#textStore, work);
+        let scene =
+          this.#work?.measure("scene", () =>
+            paintScene(
+              root,
+              layout,
+              this.#controller.snapshot(),
+              this.#work,
+              this.#textStore,
+            ),
+          ) ??
+          paintScene(
+            root,
+            layout,
+            this.#controller.snapshot(),
+            undefined,
+            this.#textStore,
+          );
         this.#controller.update(root, layout, scene);
-        scene = paintScene(root, layout, this.#controller.snapshot());
+        scene =
+          this.#work?.measure("scene", () =>
+            paintScene(
+              root,
+              layout,
+              this.#controller.snapshot(),
+              this.#work,
+              this.#textStore,
+            ),
+          ) ??
+          paintScene(
+            root,
+            layout,
+            this.#controller.snapshot(),
+            undefined,
+            this.#textStore,
+          );
         this.#controller.update(root, layout, scene);
         const frame: RenderFrame = {
           root,
@@ -224,7 +331,8 @@ export class SemanticMount {
   }
 
   #assertRunning(): void {
-    if (this.#stopped) throw new Error("This faux-ui mount has been unmounted.");
+    if (this.#stopped)
+      throw new Error("This faux-ui mount has been unmounted.");
   }
 }
 

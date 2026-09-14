@@ -32,7 +32,7 @@ The framework intentionally provides less layout power than CSS, Yoga, or genera
 
 ## Runtime baseline
 
-- Package manager and workspace runtime: Bun 1.3.14+.
+- Package manager and workspace runtime: Bun 1.4.0+.
 - Runtime target: Node 22+ for TUI/tooling.
 - Browser target: current evergreen browsers.
 - Authoring bridge: React 19.2.8+.
@@ -45,7 +45,7 @@ The only required app-author package is `@faux-ui/ui`. Optional standalone compo
 
 Required exports:
 
-- `@faux-ui/ui`: components, hooks, public event/theme/layout types;
+- `@faux-ui/ui`: components, hooks, public event/theme/layout types, and the `TextSource` operations;
 - `@faux-ui/ui/dom`: browser `render()` and browser-only options/handle;
 - `@faux-ui/ui/tui`: terminal `render()` and terminal-only options/handle;
 - `@faux-ui/ui/testing`: logical scene/tree/event inspection helpers;
@@ -110,7 +110,7 @@ There are two internal host kinds.
 
 A text node contains:
 
-- a string;
+- a string or an immutable `TextSource`;
 - semantic foreground/background style;
 - horizontal/vertical content alignment;
 - overflow mode.
@@ -197,10 +197,12 @@ Preferred size is pure and host-independent.
 
 ### Text preferred size
 
-- Cellize each newline-delimited line with the shared Unicode policy.
+- Measure newline-delimited line boundaries and widths with the shared Unicode policy.
 - Width is the maximum line cell width.
 - Height is the number of explicit lines.
 - An empty string has one line of width zero.
+- The first measurement of a value may scan its complete current source once to build compact exact per-line metrics. It prepares no grapheme arrays or cell data for offscreen lines, and it retains no second complete-source string.
+- Later frames reuse those metrics while their source boundaries remain valid. Append and extension updates continue the current line width from retained Unicode boundary state instead of revisiting finalized graphemes. A replacement invalidates every metric whose source boundary is no longer proven.
 
 ### Box preferred size
 
@@ -310,6 +312,41 @@ A Unicode data/version change is a semantic change and requires updated golden t
 
 Logical cell equality is guaranteed. Physical glyph artwork may still vary by terminal and installed browser font.
 
+### Large text and windowed rendering
+
+Base `Text` accepts either string children or `source={textSource}`, never both. String text keeps its exact preferred size, scene, scrolling, and interaction behavior. A changed string cannot prove an unchanged prefix, so Faux UI re-indexes it. Bounded incremental work applies only to `TextSource` updates.
+
+The root package exports:
+
+```ts
+type TextSourceSegment = Readonly<{ id: string; text: string }>;
+
+createTextSource(segments?: readonly TextSourceSegment[]): TextSource;
+appendTextSourceSegment(source: TextSource, segment: TextSourceSegment): TextSource;
+extendTextSourceSegment(source: TextSource, id: string, delta: string): TextSource;
+replaceTextSourceSegment(source: TextSource, id: string, text: string): TextSource;
+```
+
+`TextSource` is immutable, renderer-neutral, and exposes no mutable representation. Its logical value is the exact ordered concatenation of segment text with no inserted separator. Creation establishes or resets that complete value, append adds one new segment in source order, extend adds a delta to the named segment's end, and replace swaps the named segment's complete text without moving it. Every operation returns a new source that structurally shares unchanged segments. Creation and append snapshot the supplied `id` and `text` fields, so later caller mutation cannot change the source. Segment IDs are nonempty and unique within a source.
+
+Empty IDs and mixed string children plus `source` throw `TypeError`. Duplicate IDs and missing extension or replacement targets throw `RangeError`. Every failure leaves the prior source unchanged.
+
+The bounded-work limit differs by operation:
+
+- `createTextSource` builds a fresh index for the new value and reuses nothing from a prior value.
+- `appendTextSourceSegment` processes the appended delta, the prior unfinished grapheme and boundary state, required compact index updates, and the current prepared window. Its work does not grow with preceding segments, complete lines, or finalized graphemes.
+- `extendTextSourceSegment` keeps the same bound when the named segment is not final. It resumes from that segment's recorded boundary state instead of rescanning its retained prefix.
+- `replaceTextSourceSegment` invalidates every derived value whose source boundary is no longer proven. The next frame rebuilds the affected line and following compact line metadata, not the retained grapheme history.
+- Neither Faux UI nor callers treat string equality, length, `startsWith`, or full-prefix comparison as append identity.
+
+Scene painting prepares only the visible viewport plus at most one viewport before and after it on each enabled scroll axis. A clipped axis that is not scroll-enabled gets no overscan. Prepared cell slots stay within one viewport area without scrolling, three viewport areas for one-axis scrolling, and nine viewport areas for two-axis scrolling. Cells outside that window are evicted.
+
+Cell slots are not a byte bound. The store counts copied glyph-payload UTF-16 code units separately from cell slots, retains source ranges where possible, releases payload for evicted windows and obsolete source versions, and never retains a duplicate string for the complete source. An arbitrarily large visible or newly extended grapheme counts as changed or visible source data, not constant cache overhead.
+
+Derived state is mount-local. A replacement drops stale line boundaries, widths, checkpoints, prepared cells, copied payload, source references, and scroll extents before the next frame. Removing a node, unmounting, a failed initial mount, and repeated cleanup release that mount's entries exactly once. Disposing one mount does not change another mount's text, metrics, or scrolling.
+
+At an unchanged viewport, a repaint inspects no source line outside the prepared vertical window and prepares no horizontal cell outside the bounded horizontal window, except where an uncached end alignment or ellipsis operation needs source text that compact metrics do not contain. The scene matches the eager text rules at every valid offset.
+
 ## Scroll semantics
 
 `ScrollView` is a semantic viewport around one child.
@@ -319,8 +356,9 @@ Logical cell equality is guaranteed. Physical glyph artwork may still vary by te
 - On a scroll axis, content extent is at least viewport extent and may be larger.
 - On a non-scroll axis, the child uses the viewport extent.
 - Offset is controller state, not a semantic prop or layout input.
-- `followEnd` is an optional controller policy: the initial viewport starts at the enabled-axis end and growing content remains followed only while the prior effective offset was already at that end.
-- Manual scrolling away from the end suspends following; returning to the end resumes it on the next content growth.
+- `followEnd` accepts `boolean | ScrollAxis`: omission or `false` follows neither axis, `true` follows every enabled axis, and `"x"`, `"y"`, or `"both"` follows only the named enabled axes. Naming a disabled axis follows nothing on that axis.
+- Following is per axis: the initial viewport starts at the end of each selected enabled axis, and an axis keeps following only while its own prior effective offset was at its end.
+- Manual scrolling away from an end suspends following for that axis; returning to the end resumes it there on the next content growth.
 - Effective offset is clamped to `0...max(0, content - viewport)` per enabled axis.
 - Changing offset does not change the layout tree.
 - Wheel, terminal mouse, keyboard commands, and testing controls all update the same controller state.
@@ -455,19 +493,27 @@ The shared controller owns interaction state and dispatch.
 - semantic tree;
 - preferred sizes and layout tree;
 - canonical cell scene;
-- controller event trace.
+- controller event trace;
+- `TextSource` segments and chunks;
+- compact text index snapshots, including line ranges, widths, unfinished grapheme, and boundary state;
+- deterministic render-work counters.
 
 Inspection helpers are functions, not a fake renderer.
+
+The work counters report source code units inspected, metadata records searched, logical lines indexed, graphemes prepared, cell slots retained, copied glyph-payload code units retained, cells painted, and entries disposed. Source-code-unit counts include every code unit passed through grapheme segmentation, including a retained unfinished grapheme combined with a new delta. Explicit newline code units are not counted because they never enter segmentation. Metadata-search counts report examined line, segment, and chunk records, and retained-prefix lookup is bounded rather than linear in history.
 
 Conformance requires:
 
 - deterministic unit/property tests for layout;
 - pinned Unicode/cellization golden tests;
 - canonical scene snapshots;
-- identical cross-host controller traces;
+- deterministic work and memory-accounting regressions for indexing, preparation, retention, and disposal;
+- an eager comparison for preferred geometry, scenes, and offsets;
+- identical cross-host controller traces and large-text host parity;
 - real-browser pixel-to-cell tests;
 - ANSI/terminal lifecycle tests;
-- packed-package consumer tests with typecheck and browser bundle checks.
+- packed-package consumer tests with typecheck and browser bundle checks;
+- the recorded `large-text-benchmark-v1` reference protocol for wall-clock gates.
 
 Tests must be included in a TypeScript check; transpile-only test success is insufficient.
 
@@ -478,7 +524,7 @@ Tests must be included in a TypeScript check; transpile-only test success is ins
 - margins, percentages, min/max, aspect ratio, responsive breakpoints;
 - DOM-native controls/forms;
 - rich text editor/input caret semantics;
-- virtualization;
+- general virtualized list, table, tree, or collection components (windowed in-memory text rendering belongs to the text contract);
 - serialized/compact schema;
 - create/exec/MCP CLIs;
 - public third-party renderer API;

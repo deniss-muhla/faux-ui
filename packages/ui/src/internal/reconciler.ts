@@ -14,6 +14,7 @@ import {
   type TextSpec,
   createBoxNode,
   createTextNode,
+  disposeSemanticNode,
   replaceChildren,
   updateBoxNode,
   updateTextNode,
@@ -110,7 +111,9 @@ export function createReconcilerRoot(
       context: HostContext,
     ): TextValueInstance {
       if (!context.insideText) {
-        throw new Error(`Text string ${JSON.stringify(text)} must be inside <Text>.`);
+        throw new Error(
+          `Text string ${JSON.stringify(text)} must be inside <Text>.`,
+        );
       }
       return { kind: "text-value", parent: null, text };
     },
@@ -154,7 +157,9 @@ export function createReconcilerRoot(
       if (child.parent === container) detach(child);
     },
     clearContainer(container: RootContainer): boolean {
-      for (const child of container.children) child.parent = null;
+      for (const child of container.children) {
+        disposeHostInstance(child);
+      }
       container.children = [];
       return false;
     },
@@ -219,10 +224,7 @@ export function createReconcilerRoot(
     getRootHostContext(): HostContext {
       return ROOT_CONTEXT;
     },
-    getChildHostContext(
-      parent: HostContext,
-      type: string,
-    ): HostContext {
+    getChildHostContext(parent: HostContext, type: string): HostContext {
       const insideText = type === INTERNAL_TEXT_TYPE;
       return parent.insideText === insideText ? parent : { insideText };
     },
@@ -231,7 +233,9 @@ export function createReconcilerRoot(
     },
     beforeActiveInstanceBlur(): void {},
     afterActiveInstanceBlur(): void {},
-    detachDeletedInstance(): void {},
+    detachDeletedInstance(instance: HostInstance): void {
+      disposeHostInstance(instance);
+    },
     prepareScopeUpdate(): void {},
     getInstanceFromNode(): null {
       return null;
@@ -382,7 +386,9 @@ export function createReconcilerRoot(
     getMountedNode(): SemanticNode | null {
       if (container.children.length === 0) return null;
       if (container.children.length > 1) {
-        throw new Error("A faux-ui application must have exactly one semantic root.");
+        throw new Error(
+          "A faux-ui application must have exactly one semantic root.",
+        );
       }
       return container.children[0]?.node ?? null;
     },
@@ -446,6 +452,12 @@ function detach(child: ChildInstance): void {
   syncText(parent);
 }
 
+function disposeHostInstance(instance: HostInstance): void {
+  disposeSemanticNode(instance.node);
+  instance.parent = null;
+  instance.children = [];
+}
+
 function syncBox(instance: BoxInstance): void {
   replaceChildren(
     instance.node,
@@ -454,6 +466,10 @@ function syncBox(instance: BoxInstance): void {
 }
 
 function syncText(instance: TextInstance): void {
+  if (instance.node.source !== null) {
+    instance.node.text = "";
+    return;
+  }
   instance.node.text = instance.children.map((child) => child.text).join("");
 }
 
@@ -467,7 +483,9 @@ function assertTextValue(
   child: ChildInstance,
 ): asserts child is TextValueInstance {
   if (child.kind !== "text-value") {
-    throw new Error("Only raw string/number children are allowed inside <Text>.");
+    throw new Error(
+      "Only raw string/number children are allowed inside <Text>.",
+    );
   }
 }
 

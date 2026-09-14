@@ -1,3 +1,4 @@
+import type { TextSource } from "./text-source.js";
 import type { TextOverflow } from "./unicode.js";
 
 export type NodeId = number;
@@ -136,7 +137,8 @@ export interface FocusUiEvent extends UiEvent<"focus" | "blur"> {
 export interface KeyUiEvent extends UiEvent<"keyDown" | "keyUp">, KeyInput {}
 
 export interface PointerUiEvent
-  extends UiEvent<
+  extends
+    UiEvent<
       | "pointerDown"
       | "pointerUp"
       | "pointerMove"
@@ -184,6 +186,7 @@ interface SemanticNodeBase {
 export interface TextNode extends SemanticNodeBase {
   readonly kind: "text";
   text: string;
+  source: TextSource | null;
   overflow: TextOverflow;
   alignX: Align;
   alignY: Align;
@@ -201,7 +204,7 @@ export interface BoxNode extends SemanticNodeBase {
   border: Border | null;
   title: string | null;
   scroll: ScrollAxis | null;
-  followEnd: boolean;
+  followEnd: ScrollAxis | null;
   focusable: boolean;
   disabled: boolean;
 }
@@ -210,6 +213,7 @@ export type SemanticNode = TextNode | BoxNode;
 
 export interface TextSpec extends EventHandlers {
   readonly text?: string;
+  readonly source?: TextSource;
   readonly overflow?: TextOverflow;
   readonly alignX?: Align;
   readonly alignY?: Align;
@@ -234,7 +238,7 @@ export interface BoxSpec extends EventHandlers {
   readonly focusStyle?: Style;
   readonly hoverStyle?: Style;
   readonly scroll?: ScrollAxis;
-  readonly followEnd?: boolean;
+  readonly followEnd?: boolean | ScrollAxis;
   readonly focusable?: boolean;
   readonly disabled?: boolean;
   readonly accessibleLabel?: string;
@@ -249,7 +253,8 @@ export function createTextNode(id: NodeId, spec: TextSpec = {}): TextNode {
     id,
     kind: "text",
     parent: null,
-    text: spec.text ?? "",
+    text: spec.source === undefined ? (spec.text ?? "") : "",
+    source: spec.source ?? null,
     overflow: normalizeOverflow(spec.overflow),
     alignX: normalizeAlign(spec.alignX),
     alignY: normalizeAlign(spec.alignY),
@@ -264,6 +269,7 @@ export function createTextNode(id: NodeId, spec: TextSpec = {}): TextNode {
 }
 
 export function createBoxNode(id: NodeId, spec: BoxSpec = {}): BoxNode {
+  const scroll = normalizeScroll(spec.scroll);
   return {
     id,
     kind: "box",
@@ -280,8 +286,8 @@ export function createBoxNode(id: NodeId, spec: BoxSpec = {}): BoxNode {
     focusStyle: normalizeStyle(spec.focusStyle),
     hoverStyle: normalizeStyle(spec.hoverStyle),
     handlers: readHandlers(spec),
-    scroll: normalizeScroll(spec.scroll),
-    followEnd: spec.followEnd === true,
+    scroll,
+    followEnd: normalizeFollowEnd(scroll, spec.followEnd),
     focusable: spec.focusable === true,
     disabled: spec.disabled === true,
     accessibleLabel: normalizeLabel(spec.accessibleLabel),
@@ -290,7 +296,8 @@ export function createBoxNode(id: NodeId, spec: BoxSpec = {}): BoxNode {
 }
 
 export function updateTextNode(node: TextNode, spec: TextSpec): void {
-  node.text = spec.text ?? "";
+  node.text = spec.source === undefined ? (spec.text ?? "") : "";
+  node.source = spec.source ?? null;
   node.overflow = normalizeOverflow(spec.overflow);
   node.alignX = normalizeAlign(spec.alignX);
   node.alignY = normalizeAlign(spec.alignY);
@@ -316,7 +323,7 @@ export function updateBoxNode(node: BoxNode, spec: BoxSpec): void {
   node.hoverStyle = normalizeStyle(spec.hoverStyle);
   node.handlers = readHandlers(spec);
   node.scroll = normalizeScroll(spec.scroll);
-  node.followEnd = spec.followEnd === true;
+  node.followEnd = normalizeFollowEnd(node.scroll, spec.followEnd);
   node.focusable = spec.focusable === true;
   node.disabled = spec.disabled === true;
   node.accessibleLabel = normalizeLabel(spec.accessibleLabel);
@@ -332,6 +339,29 @@ export function replaceChildren(
   }
   parent.children = [...children];
   for (const child of parent.children) child.parent = parent;
+}
+
+/** Release references held by a host node after React detaches it. */
+export function disposeSemanticNode(node: SemanticNode): void {
+  node.parent = null;
+  node.style = {};
+  node.focusStyle = {};
+  node.hoverStyle = {};
+  node.handlers = {};
+  node.accessibleLabel = null;
+  node.palette = null;
+
+  if (node.kind === "text") {
+    node.text = "";
+    node.source = null;
+    return;
+  }
+
+  for (const child of node.children) disposeSemanticNode(child);
+  node.children = [];
+  node.tracks = null;
+  node.layout = null;
+  node.title = null;
 }
 
 export function walkTree(root: SemanticNode): SemanticNode[] {
@@ -457,9 +487,7 @@ function normalizeBorder(value: BorderInput | undefined): Border | null {
   if (typeof value === "string") return { kind: value };
   return {
     kind: value.kind,
-    ...(value.foreground === undefined
-      ? {}
-      : { foreground: value.foreground }),
+    ...(value.foreground === undefined ? {} : { foreground: value.foreground }),
   };
 }
 
@@ -467,6 +495,18 @@ function normalizeScroll(value: ScrollAxis | undefined): ScrollAxis | null {
   if (value === undefined) return null;
   if (value === "x" || value === "y" || value === "both") return value;
   throw new Error(`Unsupported scroll axis: ${String(value)}.`);
+}
+
+function normalizeFollowEnd(
+  scroll: ScrollAxis | null,
+  value: boolean | ScrollAxis | undefined,
+): ScrollAxis | null {
+  if (scroll === null || value === undefined || value === false) return null;
+  if (value === true || value === "both") return scroll;
+  if (value === "x" || value === "y") {
+    return hasScrollAxis(scroll, value) ? value : null;
+  }
+  throw new Error(`Unsupported follow-end axis: ${String(value)}.`);
 }
 
 function normalizeAlign(value: Align | undefined): Align {
@@ -506,9 +546,7 @@ function readHandlers(value: EventHandlers): EventHandlers {
   return {
     ...(value.onFocus === undefined ? {} : { onFocus: value.onFocus }),
     ...(value.onBlur === undefined ? {} : { onBlur: value.onBlur }),
-    ...(value.onKeyDown === undefined
-      ? {}
-      : { onKeyDown: value.onKeyDown }),
+    ...(value.onKeyDown === undefined ? {} : { onKeyDown: value.onKeyDown }),
     ...(value.onKeyUp === undefined ? {} : { onKeyUp: value.onKeyUp }),
     ...(value.onPress === undefined ? {} : { onPress: value.onPress }),
     ...(value.onPointerDown === undefined

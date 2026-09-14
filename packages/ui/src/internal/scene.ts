@@ -10,13 +10,21 @@ import {
   type NodeId,
   type Point,
   type Rect,
+  type ScrollAxis,
   type SemanticColor,
   type SemanticNode,
   type Style,
   findNode,
   hasScrollAxis,
+  walkTree,
 } from "./model.js";
-import { cellizeLine, clipCellGraphemes } from "./unicode.js";
+import type { RenderWorkTracker } from "./render-work.js";
+import {
+  cellizeLineWithWork,
+  clipCellGraphemes,
+  splitTextLines,
+} from "./unicode.js";
+import type { TextStore } from "./text-store.js";
 
 export interface ResolvedStyle {
   readonly foreground: SemanticColor;
@@ -68,15 +76,44 @@ const DEFAULT_STYLE: ResolvedStyle = {
 };
 
 const BORDER_GLYPHS = {
-  single: { top: "─", right: "│", bottom: "─", left: "│", tl: "┌", tr: "┐", br: "┘", bl: "└" },
-  double: { top: "═", right: "║", bottom: "═", left: "║", tl: "╔", tr: "╗", br: "╝", bl: "╚" },
-  rounded: { top: "─", right: "│", bottom: "─", left: "│", tl: "╭", tr: "╮", br: "╯", bl: "╰" },
+  single: {
+    top: "─",
+    right: "│",
+    bottom: "─",
+    left: "│",
+    tl: "┌",
+    tr: "┐",
+    br: "┘",
+    bl: "└",
+  },
+  double: {
+    top: "═",
+    right: "║",
+    bottom: "═",
+    left: "║",
+    tl: "╔",
+    tr: "╗",
+    br: "╝",
+    bl: "╚",
+  },
+  rounded: {
+    top: "─",
+    right: "│",
+    bottom: "─",
+    left: "│",
+    tl: "╭",
+    tr: "╮",
+    br: "╯",
+    bl: "╰",
+  },
 } as const;
 
 export function paintScene(
   root: SemanticNode,
   layout: LayoutResult,
   state: SceneState = {},
+  work?: RenderWorkTracker,
+  textStore?: TextStore,
 ): CellScene {
   const cells: MutableCell[] = Array.from(
     { length: layout.size.width * layout.size.height },
@@ -91,6 +128,10 @@ export function paintScene(
     width: layout.size.width,
     height: layout.size.height,
     cells,
+    copiedGlyphPayloadCodeUnits:
+      work === undefined
+        ? undefined
+        : Array.from({ length: cells.length }, () => 0),
   };
   const rootClip: Rect = {
     x: 0,
@@ -108,7 +149,35 @@ export function paintScene(
     0,
     DEFAULT_STYLE,
     state,
+    work,
+    textStore,
+    null,
   );
+
+  if (work !== undefined) {
+    const textEntryIds = new Set(
+      walkTree(root).flatMap((node) => (node.kind === "text" ? [node.id] : [])),
+    );
+    if (textStore === undefined) {
+      let retainedSlots = 0;
+      let retainedPayload = 0;
+      for (let index = 0; index < mutable.cells.length; index += 1) {
+        const cell = mutable.cells[index];
+        if (cell !== undefined && textEntryIds.has(cell.ownerId ?? -1)) {
+          retainedSlots += 1;
+          retainedPayload += mutable.copiedGlyphPayloadCodeUnits?.[index] ?? 0;
+        }
+      }
+      work.retainTextScene(textEntryIds, retainedSlots, retainedPayload);
+    } else {
+      const prepared = textStore.preparedCounts();
+      work.retainTextScene(
+        textEntryIds,
+        prepared.cellSlots,
+        prepared.copiedGlyphPayloadCodeUnits,
+      );
+    }
+  }
 
   return mutable;
 }
@@ -150,10 +219,7 @@ export function sceneToText(scene: CellScene): string {
   }).join("\n");
 }
 
-export function hitTestScene(
-  scene: CellScene,
-  point: Point,
-): NodeId | null {
+export function hitTestScene(scene: CellScene, point: Point): NodeId | null {
   return cellAt(scene, point.x, point.y)?.ownerId ?? null;
 }
 
@@ -189,10 +255,16 @@ function paintNode(
   translateY: number,
   inheritedStyle: ResolvedStyle,
   state: SceneState,
+  work?: RenderWorkTracker,
+  textStore?: TextStore,
+  scrollAxes: ScrollAxis | null = null,
 ): void {
   const frame = translateRect(layout.frame, translateX, translateY);
   const clip = intersectRects(parentClip, frame);
-  if (clip.width === 0 || clip.height === 0) return;
+  if (clip.width === 0 || clip.height === 0) {
+    clearPreparedTextNodes(node, textStore);
+    return;
+  }
 
   let style = mergeStyle(inheritedStyle, node.style);
   if (state.hoveredIds?.has(node.id) === true) {
@@ -202,15 +274,15 @@ function paintNode(
     style = mergeStyle(style, node.focusStyle);
   }
 
-  fillRect(scene, frame, clip, style, node.id);
+  fillRect(scene, frame, clip, style, node.id, work);
 
   if (node.kind === "text") {
-    paintText(scene, node, frame, clip, style);
+    paintText(scene, node, frame, clip, style, work, textStore, scrollAxes);
     return;
   }
 
   if (node.border !== null) {
-    paintBorder(scene, node, frame, clip, style);
+    paintBorder(scene, node, frame, clip, style, work);
   }
 
   const contentFrame = translateRect(
@@ -219,12 +291,16 @@ function paintNode(
     translateY,
   );
   const contentClip = intersectRects(clip, contentFrame);
-  if (contentClip.width === 0 || contentClip.height === 0) return;
+  if (contentClip.width === 0 || contentClip.height === 0) {
+    clearPreparedTextNodes(node, textStore);
+    return;
+  }
 
   const requestedOffset = state.offsets?.get(node.id) ?? { x: 0, y: 0 };
   const offset = clampScrollOffset(node, layout, requestedOffset);
   const childTranslateX = translateX - offset.x;
   const childTranslateY = translateY - offset.y;
+  const childScrollAxes = mergeScrollAxes(scrollAxes, node.scroll);
 
   for (let index = 0; index < node.children.length; index += 1) {
     const child = node.children[index];
@@ -239,8 +315,21 @@ function paintNode(
       childTranslateY,
       style,
       state,
+      work,
+      textStore,
+      childScrollAxes,
     );
   }
+}
+
+function clearPreparedTextNodes(
+  node: SemanticNode,
+  textStore?: TextStore,
+): void {
+  if (textStore === undefined) return;
+  walkTree(node).forEach((current) => {
+    if (current.kind === "text") textStore.clearPrepared(current.id);
+  });
 }
 
 function paintText(
@@ -249,21 +338,51 @@ function paintText(
   frame: Rect,
   clip: Rect,
   style: ResolvedStyle,
+  work?: RenderWorkTracker,
+  textStore?: TextStore,
+  scrollAxes: ScrollAxis | null = null,
 ): void {
   if (node.fill) {
-    const token = cellizeLine(node.text)[0] ?? { glyph: " ", width: 1 as const };
+    const token = cellizeLineWithWork(node.text, 0, work)[0] ?? {
+      glyph: " ",
+      width: 1 as const,
+    };
     for (let y = frame.y; y < frame.y + frame.height; y += 1) {
       let x = frame.x;
       while (x < frame.x + frame.width) {
         if (x + token.width > frame.x + frame.width) break;
-        writeGrapheme(scene, x, y, token.glyph, token.width, clip, style, node.id);
+        writeGrapheme(
+          scene,
+          x,
+          y,
+          token.glyph,
+          token.width,
+          clip,
+          style,
+          node.id,
+          work,
+        );
         x += token.width;
       }
     }
     return;
   }
 
-  const lines = node.text.split("\n");
+  if (textStore !== undefined) {
+    paintPreparedText(
+      scene,
+      node,
+      frame,
+      clip,
+      style,
+      scrollAxes,
+      textStore,
+      work,
+    );
+    return;
+  }
+
+  const lines = splitTextLines(node.text, work);
   const visibleLineCount = Math.min(lines.length, frame.height);
   const startY =
     frame.y + alignOffset(frame.height, visibleLineCount, node.alignY);
@@ -271,7 +390,7 @@ function paintText(
   for (let lineIndex = 0; lineIndex < visibleLineCount; lineIndex += 1) {
     const line = lines[lineIndex] ?? "";
     const graphemes = clipCellGraphemes(
-      cellizeLine(line),
+      cellizeLineWithWork(line, 0, work),
       frame.width,
       node.overflow,
     );
@@ -291,8 +410,69 @@ function paintText(
         clip,
         style,
         node.id,
+        work,
       );
       x += grapheme.width;
+    }
+  }
+}
+
+function paintPreparedText(
+  scene: MutableScene,
+  node: Extract<SemanticNode, { kind: "text" }>,
+  frame: Rect,
+  clip: Rect,
+  style: ResolvedStyle,
+  scrollAxes: ScrollAxis | null,
+  textStore: TextStore,
+  work?: RenderWorkTracker,
+): void {
+  const prepared = textStore.prepare(node, frame, clip, scrollAxes, work);
+  for (const line of prepared.lines) {
+    const y = prepared.baseY + line.index;
+    if (line.width > frame.width) {
+      const overflow = textStore.prepareOverflowLine(
+        node.id,
+        line.index,
+        frame.width,
+        node.overflow,
+        work,
+      );
+      const startX =
+        frame.x + alignOffset(frame.width, overflow.width, node.alignX);
+      for (const cell of overflow.cells) {
+        writeGrapheme(
+          scene,
+          startX + cell.column,
+          y,
+          cell.glyph,
+          cell.width,
+          clip,
+          style,
+          node.id,
+          work,
+          cell.copiedGlyphPayloadCodeUnits,
+        );
+      }
+      continue;
+    }
+
+    const lineWidth = line.width;
+    const startX = frame.x + alignOffset(frame.width, lineWidth, node.alignX);
+    for (const cell of line.cells) {
+      if (cell.column + cell.width > lineWidth) continue;
+      writeGrapheme(
+        scene,
+        startX + cell.column,
+        y,
+        cell.glyph,
+        cell.width,
+        clip,
+        style,
+        node.id,
+        work,
+        cell.copiedGlyphPayloadCodeUnits,
+      );
     }
   }
 }
@@ -303,6 +483,7 @@ function paintBorder(
   frame: Rect,
   clip: Rect,
   style: ResolvedStyle,
+  work?: RenderWorkTracker,
 ): void {
   const border = node.border;
   if (border === null || frame.width === 0 || frame.height === 0) return;
@@ -318,7 +499,17 @@ function paintBorder(
   const bottom = frame.y + frame.height - 1;
 
   for (let x = left; x <= right; x += 1) {
-    writeGrapheme(scene, x, top, glyphs.top, 1, clip, borderStyle, node.id);
+    writeGrapheme(
+      scene,
+      x,
+      top,
+      glyphs.top,
+      1,
+      clip,
+      borderStyle,
+      node.id,
+      work,
+    );
     if (bottom !== top) {
       writeGrapheme(
         scene,
@@ -329,11 +520,22 @@ function paintBorder(
         clip,
         borderStyle,
         node.id,
+        work,
       );
     }
   }
   for (let y = top; y <= bottom; y += 1) {
-    writeGrapheme(scene, left, y, glyphs.left, 1, clip, borderStyle, node.id);
+    writeGrapheme(
+      scene,
+      left,
+      y,
+      glyphs.left,
+      1,
+      clip,
+      borderStyle,
+      node.id,
+      work,
+    );
     if (right !== left) {
       writeGrapheme(
         scene,
@@ -344,16 +546,47 @@ function paintBorder(
         clip,
         borderStyle,
         node.id,
+        work,
       );
     }
   }
 
-  writeGrapheme(scene, left, top, glyphs.tl, 1, clip, borderStyle, node.id);
+  writeGrapheme(
+    scene,
+    left,
+    top,
+    glyphs.tl,
+    1,
+    clip,
+    borderStyle,
+    node.id,
+    work,
+  );
   if (right !== left) {
-    writeGrapheme(scene, right, top, glyphs.tr, 1, clip, borderStyle, node.id);
+    writeGrapheme(
+      scene,
+      right,
+      top,
+      glyphs.tr,
+      1,
+      clip,
+      borderStyle,
+      node.id,
+      work,
+    );
   }
   if (bottom !== top) {
-    writeGrapheme(scene, left, bottom, glyphs.bl, 1, clip, borderStyle, node.id);
+    writeGrapheme(
+      scene,
+      left,
+      bottom,
+      glyphs.bl,
+      1,
+      clip,
+      borderStyle,
+      node.id,
+      work,
+    );
     if (right !== left) {
       writeGrapheme(
         scene,
@@ -364,13 +597,14 @@ function paintBorder(
         clip,
         borderStyle,
         node.id,
+        work,
       );
     }
   }
 
   if (node.title !== null && frame.width > 2) {
     const title = clipCellGraphemes(
-      cellizeLine(` ${node.title} `),
+      cellizeLineWithWork(` ${node.title} `, 0, work),
       frame.width - 2,
       "ellipsis-end",
     );
@@ -385,6 +619,7 @@ function paintBorder(
         clip,
         borderStyle,
         node.id,
+        work,
       );
       x += grapheme.width;
     }
@@ -397,16 +632,24 @@ function fillRect(
   clip: Rect,
   style: ResolvedStyle,
   ownerId: NodeId,
+  work?: RenderWorkTracker,
 ): void {
   const visible = intersectRects(frame, clip);
   for (let y = visible.y; y < visible.y + visible.height; y += 1) {
     for (let x = visible.x; x < visible.x + visible.width; x += 1) {
-      setCell(scene, x, y, {
-        glyph: " ",
-        continuation: false,
-        style,
-        ownerId,
-      });
+      setCell(
+        scene,
+        x,
+        y,
+        {
+          glyph: " ",
+          continuation: false,
+          style,
+          ownerId,
+        },
+        0,
+        work,
+      );
     }
   }
 }
@@ -420,24 +663,40 @@ function writeGrapheme(
   clip: Rect,
   style: ResolvedStyle,
   ownerId: NodeId,
+  work?: RenderWorkTracker,
+  copiedGlyphPayloadCodeUnits = glyph.length,
 ): void {
   if (!containsPoint(clip, x, y)) return;
   if (width === 2 && !containsPoint(clip, x + 1, y)) return;
   if (x < 0 || y < 0 || x + width > scene.width || y >= scene.height) return;
 
-  setCell(scene, x, y, {
-    glyph,
-    continuation: false,
-    style,
-    ownerId,
-  });
-  if (width === 2) {
-    setCell(scene, x + 1, y, {
-      glyph: "",
-      continuation: true,
+  setCell(
+    scene,
+    x,
+    y,
+    {
+      glyph,
+      continuation: false,
       style,
       ownerId,
-    });
+    },
+    copiedGlyphPayloadCodeUnits,
+    work,
+  );
+  if (width === 2) {
+    setCell(
+      scene,
+      x + 1,
+      y,
+      {
+        glyph: "",
+        continuation: true,
+        style,
+        ownerId,
+      },
+      0,
+      work,
+    );
   }
 }
 
@@ -446,10 +705,16 @@ function setCell(
   x: number,
   y: number,
   cell: MutableCell,
+  copiedGlyphPayloadCodeUnits: number,
+  work?: RenderWorkTracker,
 ): void {
   const index = y * scene.width + x;
   if (index < 0 || index >= scene.cells.length) return;
   scene.cells[index] = cell;
+  if (scene.copiedGlyphPayloadCodeUnits !== undefined) {
+    scene.copiedGlyphPayloadCodeUnits[index] = copiedGlyphPayloadCodeUnits;
+  }
+  work?.paintCells(1);
 }
 
 function cellAt(scene: CellScene, x: number, y: number): Cell | null {
@@ -483,6 +748,16 @@ function translateRect(rect: Rect, x: number, y: number): Rect {
   return { ...rect, x: rect.x + x, y: rect.y + y };
 }
 
+function mergeScrollAxes(
+  inherited: ScrollAxis | null,
+  current: ScrollAxis | null,
+): ScrollAxis | null {
+  if (inherited === "both" || current === "both") return "both";
+  if (inherited === null) return current;
+  if (current === null || inherited === current) return inherited;
+  return "both";
+}
+
 function clamp(value: number, minimum: number, maximum: number): number {
   if (!Number.isFinite(value)) return minimum;
   return Math.min(maximum, Math.max(minimum, Math.floor(value)));
@@ -499,6 +774,7 @@ interface MutableScene {
   readonly width: number;
   readonly height: number;
   readonly cells: MutableCell[];
+  readonly copiedGlyphPayloadCodeUnits: number[] | undefined;
 }
 
 export function accessibleNodes(root: SemanticNode): Array<{

@@ -19,14 +19,11 @@ import {
   type SemanticNode,
   type UiEvent,
   findNode,
+  hasScrollAxis,
   nodePath,
   walkTree,
 } from "./model.js";
-import {
-  type CellScene,
-  clampScrollOffset,
-  hitTestScene,
-} from "./scene.js";
+import { type CellScene, clampScrollOffset, hitTestScene } from "./scene.js";
 
 export interface ControllerSnapshot {
   readonly focusedId: NodeId | null;
@@ -54,6 +51,7 @@ export class InteractionController {
   #activePressId: NodeId | null = null;
   #offsets = new Map<NodeId, Point>();
   #trace: EventTraceEntry[] = [];
+  #disposed = false;
   readonly #onChange: () => void;
 
   constructor(onChange: () => void = () => {}) {
@@ -61,6 +59,7 @@ export class InteractionController {
   }
 
   update(root: SemanticNode, layout: LayoutResult, scene: CellScene): void {
+    if (this.#disposed) return;
     const oldRoot = this.#root;
     const oldLayout = this.#layout;
     const oldFocused =
@@ -95,7 +94,7 @@ export class InteractionController {
       if (
         node.kind !== "box" ||
         node.scroll === null ||
-        !node.followEnd
+        node.followEnd === null
       ) {
         continue;
       }
@@ -104,11 +103,21 @@ export class InteractionController {
       const requested = this.#offsets.get(node.id) ?? { x: 0, y: 0 };
       const oldNodeLayout =
         oldLayout === null ? null : findLayoutNode(oldLayout.root, node.id);
-      const wasAtEnd =
-        oldNodeLayout === null ||
-        pointsEqual(requested, scrollEndOffset(node, oldNodeLayout));
-      if (!wasAtEnd) continue;
-      const next = scrollEndOffset(node, nodeLayout);
+      const previousEnd =
+        oldNodeLayout === null ? null : scrollEndOffset(node, oldNodeLayout);
+      const nextEnd = scrollEndOffset(node, nodeLayout);
+      const next = {
+        x:
+          hasScrollAxis(node.followEnd, "x") &&
+          (previousEnd === null || requested.x === previousEnd.x)
+            ? nextEnd.x
+            : requested.x,
+        y:
+          hasScrollAxis(node.followEnd, "y") &&
+          (previousEnd === null || requested.y === previousEnd.y)
+            ? nextEnd.y
+            : requested.y,
+      };
       if (!pointsEqual(requested, next)) {
         this.#offsets.set(node.id, next);
         changed = true;
@@ -131,6 +140,22 @@ export class InteractionController {
     }
 
     if (changed) this.#onChange();
+  }
+
+  clear(): void {
+    this.#root = null;
+    this.#layout = null;
+    this.#scene = null;
+    this.#focusedId = null;
+    this.#hoverPath = [];
+    this.#activePressId = null;
+    this.#offsets.clear();
+  }
+
+  dispose(): void {
+    if (this.#disposed) return;
+    this.#disposed = true;
+    this.clear();
   }
 
   snapshot(): ControllerSnapshot {
@@ -166,7 +191,8 @@ export class InteractionController {
   focusNext(reverse = false): boolean {
     const order = this.#focusOrder();
     if (order.length === 0) return this.focus(null);
-    const current = this.#focusedId === null ? -1 : order.indexOf(this.#focusedId);
+    const current =
+      this.#focusedId === null ? -1 : order.indexOf(this.#focusedId);
     const nextIndex = reverse
       ? current <= 0
         ? order.length - 1
@@ -231,9 +257,10 @@ export class InteractionController {
     const focusTarget = nearestFocusable(target);
     if (focusTarget !== null) this.focus(focusTarget.id);
     const pressTarget = nearestPressTarget(target);
-    this.#activePressId = input.button === undefined || input.button === 0
-      ? pressTarget?.id ?? null
-      : null;
+    this.#activePressId =
+      input.button === undefined || input.button === 0
+        ? (pressTarget?.id ?? null)
+        : null;
     return this.#dispatchPointer(target, "pointerDown", input);
   }
 
@@ -320,12 +347,14 @@ export class InteractionController {
     for (const id of previous) {
       if (nextSet.has(id)) continue;
       const node = this.#node(id);
-      if (node !== null) this.#dispatchPointerDirect(node, "pointerLeave", input);
+      if (node !== null)
+        this.#dispatchPointerDirect(node, "pointerLeave", input);
     }
     for (const id of next.toReversed()) {
       if (previousSet.has(id)) continue;
       const node = this.#node(id);
-      if (node !== null) this.#dispatchPointerDirect(node, "pointerEnter", input);
+      if (node !== null)
+        this.#dispatchPointerDirect(node, "pointerEnter", input);
     }
     this.#hoverPath = next;
     this.#onChange();
@@ -336,25 +365,35 @@ export class InteractionController {
     type: "keyDown" | "keyUp",
     input: KeyInput,
   ): DispatchResult {
-    return this.#dispatch(target, type, (current, shared) => ({
-      ...sharedEvent(type, target, current, shared),
-      key: normalizeKey(input.key),
-      alt: input.alt ?? false,
-      ctrl: input.ctrl ?? false,
-      meta: input.meta ?? false,
-      shift: input.shift ?? false,
-      repeat: input.repeat ?? false,
-    }) satisfies KeyUiEvent);
+    return this.#dispatch(
+      target,
+      type,
+      (current, shared) =>
+        ({
+          ...sharedEvent(type, target, current, shared),
+          key: normalizeKey(input.key),
+          alt: input.alt ?? false,
+          ctrl: input.ctrl ?? false,
+          meta: input.meta ?? false,
+          shift: input.shift ?? false,
+          repeat: input.repeat ?? false,
+        }) satisfies KeyUiEvent,
+    );
   }
 
   #dispatchPress(
     target: SemanticNode,
     source: "keyboard" | "pointer",
   ): DispatchResult {
-    return this.#dispatch(target, "press", (current, shared) => ({
-      ...sharedEvent("press", target, current, shared),
-      source,
-    }) satisfies PressUiEvent);
+    return this.#dispatch(
+      target,
+      "press",
+      (current, shared) =>
+        ({
+          ...sharedEvent("press", target, current, shared),
+          source,
+        }) satisfies PressUiEvent,
+    );
   }
 
   #dispatchPointer(
@@ -362,17 +401,22 @@ export class InteractionController {
     type: "pointerDown" | "pointerUp" | "pointerMove",
     input: PointerInput,
   ): DispatchResult {
-    return this.#dispatch(target, type, (current, shared) => ({
-      ...sharedEvent(type, target, current, shared),
-      x: input.x,
-      y: input.y,
-      button: input.button ?? 0,
-      buttons: input.buttons ?? 0,
-      alt: input.alt ?? false,
-      ctrl: input.ctrl ?? false,
-      meta: input.meta ?? false,
-      shift: input.shift ?? false,
-    }) satisfies PointerUiEvent);
+    return this.#dispatch(
+      target,
+      type,
+      (current, shared) =>
+        ({
+          ...sharedEvent(type, target, current, shared),
+          x: input.x,
+          y: input.y,
+          button: input.button ?? 0,
+          buttons: input.buttons ?? 0,
+          alt: input.alt ?? false,
+          ctrl: input.ctrl ?? false,
+          meta: input.meta ?? false,
+          shift: input.shift ?? false,
+        }) satisfies PointerUiEvent,
+    );
   }
 
   #dispatchPointerDirect(
@@ -403,13 +447,18 @@ export class InteractionController {
     deltaX: number,
     deltaY: number,
   ): DispatchResult {
-    return this.#dispatch(target, "scroll", (current, shared) => ({
-      ...sharedEvent("scroll", target, current, shared),
-      previousOffset,
-      offset,
-      deltaX,
-      deltaY,
-    }) satisfies ScrollUiEvent);
+    return this.#dispatch(
+      target,
+      "scroll",
+      (current, shared) =>
+        ({
+          ...sharedEvent("scroll", target, current, shared),
+          previousOffset,
+          offset,
+          deltaX,
+          deltaY,
+        }) satisfies ScrollUiEvent,
+    );
   }
 
   #dispatchFocus(
@@ -417,16 +466,25 @@ export class InteractionController {
     type: "focus" | "blur",
     relatedTarget: SemanticNode | null,
   ): DispatchResult {
-    return this.#dispatch(target, type, (current, shared) => ({
-      ...sharedEvent(type, target, current, shared),
-      relatedTarget: relatedTarget === null ? null : eventTarget(relatedTarget),
-    }) satisfies FocusUiEvent);
+    return this.#dispatch(
+      target,
+      type,
+      (current, shared) =>
+        ({
+          ...sharedEvent(type, target, current, shared),
+          relatedTarget:
+            relatedTarget === null ? null : eventTarget(relatedTarget),
+        }) satisfies FocusUiEvent,
+    );
   }
 
   #dispatch<TEvent extends UiEvent>(
     target: SemanticNode,
     type: keyof HandlerMap,
-    createEvent: (currentTarget: SemanticNode, state: SharedEventState) => TEvent,
+    createEvent: (
+      currentTarget: SemanticNode,
+      state: SharedEventState,
+    ) => TEvent,
   ): DispatchResult {
     const shared = createSharedEventState();
     let handled = false;
@@ -483,16 +541,28 @@ export class InteractionController {
     if (layout === null) return false;
     const previous = this.#offsets.get(scrollTarget.id) ?? { x: 0, y: 0 };
     if (key === "ArrowUp") {
-      return this.setScrollOffset(scrollTarget.id, { ...previous, y: previous.y - 1 });
+      return this.setScrollOffset(scrollTarget.id, {
+        ...previous,
+        y: previous.y - 1,
+      });
     }
     if (key === "ArrowDown") {
-      return this.setScrollOffset(scrollTarget.id, { ...previous, y: previous.y + 1 });
+      return this.setScrollOffset(scrollTarget.id, {
+        ...previous,
+        y: previous.y + 1,
+      });
     }
     if (key === "ArrowLeft") {
-      return this.setScrollOffset(scrollTarget.id, { ...previous, x: previous.x - 1 });
+      return this.setScrollOffset(scrollTarget.id, {
+        ...previous,
+        x: previous.x - 1,
+      });
     }
     if (key === "ArrowRight") {
-      return this.setScrollOffset(scrollTarget.id, { ...previous, x: previous.x + 1 });
+      return this.setScrollOffset(scrollTarget.id, {
+        ...previous,
+        x: previous.x + 1,
+      });
     }
     if (key === "PageUp") {
       return this.setScrollOffset(scrollTarget.id, {
@@ -602,9 +672,7 @@ function nearestFocusable(node: SemanticNode): BoxNode | null {
   return (
     nodePath(node).find(
       (candidate): candidate is BoxNode =>
-        candidate.kind === "box" &&
-        candidate.focusable &&
-        !candidate.disabled,
+        candidate.kind === "box" && candidate.focusable && !candidate.disabled,
     ) ?? null
   );
 }

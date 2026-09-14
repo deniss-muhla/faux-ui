@@ -57,6 +57,14 @@ export type {
   UiEvent,
   UiEventTarget,
 } from "./internal/model.js";
+export {
+  appendTextSourceSegment,
+  createTextSource,
+  extendTextSourceSegment,
+  replaceTextSourceSegment,
+  type TextSource,
+  type TextSourceSegment,
+} from "./internal/text-source.js";
 export type { TextOverflow } from "./internal/unicode.js";
 export { lineCellWidth, splitGraphemes } from "./internal/unicode.js";
 

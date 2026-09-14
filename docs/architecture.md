@@ -49,6 +49,11 @@ packages/ui/
       layout.ts              preferred and exact layout passes
       unicode-data.ts        generated Unicode 17 tables
       unicode.ts             grapheme segmentation/cellization
+      text-source.ts         immutable segmented text input
+      text-index.ts          compact line/segment/chunk index and bounded reads
+      text-window.ts         bounded prepared-cell and overflow cache
+      text-store.ts          mount-owned text orchestration and cleanup
+      render-work.ts         deterministic work counters
       controller.ts          focus/key/pointer/press/scroll state
       scene.ts               canonical painting and row runs
       dom-scene.ts           DOM projection primitives
@@ -66,6 +71,8 @@ scripts/
   generate-unicode-data.mjs  reproducible Unicode table generator
   test-package.mjs           packed foundation consumer gate
   test-grid-package.mjs      two-tarball external extension gate
+  benchmark.ts + benchmark-v1-*.ts
+                             versioned large-text benchmark runner
 ```
 
 `@faux-ui/ui` remains the only required app dependency. Applications needing true two-axis placement may also install `@faux-ui/grid`. Grid declares UI and React as peers, ships no runtime dependency, and its source imports only public package entrypoints.
@@ -166,13 +173,30 @@ Cellization produces width-1/width-2 graphemes. Scene painting creates an explic
 
 A Unicode table change is observable semantic behavior and requires regenerated data plus updated tests.
 
+## Compact text indexing and windows
+
+Each mount owns one `TextStore` keyed by text-node identity. The store keeps no copy of the complete current value, and each text node gets one `CompactTextIndex`.
+
+`CompactTextIndex` holds:
+
+- compact source ranges for segments and chunks, with binary lookup over line, segment, and chunk records;
+- exact width and source range per explicit line, one maximum-width summary, and sparse horizontal checkpoints;
+- one unfinished grapheme, regional-indicator count, and committed-width state for appends;
+- a seam record per chunk that captures the boundary state as if the source ended there.
+
+The first frame for a value scans the source once to build those metrics and retains no grapheme arrays or cell data for offscreen lines. `TextSource` identity proves which ranges stay valid. An append processes the delta, its unfinished boundary state, and required index updates. An extension of a non-final segment resumes at that segment's seam. A replacement invalidates derived data from the affected line onward.
+
+`TextWindowCache` prepares the visible viewport plus at most one viewport before and after it on each enabled scroll axis, and none on a clipped non-scroll axis. It evicts the previous window when bounds or rendering mode change, caches prepared overflow lines, and counts cell slots separately from copied glyph-payload code units. Canonical scene painting consumes only that bounded window and still writes only through the effective clip.
+
+`RenderWorkTracker` stays mount-local. It records indexing, layout, and scene work plus retained and disposed text entries. Only the testing mount enables it; host mounts allocate nothing.
+
 ## Layout
 
 Layout is recomputed as pure derived output from the semantic tree and explicit root size.
 
 ### Pass 1: preferred sizes
 
-- Text measures newline-delimited lines through the shared cellizer.
+- Text measures newline-delimited lines through compact exact indexes built with the shared cellizer.
 - Sequential boxes combine child preferred sizes, fixed tracks, gaps, padding, and borders.
 - Fraction tracks behave as auto only in this pass.
 - Custom-layout boxes call their pure `preferred()` function with copied child sizes.
@@ -209,7 +233,7 @@ One `InteractionController` owns:
 - per-scroll-box offsets;
 - normalized event traces.
 
-Hosts send normalized commands. The controller performs target-to-root dispatch, focus traversal, Enter/Space/pointer activation, hover transitions, scroll clamping, and optional follow-end suspension/resume from prior viewport state.
+Hosts send normalized commands. The controller performs target-to-root dispatch, focus traversal, Enter/Space/pointer activation, hover transitions, scroll clamping, and optional per-axis follow-end suspension/resume from prior viewport state.
 
 Key behavior:
 
@@ -250,12 +274,13 @@ Scene ownership drives host-independent hit testing. `sceneRows()` groups adjace
 
 1. wrap the app in the internal input/focus context;
 2. commit one semantic root;
-3. compute preferred/layout output for the current explicit size;
-4. reconcile controller state;
-5. paint the canonical scene;
-6. notify host frame subscribers.
+3. sync the mount-owned text store with the current text nodes;
+4. compute preferred/layout output for the current explicit size;
+5. reconcile controller state;
+6. paint the canonical scene from each text node's bounded prepared window;
+7. notify host frame subscribers.
 
-React commits, controller changes, and size changes all enter the same recomputation path. Re-entrancy is coalesced. No cache exists before profiling demonstrates a need.
+React commits, controller changes, and size changes all enter the same recomputation path. Re-entrancy is coalesced. Failed initial renders, root removal, and unmount release text indexes, prepared windows, layout, scene, and controller state exactly once. The text store exists because the recorded event-to-frame profile showed retained history controlling update cost; any other cache still needs the same evidence first.
 
 ## DOM host
 
@@ -308,6 +333,10 @@ The release gate combines:
 - unit tests for Unicode, sequential/custom/Grid layout, scene, controller, React, DOM sizing, ANSI, TUI parsing/lifecycle;
 - 1,000 randomized core layout cases plus 500 randomized Grid placements;
 - all official Unicode 17 grapheme boundary cases;
+- deterministic work and disposal counters through `/testing`, including source-code-unit and metadata-search counts;
+- an eager oracle for preferred trees, frames, content extents, canonical cells, ownership, offsets, and event traces;
+- large-text suites for `TextSource`, incremental indexing, prepared-window bounds, eviction, overflow, follow-end, lifecycle, and static/fake-TUI/Chromium parity;
+- `large-text-benchmark-v1` report and option tests, and the recorded reference protocol for wall-clock gates;
 - real-Chromium DOM projection/input/resize/accessibility tests;
 - serious queue/detail/metadata fixture tests;
 - packed foundation and standalone Grid tarball clean installs;

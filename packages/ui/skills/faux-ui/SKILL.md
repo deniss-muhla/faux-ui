@@ -88,6 +88,9 @@ Call `app.unmount()` during cleanup.
 - `ScrollView` accepts one semantic child and owns scrolling.
 - Use `Fill` and `Divider` to paint an allocated frame.
 - Never calculate display width with JavaScript `string.length`.
+- Pass ordinary text as string children. Use `source={textSource}` only for large or streaming values, and never combine `source` with children.
+- Build sources with `createTextSource`, `appendTextSourceSegment`, `extendTextSourceSegment`, and `replaceTextSourceSegment`. Keep one segment per logical block, extend the streaming block, and replace it on authoritative updates. IDs must be nonempty and unique.
+- A new string or reset is indexed in full; append and extension work stays bounded by the changed segment and its unfinished Unicode boundary. Do not rejoin or rescan retained history on each update.
 
 ## Interaction and styling
 
@@ -97,6 +100,7 @@ Call `app.unmount()` during cleanup.
 - Use `useFocusManager` only for renderer-neutral focus movement or clearing.
 - Use `style`, `focusStyle`, and `hoverStyle` with semantic colors.
 - Use `ThemeProvider` or host palette options to map semantic colors to `#RRGGBB` values.
+- Use `ScrollView.followEnd` (`boolean | "x" | "y" | "both"`) to follow each enabled axis independently. Use `followEnd="y"` for a two-axis log viewport that must keep the Architect's horizontal offset.
 - Do not add action registries, manual rerenders, public node IDs, or host bridges.
 
 ## Test through the public scene
@@ -110,7 +114,7 @@ if (app.getText() !== "古a") throw new Error("Unexpected scene");
 app.unmount();
 ```
 
-Use `getText()`, `getScene()`, `getLayout()`, and event dispatch helpers instead of DOM structure or ANSI snapshots unless host projection itself is under test.
+Use `getText()`, `getScene()`, `getLayout()`, and event dispatch helpers instead of DOM structure or ANSI snapshots unless host projection itself is under test. In tests only, `@faux-ui/ui/testing` also exposes `inspectTextSource`, compact text index snapshots, and deterministic work counters for indexing, preparation, retained cells, and disposal.
 
 ## Review checklist
 

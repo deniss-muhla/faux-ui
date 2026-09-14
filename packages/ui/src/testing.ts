@@ -4,6 +4,17 @@ import type { DispatchResult, EventTraceEntry } from "./internal/controller.js";
 import type { LayoutResult, PreferredNode } from "./internal/layout.js";
 import { SemanticMount } from "./internal/mount.js";
 import type {
+  RenderStageDurations,
+  RenderStageWorkCounts,
+  RenderWorkCounts,
+} from "./internal/render-work.js";
+import type { TextIndexSnapshot } from "./internal/text-store.js";
+import {
+  inspectTextSourceValue,
+  type TextSource,
+  type TextSourceInspection,
+} from "./internal/text-source.js";
+import type {
   KeyInput,
   Point,
   PointerInput,
@@ -33,11 +44,33 @@ export {
   sceneToText,
   splitGraphemes,
 };
-export type { CellScene, EventTraceEntry, LayoutResult, PreferredNode, SceneRow };
+export type {
+  CellScene,
+  EventTraceEntry,
+  LayoutResult,
+  PreferredNode,
+  RenderStageDurations,
+  RenderStageWorkCounts,
+  RenderWorkCounts,
+  SceneRow,
+  TextIndexSnapshot,
+  TextSourceInspection,
+};
+
+export function inspectTextSource(source: TextSource): TextSourceInspection {
+  return inspectTextSourceValue(source);
+}
 
 export interface StaticRenderHandle {
   rerender(node: ReactNode): void;
   setSize(size: Size): void;
+  repaint(): void;
+  getWorkCounts(): RenderWorkCounts;
+  getStageDurations(): RenderStageDurations;
+  getStageWorkCounts(): RenderStageWorkCounts;
+  clearWorkCounts(): void;
+  getTextIndex(nodeId: number): TextIndexSnapshot | null;
+  getTextIndexes(): readonly TextIndexSnapshot[];
   getLayout(): LayoutResult;
   getScene(): CellScene;
   getText(): string;
@@ -53,11 +86,8 @@ export interface StaticRenderHandle {
   unmount(): void;
 }
 
-export function renderStatic(
-  node: ReactNode,
-  size: Size,
-): StaticRenderHandle {
-  const mount = new SemanticMount({ size });
+export function renderStatic(node: ReactNode, size: Size): StaticRenderHandle {
+  const mount = new SemanticMount({ size, measureWork: true });
   mount.render(node);
   return {
     rerender(next): void {
@@ -65,6 +95,27 @@ export function renderStatic(
     },
     setSize(next): void {
       mount.setSize(next);
+    },
+    repaint(): void {
+      mount.repaint();
+    },
+    getWorkCounts(): RenderWorkCounts {
+      return mount.workCounts();
+    },
+    getStageDurations(): RenderStageDurations {
+      return mount.stageDurations();
+    },
+    getStageWorkCounts(): RenderStageWorkCounts {
+      return mount.stageWorkCounts();
+    },
+    clearWorkCounts(): void {
+      mount.clearWorkCounts();
+    },
+    getTextIndex(nodeId: number): TextIndexSnapshot | null {
+      return mount.textIndex(nodeId);
+    },
+    getTextIndexes(): readonly TextIndexSnapshot[] {
+      return mount.textIndexes();
     },
     getLayout(): LayoutResult {
       return mount.frame().layout;

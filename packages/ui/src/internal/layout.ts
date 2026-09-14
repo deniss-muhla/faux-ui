@@ -9,6 +9,7 @@ import {
   hasScrollAxis,
   normalizeSize,
 } from "./model.js";
+import type { RenderWorkTracker } from "./render-work.js";
 import { textPreferredSize } from "./unicode.js";
 
 export interface PreferredNode {
@@ -34,18 +35,31 @@ export interface LayoutResult {
   readonly root: LayoutNode;
 }
 
-export function computePreferredTree(root: SemanticNode): PreferredNode {
+/** Compact text metrics supplied by a mount-owned renderer index. */
+export interface TextMeasurement {
+  preferredSize(nodeId: number): Size | null;
+}
+
+export function computePreferredTree(
+  root: SemanticNode,
+  textMeasurement?: TextMeasurement,
+  work?: RenderWorkTracker,
+): PreferredNode {
   if (root.kind === "text") {
     return {
       nodeId: root.id,
       kind: root.kind,
-      size: textPreferredSize(root.text),
+      size:
+        textMeasurement?.preferredSize(root.id) ??
+        textPreferredSize(root.text, work),
       children: [],
     };
   }
 
   validateBoxShape(root);
-  const children = root.children.map(computePreferredTree);
+  const children = root.children.map((child) =>
+    computePreferredTree(child, textMeasurement, work),
+  );
   const content = preferredBoxContent(root, children);
   const chrome = chromeSize(root);
   return {
@@ -59,15 +73,29 @@ export function computePreferredTree(root: SemanticNode): PreferredNode {
   };
 }
 
-export function computeLayout(root: SemanticNode, inputSize: Size): LayoutResult {
+export function computeLayout(
+  root: SemanticNode,
+  inputSize: Size,
+  textMeasurement?: TextMeasurement,
+  work?: RenderWorkTracker,
+): LayoutResult {
   const size = normalizeSize(inputSize);
-  const preferred = computePreferredTree(root);
+  const preferred =
+    work?.measure("indexing", () =>
+      computePreferredTree(root, textMeasurement, work),
+    ) ?? computePreferredTree(root, textMeasurement);
   const frame: Rect = { x: 0, y: 0, width: size.width, height: size.height };
-  return {
-    size,
-    preferred,
-    root: layoutNode(root, preferred, frame, frame),
-  };
+  return (
+    work?.measure("layout", () => ({
+      size,
+      preferred,
+      root: layoutNode(root, preferred, frame, frame),
+    })) ?? {
+      size,
+      preferred,
+      root: layoutNode(root, preferred, frame, frame),
+    }
+  );
 }
 
 export function findLayoutNode(
@@ -142,7 +170,9 @@ function layoutNode(
     const childPreferred = preferred.children[index];
     const childFrame = childFrames[index];
     if (childPreferred === undefined || childFrame === undefined) {
-      throw new Error(`Missing allocation for child ${index} of box ${node.id}.`);
+      throw new Error(
+        `Missing allocation for child ${index} of box ${node.id}.`,
+      );
     }
     return layoutNode(child, childPreferred, childFrame, childClip);
   });
@@ -154,7 +184,8 @@ function layoutNode(
     clip,
     contentFrame,
     contentSize:
-      allocation.contentSize ?? deriveContentSize(node, contentFrame, childFrames),
+      allocation.contentSize ??
+      deriveContentSize(node, contentFrame, childFrames),
     children,
   };
 }
@@ -229,9 +260,10 @@ function allocateChildren(
       absoluteLayoutRect(frame, contentFrame, index),
     );
     const derived = deriveContentSize(box, contentFrame, frames);
-    const requested = output.contentSize === undefined
-      ? derived
-      : normalizeLayoutSize(output.contentSize, "layout content size");
+    const requested =
+      output.contentSize === undefined
+        ? derived
+        : normalizeLayoutSize(output.contentSize, "layout content size");
     return {
       frames,
       contentSize: {
@@ -337,10 +369,7 @@ function resolveTracks(
 
   let remainder =
     remaining -
-    fractionIndexes.reduce(
-      (total, index) => total + (resolved[index] ?? 0),
-      0,
-    );
+    fractionIndexes.reduce((total, index) => total + (resolved[index] ?? 0), 0);
   for (const index of fractionIndexes) {
     if (remainder === 0) break;
     resolved[index] = (resolved[index] ?? 0) + 1;
@@ -377,8 +406,7 @@ function deriveContentSize(
 
 function effectiveTracks(box: BoxNode): readonly Track[] {
   if (box.axis === null) return [];
-  const tracks =
-    box.tracks ?? box.children.map((): Track => "auto");
+  const tracks = box.tracks ?? box.children.map((): Track => "auto");
   if (tracks.length !== box.children.length) {
     throw new Error(
       `Box ${box.id} has ${box.children.length} children but ${tracks.length} tracks.`,
@@ -390,14 +418,18 @@ function effectiveTracks(box: BoxNode): readonly Track[] {
 function validateBoxShape(box: BoxNode): void {
   if (box.layout !== null) {
     if (box.axis !== null || box.tracks !== null || box.gap !== 0) {
-      throw new Error("Custom layout boxes cannot also define axis, tracks, or gap.");
+      throw new Error(
+        "Custom layout boxes cannot also define axis, tracks, or gap.",
+      );
     }
     return;
   }
 
   if (box.axis === null) {
     if (box.children.length > 1) {
-      throw new Error(`Box ${box.id} without an axis accepts at most one child.`);
+      throw new Error(
+        `Box ${box.id} without an axis accepts at most one child.`,
+      );
     }
     if (box.tracks !== null) {
       throw new Error(`Box ${box.id} cannot define tracks without an axis.`);

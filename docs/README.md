@@ -27,6 +27,7 @@ A dated refactor decision is not implemented reality until the source, specifica
 | 2026-08-01 | Public-language and spacing review                            | Implemented in 0.9.1 candidate            | [Dossier](refactors/2026-08-01-api-language-review/README.md)                                            |
 | 2026-08-01 | Standalone CSS-grid-like extension and public layout contract | Implemented; unreleased                   | [Dossier](refactors/2026-08-01-standalone-grid/README.md), [`@faux-ui/grid`](../packages/grid/README.md) |
 | 2026-08-02 | Cross-agent package Skill packaging                           | Implemented; unreleased                   | [Packaging reference](agent-skill-packaging.md)                                                          |
+| 2026-09-14 | Large in-memory text rendering                                | Implemented in unreleased candidate       | [Specification](spec.md), [testing matrix](testing.md), [roadmap](roadmap.md)                            |
 
 ## Refactor dossier convention
 

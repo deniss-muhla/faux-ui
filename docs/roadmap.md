@@ -2,11 +2,21 @@
 
 ## Current position
 
-Status: **0.9.1 implementation complete; gathering evidence before release and 1.0**
+Status: **0.9.1 implementation complete; large-text windowing implemented and unreleased; gathering evidence before release and 1.0**
 
 The destructive TUI-first reset, rendering stabilization, and focused public-language cutover are implemented on `refactor/tui-first-reset`. The branch has not been merged, tagged, or published. Version 0.9.1 intentionally leaves room for further evidence before the stable 1.0 contract.
 
 The authoritative implemented behavior is [spec.md](spec.md), implemented structure is [architecture.md](architecture.md), and product scope is [strategy.md](strategy.md). Development history is indexed in [docs/README.md](README.md). The implemented plural-layout rationale is in the [2026-08-01 API language decision](refactors/2026-08-01-api-language-review/03-decision.md).
+
+## Active: large-text rendering
+
+Large in-memory text renders through compact exact indexes and bounded prepared windows. The work is implemented in the unreleased candidate and is not merged, tagged, or published.
+
+- Behavior contract: [spec.md](spec.md), in the text preferred-size, large-text windowing, scroll, and inspection sections.
+- Verification matrix and the `large-text-benchmark-v1` reference protocol: [testing.md](testing.md).
+- Host acceptance and the original failure evidence: the Seed repository `world-seed-project/seed`, under `docs/faux-ui-feedback.md` and `openspec/changes/faux-ui-large-text-rendering/`.
+
+Do not restate the behavior here. Update the specification first, then the tests and benchmark evidence.
 
 ## Completed reset milestones
 
@@ -158,7 +168,7 @@ These are evidence-gated, not promised:
 4. generated readable JSON adapter;
 5. inspection CLI over `/testing`;
 6. MCP integration over the stable inspection contract;
-7. virtualized data tables/trees only after measured real demand;
+7. virtualized data tables, trees, or general collection views only after measured real demand;
 8. third-party renderer API only after a real external renderer exists.
 
 ## Priority rule
@@ -168,5 +178,5 @@ For post-1.0 work:
 1. fix parity or packaging regressions before adding components;
 2. require specified TUI behavior and cross-host tests;
 3. prefer recipes until repetition is demonstrated;
-4. profile the serious fixture before caching or virtualization;
+4. profile the serious fixture before adding caches or collection virtualization;
 5. keep browser and terminal dependency graphs isolated.

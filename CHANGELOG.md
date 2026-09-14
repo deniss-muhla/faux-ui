@@ -19,6 +19,10 @@ Pre-1.0 evidence candidate for gathering more real-use data before the stable co
 - Grouped row/style-run DOM projection, viewport/container fitting, pixel-to-cell input, and minimal application/action accessibility.
 - ANSI TUI projection, terminal keyboard/SGR mouse/resize handling, fake IO, and lifecycle restoration.
 - Static layout/scene/text/event inspection API.
+- Immutable persistent `TextSource` segments (`createTextSource`, `appendTextSourceSegment`, `extendTextSourceSegment`, `replaceTextSourceSegment`) for bounded incremental updates; ordinary string `Text` remains supported and keeps exact rendering.
+- Compact exact text indexing with viewport-bounded prepared cells, separate cell-slot and copied-glyph-payload accounting, window eviction, mount-local cleanup, and unchanged preferred sizes.
+- Axis-specific `ScrollView.followEnd` accepting `boolean | "x" | "y" | "both"`.
+- Deterministic text work counters, an eager rendering oracle, static/fake-TUI/Chromium large-text parity coverage, and the versioned `large-text-benchmark-v1` benchmark runner.
 - Serious dual-host fixture, official Unicode conformance tests, property tests, Chromium tests, packed-consumer tests, and CI.
 
 ### Fixed

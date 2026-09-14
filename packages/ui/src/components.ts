@@ -19,10 +19,8 @@ import {
   type Track,
 } from "./internal/model.js";
 import { defaultPalette, mergePalette } from "./internal/palette.js";
-import {
-  cellizeLine,
-  type TextOverflow,
-} from "./internal/unicode.js";
+import type { TextSource } from "./internal/text-source.js";
+import { cellizeLine, type TextOverflow } from "./internal/unicode.js";
 
 export const INTERNAL_BOX_TYPE = "faux-box";
 export const INTERNAL_TEXT_TYPE = "faux-text";
@@ -76,14 +74,27 @@ export interface TextAlign {
   readonly y?: Align;
 }
 
-export interface TextProps extends CommonProps {
-  readonly children?: TextContent;
+interface TextPresentationProps extends CommonProps {
   readonly overflow?: TextOverflow;
   readonly align?: TextAlign;
 }
 
-export interface FillProps
-  extends Omit<TextProps, "children" | "overflow" | "align"> {
+export type TextProps = TextPresentationProps &
+  (
+    | {
+        readonly children?: TextContent;
+        readonly source?: never;
+      }
+    | {
+        readonly source: TextSource;
+        readonly children?: never;
+      }
+  );
+
+export interface FillProps extends Omit<
+  TextPresentationProps,
+  "overflow" | "align"
+> {
   readonly glyph?: string;
 }
 
@@ -94,19 +105,17 @@ export interface DividerProps extends Omit<FillProps, "glyph"> {
 
 export interface ScrollViewProps extends BoxProps {
   readonly axis?: ScrollAxis;
-  /** Follow growing content only while the viewport is already at its end. */
-  readonly followEnd?: boolean;
+  /** Follow growing content only while the selected viewport axes are at their ends. */
+  readonly followEnd?: boolean | ScrollAxis;
 }
 
 export type ButtonTone =
-  | "neutral"
-  | "primary"
-  | "success"
-  | "warning"
-  | "danger";
+  "neutral" | "primary" | "success" | "warning" | "danger";
 
-export interface ButtonProps
-  extends Omit<BoxProps, "focusable" | "disabled" | "onPress"> {
+export interface ButtonProps extends Omit<
+  BoxProps,
+  "focusable" | "disabled" | "onPress"
+> {
   readonly children?: ReactNode;
   readonly label?: string;
   readonly keyHint?: string;
@@ -140,16 +149,8 @@ export function Box({ children, ...props }: BoxProps): ReactNode {
 }
 
 /** Advanced extension point for pure renderer-neutral cell layout packages. */
-export function Layout({
-  children,
-  layout,
-  ...props
-}: LayoutProps): ReactNode {
-  return hostBox(
-    { ...props, layout },
-    children,
-    useContext(PaletteContext),
-  );
+export function Layout({ children, layout, ...props }: LayoutProps): ReactNode {
+  return hostBox({ ...props, layout }, children, useContext(PaletteContext));
 }
 
 /** Places each child in one column from left to right. */
@@ -190,16 +191,26 @@ export function Rows({
   );
 }
 
-export function Text({ children, align, ...props }: TextProps): ReactNode {
-  return createElement(
-    INTERNAL_TEXT_TYPE,
-    {
-      ...props,
-      ...textAlignmentProps(align),
-      palette: useContext(PaletteContext),
-    },
-    children,
-  );
+export function Text({
+  children,
+  source,
+  align,
+  ...props
+}: TextProps): ReactNode {
+  if (source !== undefined && children !== undefined) {
+    throw new TypeError(
+      "Text accepts either string children or source, never both.",
+    );
+  }
+  const hostProps = {
+    ...props,
+    ...(source === undefined ? {} : { source }),
+    ...textAlignmentProps(align),
+    palette: useContext(PaletteContext),
+  };
+  return source === undefined
+    ? createElement(INTERNAL_TEXT_TYPE, hostProps, children)
+    : createElement(INTERNAL_TEXT_TYPE, hostProps);
 }
 
 export function Fill({ glyph = " ", ...props }: FillProps): ReactNode {
@@ -274,14 +285,15 @@ export function Button({
   ...props
 }: ButtonProps): ReactNode {
   const visible = children ?? label ?? "";
-  const text = keyHint === undefined
-    ? visible
-    : createElement(
-        Columns,
-        { tracks: ["1fr", "auto"], gap: 1 },
-        createElement(Text, { overflow: "ellipsis-end" }, visible),
-        createElement(Text, { style: { foreground: "muted" } }, keyHint),
-      );
+  const text =
+    keyHint === undefined
+      ? visible
+      : createElement(
+          Columns,
+          { tracks: ["1fr", "auto"], gap: 1 },
+          createElement(Text, { overflow: "ellipsis-end" }, visible),
+          createElement(Text, { style: { foreground: "muted" } }, keyHint),
+        );
   const base = buttonStyle(tone, selected, disabled);
   return hostBox(
     {

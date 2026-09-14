@@ -24,10 +24,13 @@ const run = (command, args, cwd = root) =>
 
 try {
   run("bun", ["run", "--cwd", "packages/ui", "build"]);
-  const archiveName = run(
-    "npm",
-    ["pack", "./packages/ui", "--pack-destination", packed, "--silent"],
-  ).trim();
+  const archiveName = run("npm", [
+    "pack",
+    "./packages/ui",
+    "--pack-destination",
+    packed,
+    "--silent",
+  ]).trim();
   const archive = join(packed, archiveName);
   if (archiveName !== "faux-ui-ui-0.9.1.tgz") {
     throw new Error(`Unexpected UI archive: ${archiveName}`);
@@ -101,10 +104,17 @@ try {
   );
   writeFileSync(
     join(fixture, "app.tsx"),
-    `import { Button, Columns, Rows, Text, useInput } from "@faux-ui/ui";
+    `import { useState } from "react";
+import { appendTextSourceSegment, Button, Columns, createTextSource, extendTextSourceSegment, replaceTextSourceSegment, Rows, Text, useInput, type TextSource, type TextSourceSegment } from "@faux-ui/ui";
+const initialSegment: TextSourceSegment = { id: "initial", text: "packed" };
+const initialSource: TextSource = createTextSource([initialSegment]);
+const appendedSource = appendTextSourceSegment(initialSource, { id: "second", text: " consumer" });
+const extendedSource = extendTextSourceSegment(appendedSource, "second", " types");
+const replacedSource = replaceTextSourceSegment(extendedSource, "initial", "packed");
 export function App() {
+  const [source, setSource] = useState(replacedSource);
   useInput(() => false);
-  return <Rows tracks={[1, "1fr"]}><Text>packed</Text><Columns tracks={["1fr", "auto"]}><Text>consumer</Text><Button label="Run" keyHint="r" focusStyle={{background:"focus"}} hoverStyle={{background:"selection"}} onPress={() => {}} /></Columns></Rows>;
+  return <Rows tracks={[1, "1fr"]}><Text source={source} /><Columns tracks={["1fr", "auto"]}><Text>consumer</Text><Button label="Run" keyHint="r" focusStyle={{background:"focus"}} hoverStyle={{background:"selection"}} onPress={() => setSource((current) => extendTextSourceSegment(current, "second", "!"))} /></Columns></Rows>;
 }
 `,
   );
@@ -169,7 +179,10 @@ app.unmount();
 
   const fauxPackages = run(
     "bash",
-    ["-lc", "find node_modules/@faux-ui -mindepth 1 -maxdepth 1 -type d -printf '%f\\n' | sort"],
+    [
+      "-lc",
+      "find node_modules/@faux-ui -mindepth 1 -maxdepth 1 -type d -printf '%f\\n' | sort",
+    ],
     fixture,
   ).trim();
   if (fauxPackages !== "ui") {
@@ -231,7 +244,9 @@ app.unmount();
         String(imported.path).startsWith("node:") ||
         String(imported.original ?? "").startsWith("node:")
       ) {
-        throw new Error(`DOM module graph leaked Node import: ${imported.original ?? imported.path}`);
+        throw new Error(
+          `DOM module graph leaked Node import: ${imported.original ?? imported.path}`,
+        );
       }
     }
   }

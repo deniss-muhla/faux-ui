@@ -6,6 +6,7 @@ import {
   UNICODE_VERSION,
   WIDE_RANGES,
 } from "./unicode-data.js";
+import type { RenderWorkTracker } from "./render-work.js";
 
 export { UNICODE_VERSION };
 
@@ -56,6 +57,14 @@ interface CodePointInfo {
 }
 
 export function splitGraphemes(input: string): string[] {
+  return splitGraphemesWithWork(input);
+}
+
+export function splitGraphemesWithWork(
+  input: string,
+  work?: RenderWorkTracker,
+): string[] {
+  work?.inspectSourceCodeUnits(input.length);
   if (input.length === 0) return [];
 
   const points = Array.from(input, readCodePoint);
@@ -72,6 +81,12 @@ export function splitGraphemes(input: string): string[] {
 
   result.push(current);
   return result;
+}
+
+export function isControlGrapheme(grapheme: string): boolean {
+  return Array.from(grapheme, readCodePoint).some((point) =>
+    isControl(point.grapheme),
+  );
 }
 
 export function graphemeCellWidth(grapheme: string): 0 | 1 | 2 {
@@ -117,11 +132,24 @@ export function graphemeCellWidth(grapheme: string): 0 | 1 | 2 {
   return width;
 }
 
-export function cellizeLine(input: string, startColumn = 0): CellGrapheme[] {
+export function cellizeLine(
+  input: string,
+  startColumn = 0,
+): CellGrapheme[] {
+  return cellizeLineWithWork(input, startColumn);
+}
+
+export function cellizeLineWithWork(
+  input: string,
+  startColumn = 0,
+  work?: RenderWorkTracker,
+): CellGrapheme[] {
   const output: Array<{ glyph: string; width: 1 | 2 }> = [];
   let column = normalizeColumn(startColumn);
+  const graphemes = splitGraphemesWithWork(input, work);
+  work?.prepareGraphemes(graphemes.length);
 
-  for (const grapheme of splitGraphemes(input)) {
+  for (const grapheme of graphemes) {
     if (grapheme === "\t") {
       const count = TAB_WIDTH - (column % TAB_WIDTH);
       for (let index = 0; index < count; index += 1) {
@@ -158,7 +186,15 @@ export function cellizeLine(input: string, startColumn = 0): CellGrapheme[] {
 }
 
 export function lineCellWidth(input: string, startColumn = 0): number {
-  return cellizeLine(input, startColumn).reduce(
+  return lineCellWidthWithWork(input, startColumn);
+}
+
+export function lineCellWidthWithWork(
+  input: string,
+  startColumn = 0,
+  work?: RenderWorkTracker,
+): number {
+  return cellizeLineWithWork(input, startColumn, work).reduce(
     (total, grapheme) => total + grapheme.width,
     0,
   );
@@ -199,14 +235,28 @@ export function clipCellGraphemes(
   return [...takePrefix(graphemes, contentWidth), ellipsis];
 }
 
-export function textPreferredSize(text: string): {
+export function splitTextLines(
+  text: string,
+  work?: RenderWorkTracker,
+): string[] {
+  work?.inspectSourceCodeUnits(text.length);
+  const lines = text.split("\n");
+  work?.indexLines(lines.length);
+  return lines;
+}
+
+export function textPreferredSize(
+  text: string,
+  work?: RenderWorkTracker,
+): {
   readonly width: number;
   readonly height: number;
 } {
-  const lines = text.split("\n");
+  const lines = splitTextLines(text, work);
   return {
     width: lines.reduce(
-      (maximum, line) => Math.max(maximum, lineCellWidth(line)),
+      (maximum, line) =>
+        Math.max(maximum, lineCellWidthWithWork(line, 0, work)),
       0,
     ),
     height: lines.length,

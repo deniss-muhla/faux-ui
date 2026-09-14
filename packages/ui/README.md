@@ -52,6 +52,8 @@ render(<App />);
 
 `Rows` gives each child a row track (height); `Columns` gives each child a column track (width). Both accept fixed-cell, `auto`, and fraction tracks. `Text` uses one optional axis object, such as `align={{ x: "end", y: "center" }}`.
 
+Large or streaming values should use an immutable `TextSource`, passed as `<Text source={...} />`. `createTextSource` establishes or resets the value, `appendTextSourceSegment` adds one segment in order, `extendTextSourceSegment` adds a delta to a named segment's end, and `replaceTextSourceSegment` swaps a named segment in place. String children remain supported. `TextSource` lets Faux UI index the complete value once and then prepare only the visible window plus bounded overscan. Creation and replacement re-index the affected content; append and extension stay bounded by the changed delta and its unfinished Unicode boundary. `ScrollView.followEnd` accepts `boolean | "x" | "y" | "both"` and follows each selected enabled axis independently.
+
 Optional `@faux-ui/grid` adds shared two-axis tracks, numeric placement, and spans. Third-party layout component authors can use the advanced pure-cell contract at `@faux-ui/ui/layout`; ordinary applications should prefer the foundation components.
 
 ## Agent Skill

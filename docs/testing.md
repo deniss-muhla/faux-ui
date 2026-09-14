@@ -4,29 +4,40 @@ faux-ui treats logical parity and packed-consumer behavior as primary evidence. 
 
 ## Behavior matrix
 
-| Contract                                                                                                                                      | Primary coverage                                                          |
-| --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Unicode 17 extended grapheme boundaries                                                                                                       | `vnext-unicode-conformance.test.ts` against the complete official fixture |
-| ASCII/CJK/combining/emoji/control/tab widths                                                                                                  | `vnext-unicode.test.ts`                                                   |
-| Fixed/auto/fraction allocation and overflow                                                                                                   | `vnext-kernel.test.ts`                                                    |
-| Integer/non-negative/stable fraction geometry                                                                                                 | `vnext-layout.property.test.ts` (1,000 generated cases)                   |
-| Public custom-layout geometry validation                                                                                                      | `vnext-layout-extension.test.tsx`                                         |
-| Standalone Grid placement, spans, implicit tracks, interaction, and `Text`/`ScrollView` composition                                           | `packages/grid/test/grid.test.tsx`                                        |
-| Randomized non-overlapping deterministic Grid auto-placement                                                                                  | `packages/grid/test/grid.property.test.tsx` (500 generated cases)         |
-| Border, ellipsis, clipping, continuation cells                                                                                                | `vnext-kernel.test.ts`                                                    |
-| Scroll as paint transform, not layout input                                                                                                   | `vnext-kernel.test.ts`                                                    |
-| Focus, bubbling, global keys, activation, scroll, follow-end suspension/resume                                                                | `vnext-kernel.test.ts` and `vnext-react.test.ts`                          |
-| DOM/TUI logical command/scene/event parity                                                                                                    | `vnext-host-parity.test.ts`                                               |
-| Ordinary React state and restricted text nesting                                                                                              | `vnext-react.test.ts`                                                     |
-| DOM fit/pixel conversion                                                                                                                      | `vnext-dom-spike.test.ts`                                                 |
-| DOM wheel-notch/trackpad normalization                                                                                                        | `vnext-dom-spike.pw.spec.ts` in Chromium                                  |
-| Grouped DOM projection, terminal-graphics font runs, exact fitting/background seams, and accessibility                                        | `vnext-dom-spike.pw.spec.ts` in Chromium                                  |
-| Serious browser authoring/input/resize path                                                                                                   | `apps/example/test/example-dom.pw.spec.ts`                                |
-| Standalone Grid through the public DOM host                                                                                                   | `packages/grid/test/grid.pw.spec.ts`                                      |
-| Terminal input, ANSI, Unicode cursor anchoring, right-margin/autowrap safety, fake IO, cleanup                                                | `vnext-tui.test.ts`                                                       |
-| Public JSX exposes `Rows` / `Columns` and rejects HTML, named tracks, removed singular layouts, old style/hint props, and inert Box alignment | `public-api.typecheck.tsx` through `tsconfig.test.json`                   |
-| Packed foundation tarball install/types/skill/plugin manifests/Bun/Vite/TUI                                                                   | `scripts/test-package.mjs`                                                |
-| Packed Grid + UI tarballs, source/skill/plugin manifests, public-import isolation, Bun/Vite/TUI                                               | `scripts/test-grid-package.mjs`                                           |
+| Contract                                                                                                                                      | Primary coverage                                                                     |
+| --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Unicode 17 extended grapheme boundaries                                                                                                       | `vnext-unicode-conformance.test.ts` against the complete official fixture            |
+| ASCII/CJK/combining/emoji/control/tab widths                                                                                                  | `vnext-unicode.test.ts`                                                              |
+| Fixed/auto/fraction allocation and overflow                                                                                                   | `vnext-kernel.test.ts`                                                               |
+| Integer/non-negative/stable fraction geometry                                                                                                 | `vnext-layout.property.test.ts` (1,000 generated cases)                              |
+| Public custom-layout geometry validation                                                                                                      | `vnext-layout-extension.test.tsx`                                                    |
+| Standalone Grid placement, spans, implicit tracks, interaction, and `Text`/`ScrollView` composition                                           | `packages/grid/test/grid.test.tsx`                                                   |
+| Randomized non-overlapping deterministic Grid auto-placement                                                                                  | `packages/grid/test/grid.property.test.tsx` (500 generated cases)                    |
+| Border, ellipsis, clipping, continuation cells                                                                                                | `vnext-kernel.test.ts`                                                               |
+| Compact text index metrics against the eager oracle                                                                                           | `vnext-text-store.test.tsx`                                                          |
+| `TextSource` contract, snapshotting, structural sharing, errors, React updates, packed types                                                  | `vnext-text-source.test.tsx`, `public-api.typecheck.tsx`, `scripts/test-package.mjs` |
+| Prepared-window bounds, eviction, cell-slot and glyph-payload accounting, work counters                                                       | `vnext-large-text-work.test.tsx`                                                     |
+| Eager oracle for preferred trees, frames, extents, cells, ownership, offsets, event traces                                                    | `vnext-large-text-oracle.test.tsx`                                                   |
+| Long-line overflow, alignment, Unicode, CRLF, and checkpoint reuse                                                                            | `vnext-large-text-rendering.test.tsx`                                                |
+| Axis-specific `followEnd`                                                                                                                     | `vnext-scroll-follow-end.test.tsx`                                                   |
+| Replacement invalidation, source release, mount cleanup, separate mounts                                                                      | `vnext-text-lifecycle.test.tsx`                                                      |
+| Static, fake-TUI, and Chromium large-text parity                                                                                              | `vnext-large-text-host-parity.test.tsx`, `vnext-large-text-host-parity.pw.spec.ts`   |
+| Versioned benchmark fixture shapes, sizes, and update counts                                                                                  | `large-text-benchmark-v1.test.ts`                                                    |
+| Benchmark inventory, counter checks, reference gate, and options                                                                              | `large-text-benchmark-v1-report.test.ts`                                             |
+| Seed event-to-host-frame stage profile                                                                                                        | `seed-large-text-profile.pw.spec.ts`                                                 |
+| Scroll as paint transform, not layout input                                                                                                   | `vnext-kernel.test.ts`                                                               |
+| Focus, bubbling, global keys, activation, scroll, follow-end suspension/resume                                                                | `vnext-kernel.test.ts` and `vnext-react.test.ts`                                     |
+| DOM/TUI logical command/scene/event parity                                                                                                    | `vnext-host-parity.test.ts`                                                          |
+| Ordinary React state and restricted text nesting                                                                                              | `vnext-react.test.ts`                                                                |
+| DOM fit/pixel conversion                                                                                                                      | `vnext-dom-spike.test.ts`                                                            |
+| DOM wheel-notch/trackpad normalization                                                                                                        | `vnext-dom-spike.pw.spec.ts` in Chromium                                             |
+| Grouped DOM projection, terminal-graphics font runs, exact fitting/background seams, and accessibility                                        | `vnext-dom-spike.pw.spec.ts` in Chromium                                             |
+| Serious browser authoring/input/resize path                                                                                                   | `apps/example/test/example-dom.pw.spec.ts`                                           |
+| Standalone Grid through the public DOM host                                                                                                   | `packages/grid/test/grid.pw.spec.ts`                                                 |
+| Terminal input, ANSI, Unicode cursor anchoring, right-margin/autowrap safety, fake IO, cleanup                                                | `vnext-tui.test.ts`                                                                  |
+| Public JSX exposes `Rows` / `Columns` and rejects HTML, named tracks, removed singular layouts, old style/hint props, and inert Box alignment | `public-api.typecheck.tsx` through `tsconfig.test.json`                              |
+| Packed foundation tarball install/types/skill/plugin manifests/Bun/Vite/TUI                                                                   | `scripts/test-package.mjs`                                                           |
+| Packed Grid + UI tarballs, source/skill/plugin manifests, public-import isolation, Bun/Vite/TUI                                               | `scripts/test-grid-package.mjs`                                                      |
 
 ## Commands
 
@@ -66,13 +77,50 @@ Run all release gates:
 bun run check
 ```
 
-Re-run the uncached serious-fixture mount benchmark before adding caches:
+## Large-text benchmark
+
+`large-text-benchmark-v1` measures cold indexing and first frame, unchanged repaint, resize, midpoint and end scrolling on each axis, fixed-size line append, one growing line, and correlated segment replacement over the exact 100,000, 667,633, and 2,000,000-code-unit fixture sizes at a 120 by 30 viewport. Every update uses `TextSource`, and no report prints fixture or transcript content.
+
+Run a diagnostic pass:
 
 ```bash
 bun run benchmark
 ```
 
-The reset checkpoint measured roughly 5.5 ms per 100×30 fixture mount on the development machine; treat that number as a local baseline, not a cross-machine assertion.
+Diagnostic runs accept `--warmups=<count>`, `--runs=<count>`, `--only-size=<size>`, and `--build-mode=source|production`. They report `referenceGate.status: "diagnostic-only"` and never claim the reference gate.
+
+Run the reference protocol from a clean command boundary:
+
+```bash
+bun install --frozen-lockfile
+bun run build
+bun run benchmark -- --reference --build-mode=production
+```
+
+The reference protocol requires a maintained physical, non-virtual machine, a supported operating system, stable Bun 1.4.0 or later, an unchanged frozen lockfile, and the production build. It runs three unrecorded warm-ups and five fresh-process measured runs over all three sizes with 100 samples per warm measurement. Wall-clock gates are both 667,633-code-unit cold medians at most 500 ms, every pooled 500-sample warm p95 at most 50 ms, and the maximum measured warm event-loop delay at most 100 ms. Deterministic counter checks also compare all three sizes.
+
+The runner fails the reference gate and exits 1 for a narrowed protocol, a missing or duplicate matrix entry, the wrong sample count, an incomplete three-size counter result, a non-reference runtime, a virtual or unknown machine, an unsupported operating system, changed or unlocked dependencies, a source build, the wrong run counts, a repeated worker process, a mismatched worker environment, or any failed timing or counter check. `--reference --only-size=<size>` exits 1 before any worker starts. A result from another machine or protocol stays diagnostic and must not be described as a reference pass.
+
+### Recorded reference environment
+
+A reference run recorded on 2026-09-14 on the maintained physical machine passed every gate. The full JSON report stays outside the repository, and this table records the environment and structural results.
+
+| Field                         | Value                                                                                 |
+| ----------------------------- | ------------------------------------------------------------------------------------- |
+| Runtime                       | stable Bun 1.4.0                                                                      |
+| Machine                       | AMD Ryzen 5 3600 6-Core Processor, 12 logical processors, 32,780,304 KiB memory       |
+| Operating system              | CachyOS on Linux 7.2.4-3-cachyos, x86_64                                              |
+| Virtualization                | `systemd-detect-virt` reports `none` (physical)                                       |
+| Build                         | production (`bun run build`)                                                          |
+| Lockfile                      | `bun.lock` SHA-256 `dd9b199d37473d2b5a78a740e13203791f383c55f2e58e7ca783b5dc97ba718d` |
+| Protocol                      | three unrecorded warm-ups, five distinct fresh-process runs, all three fixture sizes  |
+| Cold medians at 667,633       | 424.871 ms many-line, 402.967 ms single-line (gate 500 ms)                            |
+| Worst pooled warm p95         | 19.657 ms (`vertical-scroll`, many-line, 2,000,000; gate 50 ms)                       |
+| Maximum warm event-loop delay | 27.985 ms (gate 100 ms)                                                               |
+| Counters                      | all five deterministic checks passed across all three sizes                           |
+| Gate                          | passed; every eligibility entry true, no inventory problems                           |
+
+The fixture and report suites run in `bun run test`. Elapsed-time assertions stay out of ordinary tests; the reference protocol owns wall-clock gates.
 
 CI installs the pinned Bun version and matching Playwright Chromium before running `bun run check`.
 
@@ -100,6 +148,7 @@ A renderer-neutral behavior change needs, at minimum:
 - a specification update;
 - a pure kernel/controller test;
 - DOM and TUI adapter coverage when input/projection changes;
+- deterministic work counters or benchmark coverage when repeated work, memory bounds, or latency gates change;
 - packed-consumer coverage when exports or dependencies change.
 
 Unicode updates also require regenerated tables and the matching official conformance fixture. Public type changes require positive and negative assertions in the typecheck fixture.
