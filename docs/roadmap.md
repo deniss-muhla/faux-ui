@@ -10,9 +10,9 @@ The authoritative implemented behavior is [spec.md](spec.md), implemented struct
 
 ## Active: large-text rendering
 
-Large in-memory text renders through compact exact indexes and bounded prepared windows. The work is implemented in the unreleased candidate and is not merged, tagged, or published.
+Large in-memory text renders through compact exact indexes and bounded prepared windows. The post-bump review also reconciled compatible `TextSource` updates batched into one React commit, removed the redundant stable-frame scene pass, kept one authoritative prepared-cell store, retained prepared-window intersection reuse, and made ordinary terminal frames refresh changed rows instead of clearing the screen. The work is implemented in the unreleased candidate and is not merged, tagged, or published.
 
-- Behavior contract: [spec.md](spec.md), in the text preferred-size, large-text windowing, scroll, and inspection sections.
+- Behavior contract: [spec.md](spec.md), in the text preferred-size, large-text windowing, scroll, scene, and TUI host sections.
 - Verification matrix and the `large-text-benchmark-v1` reference protocol: [testing.md](testing.md).
 - Host acceptance and the original failure evidence: the Seed repository `world-seed-project/seed`, under `docs/faux-ui-feedback.md` and `openspec/changes/faux-ui-large-text-rendering/`.
 

@@ -23,9 +23,14 @@ Pre-1.0 evidence candidate for gathering more real-use data before the stable co
 - Compact exact text indexing with viewport-bounded prepared cells, separate cell-slot and copied-glyph-payload accounting, window eviction, mount-local cleanup, and unchanged preferred sizes.
 - Axis-specific `ScrollView.followEnd` accepting `boolean | "x" | "y" | "both"`.
 - Deterministic text work counters, an eager rendering oracle, static/fake-TUI/Chromium large-text parity coverage, and the versioned `large-text-benchmark-v1` benchmark runner.
+- Prepared text windows retain their intersection when a compatible window moves and prepare only the entering strips; each prepared cell lives in one authoritative store.
 - Serious dual-host fixture, official Unicode conformance tests, property tests, Chromium tests, packed-consumer tests, and CI.
 
 ### Fixed
+
+- Compatible `TextSource` updates batched into one React commit now reconcile proven ranges and rebuild only the suffix after the earliest unproven change instead of reindexing retained history.
+- A stable repaint paints one canonical scene pass instead of an unconditional second pass, and a corrected follow-end scene stays attached for hit testing.
+- Ordinary terminal updates write only changed rows instead of clearing the screen before every frame; start, resize, palette changes, and failed writes redraw completely.
 
 - Pinned transitive `nanoid` to 3.3.18 to resolve GHSA-2v37-7h3g-55p8 in the Vite/PostCSS development graph.
 - Browser font advances are fitted to logical cells, adjacent run backgrounds overlap safely, and Unicode terminal-graphics runs use a connection-safe, low-overhang monospace fallback stack with independent spacing, preventing clipped borders, cumulative row shifts, and fractional-scale seams without geometric overlays.

@@ -1,47 +1,55 @@
 import type { Palette } from "./model.js";
 import type { CellScene, ResolvedStyle } from "./scene.js";
 
-const RESET = "\u001b[0m";
+export const ANSI_RESET = "\u001b[0m";
 
 export function sceneToAnsi(scene: CellScene, palette: Palette): string {
-  let output = "";
+  const rows: string[] = [];
   for (let y = 0; y < scene.height; y += 1) {
-    let activeStyle: ResolvedStyle | null = null;
-    let x = 0;
-    while (x < scene.width) {
-      const cell = scene.cells[y * scene.width + x];
-      if (cell === undefined) break;
-      if (cell.continuation) {
-        x += 1;
-        continue;
-      }
-      if (activeStyle === null || !stylesEqual(activeStyle, cell.style)) {
-        output += ansiStyle(cell.style, palette);
-        activeStyle = cell.style;
-      }
-      output += cell.glyph === "" ? " " : cell.glyph;
-
-      const wide = scene.cells[y * scene.width + x + 1]?.continuation === true;
-      const needsAnchor = wide || !isSinglePrintableAscii(cell.glyph);
-      x += wide ? 2 : 1;
-      if (needsAnchor && x < scene.width) {
-        // Terminals disagree on emoji, combining, ambiguous, and CJK widths.
-        // Re-anchor following cells instead of trusting the terminal cursor.
-        output += `\u001b[${x + 1}G`;
-      }
-    }
-    if (y < scene.height - 1) output += "\r\n";
+    rows.push(sceneRowToAnsi(scene, palette, y));
   }
-  return `${output}${RESET}`;
+  return `${rows.join("\r\n")}${ANSI_RESET}`;
+}
+
+/** Serializes one complete terminal row starting at the left margin. */
+export function sceneRowToAnsi(
+  scene: CellScene,
+  palette: Palette,
+  y: number,
+): string {
+  let output = "";
+  let activeStyle: ResolvedStyle | null = null;
+  let x = 0;
+  while (x < scene.width) {
+    const cell = scene.cells[y * scene.width + x];
+    if (cell === undefined) break;
+    if (cell.continuation) {
+      x += 1;
+      continue;
+    }
+    if (activeStyle === null || !resolvedStylesEqual(activeStyle, cell.style)) {
+      output += ansiStyle(cell.style, palette);
+      activeStyle = cell.style;
+    }
+    output += cell.glyph === "" ? " " : cell.glyph;
+
+    const wide = scene.cells[y * scene.width + x + 1]?.continuation === true;
+    const needsAnchor = wide || !isSinglePrintableAscii(cell.glyph);
+    x += wide ? 2 : 1;
+    if (needsAnchor && x < scene.width) {
+      // Terminals disagree on emoji, combining, ambiguous, and CJK widths.
+      // Re-anchor following cells instead of trusting the terminal cursor.
+      output += `\u001b[${x + 1}G`;
+    }
+  }
+  return output;
 }
 
 export function ansiStyle(style: ResolvedStyle, palette: Palette): string {
-  const foreground = palette[
-    style.inverse ? style.background : style.foreground
-  ];
-  const background = palette[
-    style.inverse ? style.foreground : style.background
-  ];
+  const foreground =
+    palette[style.inverse ? style.background : style.foreground];
+  const background =
+    palette[style.inverse ? style.foreground : style.background];
   const foregroundRgb = parseHexColor(foreground);
   const backgroundRgb = parseHexColor(background);
   const parts = [
@@ -59,7 +67,10 @@ function isSinglePrintableAscii(glyph: string): boolean {
   return glyph.length === 1 && glyph >= " " && glyph <= "~";
 }
 
-function stylesEqual(a: ResolvedStyle, b: ResolvedStyle): boolean {
+export function resolvedStylesEqual(
+  a: ResolvedStyle,
+  b: ResolvedStyle,
+): boolean {
   return (
     a.foreground === b.foreground &&
     a.background === b.background &&

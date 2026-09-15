@@ -70,6 +70,7 @@ interface PreparedWindowBounds {
   readonly columnStart: number;
   readonly columnEnd: number;
   readonly frameWidth: number;
+  readonly frameHeight: number;
   readonly alignX: TextNode["alignX"];
   readonly overflow: TextNode["overflow"];
 }
@@ -82,9 +83,12 @@ interface PreparedWindowBounds {
  */
 export class TextWindowCache {
   readonly #source: TextPreparationSource;
-  readonly #prepared = new Map<string, PreparedTextCell>();
+  /** The single authoritative regular-cell store, keyed by line then column. */
   readonly #preparedByLine = new Map<number, Map<number, PreparedTextCell>>();
-  readonly #preparedOverflow = new Map<string, PreparedOverflowLine>();
+  readonly #preparedOverflow = new Map<
+    number,
+    Map<string, PreparedOverflowLine>
+  >();
   #preparedWindow: PreparedWindowBounds | null = null;
 
   constructor(source: TextPreparationSource) {
@@ -123,27 +127,21 @@ export class TextWindowCache {
       columnStart: horizontal.start,
       columnEnd: horizontal.end,
       frameWidth: frame.width,
+      frameHeight: frame.height,
       alignX: node.alignX,
       overflow: node.overflow,
     };
 
-    if (!windowEquals(this.#preparedWindow, bounds)) {
-      this.clear();
-      for (let index = lineStart; index < lineEnd; index += 1) {
-        const line = this.#source.line(index);
-        if (line === null) continue;
-        const lineWindow = horizontalLineWindow(
-          line.width,
-          frame.width,
-          horizontal,
-          node.alignX,
-        );
-        if (lineWindow !== null && line.width <= frame.width) {
-          this.prepareLine(index, lineWindow.start, lineWindow.end, work);
-        }
+    const previous = this.#preparedWindow;
+    if (previous === null || !windowEquals(previous, bounds)) {
+      if (previous !== null && canReuseWindow(previous, bounds)) {
+        this.reuseWindow(previous, bounds, work);
+      } else {
+        this.clear();
+        this.prepareWindow(bounds, work);
       }
-      this.#preparedWindow = bounds;
     }
+    this.#preparedWindow = bounds;
 
     const lines = [] as PreparedTextLine[];
     for (let index = lineStart; index < lineEnd; index += 1) {
@@ -169,32 +167,32 @@ export class TextWindowCache {
     overflow: TextOverflow,
     work?: RenderWorkTracker,
   ): PreparedOverflowLine {
-    const key = `${lineIndex}:${frameWidth}:${overflow}`;
-    const cached = this.#preparedOverflow.get(key);
+    const key = `${frameWidth}:${overflow}`;
+    const cached = this.#preparedOverflow.get(lineIndex)?.get(key);
     if (cached !== undefined) return cached;
 
     const line = this.#source.line(lineIndex);
     const available = Math.max(0, Math.floor(frameWidth));
     if (line === null || line.width <= available || available === 0) {
-      const empty = freezeOverflowLine([]);
-      this.#preparedOverflow.set(key, empty);
-      return empty;
+      return this.cacheOverflowLine(lineIndex, key, freezeOverflowLine([]));
     }
 
     if (overflow === "clip") {
       const cells = this.prefixCells(lineIndex, available, work);
-      const result = freezeOverflowLine(positionCells(lineIndex, cells));
-      this.#preparedOverflow.set(key, result);
-      return result;
+      return this.cacheOverflowLine(
+        lineIndex,
+        key,
+        freezeOverflowLine(positionCells(lineIndex, cells)),
+      );
     }
 
     const contentWidth = available - 1;
     if (contentWidth === 0) {
-      const result = freezeOverflowLine([
-        createEllipsisCell(lineIndex, 0, line.end),
-      ]);
-      this.#preparedOverflow.set(key, result);
-      return result;
+      return this.cacheOverflowLine(
+        lineIndex,
+        key,
+        freezeOverflowLine([createEllipsisCell(lineIndex, 0, line.end)]),
+      );
     }
 
     const output: PreparedTextCell[] = [];
@@ -228,13 +226,10 @@ export class TextWindowCache {
       output.push(createEllipsisCell(lineIndex, prefixWidth, line.end));
     }
 
-    const result = freezeOverflowLine(output);
-    this.#preparedOverflow.set(key, result);
-    return result;
+    return this.cacheOverflowLine(lineIndex, key, freezeOverflowLine(output));
   }
 
   clear(): void {
-    this.#prepared.clear();
     this.#preparedByLine.clear();
     this.#preparedOverflow.clear();
     this.#preparedWindow = null;
@@ -243,17 +238,139 @@ export class TextWindowCache {
   counts(): PreparedTextCounts {
     let cellSlots = 0;
     let copiedGlyphPayloadCodeUnits = 0;
-    for (const cell of this.#prepared.values()) {
-      cellSlots += cell.width;
-      copiedGlyphPayloadCodeUnits += cell.copiedGlyphPayloadCodeUnits;
-    }
-    for (const line of this.#preparedOverflow.values()) {
-      for (const cell of line.cells) {
+    for (const lineCells of this.#preparedByLine.values()) {
+      for (const cell of lineCells.values()) {
         cellSlots += cell.width;
         copiedGlyphPayloadCodeUnits += cell.copiedGlyphPayloadCodeUnits;
       }
     }
+    for (const lineEntries of this.#preparedOverflow.values()) {
+      for (const line of lineEntries.values()) {
+        for (const cell of line.cells) {
+          cellSlots += cell.width;
+          copiedGlyphPayloadCodeUnits += cell.copiedGlyphPayloadCodeUnits;
+        }
+      }
+    }
     return { cellSlots, copiedGlyphPayloadCodeUnits };
+  }
+
+  /** Prepares the complete bounded window from scratch. */
+  private prepareWindow(
+    bounds: PreparedWindowBounds,
+    work?: RenderWorkTracker,
+  ): void {
+    for (let index = bounds.lineStart; index < bounds.lineEnd; index += 1) {
+      const line = this.#source.line(index);
+      if (line === null) continue;
+      const lineWindow = this.lineWindow(bounds, line.width);
+      if (lineWindow !== null && line.width <= bounds.frameWidth) {
+        this.prepareLine(index, lineWindow.start, lineWindow.end, work);
+      }
+    }
+  }
+
+  /**
+   * Retains the old and new window intersection, prepares only entering
+   * strips, keeps valid overflow entries, and evicts everything outside the
+   * new bound. Strips carry one extra column of context so a width-2 grapheme
+   * that straddles the intersection edge is still prepared exactly once.
+   */
+  private reuseWindow(
+    previous: PreparedWindowBounds,
+    next: PreparedWindowBounds,
+    work?: RenderWorkTracker,
+  ): void {
+    this.evictOutside(next);
+    for (let index = next.lineStart; index < next.lineEnd; index += 1) {
+      const line = this.#source.line(index);
+      if (line === null) continue;
+      const cells = this.#preparedByLine.get(index);
+      if (line.width > next.frameWidth) {
+        if (cells !== undefined) this.#preparedByLine.delete(index);
+        continue;
+      }
+      const nextWindow = this.lineWindow(next, line.width);
+      if (nextWindow === null) continue;
+      if (cells === undefined) {
+        this.prepareLine(index, nextWindow.start, nextWindow.end, work);
+        continue;
+      }
+      for (const [column, cell] of cells) {
+        if (column < nextWindow.start || column + cell.width > nextWindow.end) {
+          cells.delete(column);
+        }
+      }
+      const previousWindow = this.lineWindow(previous, line.width);
+      if (previousWindow === null) continue;
+      const entersBefore = nextWindow.start < previousWindow.start;
+      const entersAfter = nextWindow.end > previousWindow.end;
+      if (entersBefore) {
+        this.prepareLine(
+          index,
+          nextWindow.start,
+          Math.min(previousWindow.start + 1, nextWindow.end),
+          work,
+        );
+      }
+      if (entersAfter) {
+        this.prepareLine(
+          index,
+          Math.max(previousWindow.end - 1, nextWindow.start),
+          nextWindow.end,
+          work,
+        );
+      }
+      if (entersBefore || entersAfter) this.reindexLine(index);
+    }
+  }
+
+  private evictOutside(bounds: PreparedWindowBounds): void {
+    for (const lineIndex of this.#preparedByLine.keys()) {
+      if (lineIndex < bounds.lineStart || lineIndex >= bounds.lineEnd) {
+        this.#preparedByLine.delete(lineIndex);
+      }
+    }
+    for (const lineIndex of this.#preparedOverflow.keys()) {
+      if (lineIndex < bounds.lineStart || lineIndex >= bounds.lineEnd) {
+        this.#preparedOverflow.delete(lineIndex);
+      }
+    }
+  }
+
+  /** Keeps one line's prepared cells in ascending column order. */
+  private reindexLine(lineIndex: number): void {
+    const cells = this.#preparedByLine.get(lineIndex);
+    if (cells === undefined) return;
+    this.#preparedByLine.set(
+      lineIndex,
+      new Map([...cells.entries()].sort(([left], [right]) => left - right)),
+    );
+  }
+
+  private lineWindow(
+    bounds: PreparedWindowBounds,
+    lineWidth: number,
+  ): { readonly start: number; readonly end: number } | null {
+    return horizontalLineWindow(
+      lineWidth,
+      bounds.frameWidth,
+      { start: bounds.columnStart, end: bounds.columnEnd },
+      bounds.alignX,
+    );
+  }
+
+  private cacheOverflowLine(
+    lineIndex: number,
+    key: string,
+    line: PreparedOverflowLine,
+  ): PreparedOverflowLine {
+    const lineEntries =
+      this.#preparedOverflow.get(lineIndex) ??
+      new Map<string, PreparedOverflowLine>();
+    lineEntries.set(key, line);
+    this.#preparedOverflow.set(lineIndex, lineEntries);
+    return line;
   }
 
   private prepareLine(
@@ -269,7 +386,6 @@ export class TextWindowCache {
       work,
     );
     for (const cell of cells) {
-      this.#prepared.set(preparedCellKey(cell.lineIndex, cell.column), cell);
       const lineCells =
         this.#preparedByLine.get(cell.lineIndex) ??
         new Map<number, PreparedTextCell>();
@@ -325,10 +441,6 @@ function createEllipsisCell(
     sourceRange: Object.freeze({ start: sourceOffset, end: sourceOffset }),
     copiedGlyphPayloadCodeUnits: 0,
   });
-}
-
-function preparedCellKey(lineIndex: number, column: number): string {
-  return `${lineIndex}:${column}`;
 }
 
 function horizontalWindow(
@@ -420,8 +532,25 @@ function windowEquals(
     previous.columnStart === next.columnStart &&
     previous.columnEnd === next.columnEnd &&
     previous.frameWidth === next.frameWidth &&
+    previous.frameHeight === next.frameHeight &&
     previous.alignX === next.alignX &&
     previous.overflow === next.overflow
+  );
+}
+
+function canReuseWindow(
+  previous: PreparedWindowBounds,
+  next: PreparedWindowBounds,
+): boolean {
+  return (
+    previous.frameWidth === next.frameWidth &&
+    previous.frameHeight === next.frameHeight &&
+    previous.alignX === next.alignX &&
+    previous.overflow === next.overflow &&
+    previous.lineStart < next.lineEnd &&
+    next.lineStart < previous.lineEnd &&
+    previous.columnStart < next.columnEnd &&
+    next.columnStart < previous.columnEnd
   );
 }
 

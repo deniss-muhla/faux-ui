@@ -1,10 +1,13 @@
+import { useState } from "react";
 import { describe, expect, it } from "vitest";
 
 import {
   appendTextSourceSegment,
+  Button,
   createTextSource,
   extendTextSourceSegment,
   replaceTextSourceSegment,
+  Rows,
   ScrollView,
   Text,
   type TextSource,
@@ -342,7 +345,10 @@ describe("mount-owned text store", () => {
         { id: "growing", text: `${"a".repeat(size - 2)}古` },
         { id: "later", text: "\nnext-line\ntail-line" },
       ]);
-      const actual = new SemanticMount({ size: NON_FINAL_SIZE });
+      const actual = new SemanticMount({
+        size: NON_FINAL_SIZE,
+        measureWork: true,
+      });
       const reference = new SemanticMount({ size: NON_FINAL_SIZE });
       const rerender = (next: TextSource): void => {
         actual.rerender(sourceNode(next));
@@ -526,6 +532,431 @@ describe("mount-owned text store", () => {
       app.rerender(<Text source={source} />);
       assertMatchesEager(onlyIndex(app), "reset\nvalue");
       expect(onlyIndex(app).source).toBe(source);
+    } finally {
+      app.unmount();
+    }
+  });
+
+  it("reconciles a batched source commit without reindexing retained history", () => {
+    const inspected: number[] = [];
+    const searched: number[] = [];
+    for (const size of [1_000, 100_000]) {
+      let source = createTextSource([
+        { id: "growing", text: `${`a`.repeat(size - 2)}古` },
+        { id: "later", text: "\nnext-line\ntail-line" },
+      ]);
+      const actual = new SemanticMount({
+        size: NON_FINAL_SIZE,
+        measureWork: true,
+      });
+      const reference = new SemanticMount({ size: NON_FINAL_SIZE });
+      actual.render(sourceNode(source));
+      reference.render(referenceNode(sourceText(source)));
+
+      try {
+        assertEagerFrames(actual, reference);
+        actual.clearWorkCounts();
+
+        source = appendTextSourceSegment(source, {
+          id: "one",
+          text: "\nsegment-one",
+        });
+        source = appendTextSourceSegment(source, {
+          id: "two",
+          text: "\nsegment-two",
+        });
+        source = extendTextSourceSegment(source, "growing", "b\u0301");
+        source = extendTextSourceSegment(source, "growing", "c");
+        actual.rerender(sourceNode(source));
+        reference.rerender(referenceNode(sourceText(source)));
+
+        assertMatchesEager(onlyMountIndex(actual), sourceText(source));
+        assertEagerFrames(actual, reference);
+        const indexing = actual.stageWorkCounts().indexing;
+        expect(onlyMountIndex(actual).source).toBe(source);
+        expect(indexing.linesIndexed).toBe(2);
+        expect(indexing.sourceCodeUnitsInspected).toBeLessThan(64);
+        expect(indexing.metadataRecordsSearched).toBeLessThan(512);
+        inspected.push(indexing.sourceCodeUnitsInspected);
+        searched.push(indexing.metadataRecordsSearched);
+      } finally {
+        actual.unmount();
+        reference.unmount();
+      }
+    }
+
+    expect(new Set(inspected)).toHaveProperty("size", 1);
+    expect(new Set(searched)).toHaveProperty("size", 1);
+  });
+
+  it("extends one final segment through a batched commit without rescanning", () => {
+    const inspected: number[] = [];
+    for (const size of [1_000, 100_000]) {
+      let source = createTextSource([
+        {
+          id: "growing",
+          text: `${"a".repeat(size - 2)}古\nsecond-line\nthird-line`,
+        },
+      ]);
+      const actual = new SemanticMount({
+        size: NON_FINAL_SIZE,
+        measureWork: true,
+      });
+      const reference = new SemanticMount({ size: NON_FINAL_SIZE });
+      actual.render(sourceNode(source));
+      reference.render(referenceNode(sourceText(source)));
+
+      try {
+        actual.clearWorkCounts();
+        source = extendTextSourceSegment(source, "growing", "b\u0301");
+        source = extendTextSourceSegment(source, "growing", "c");
+        actual.rerender(sourceNode(source));
+        reference.rerender(referenceNode(sourceText(source)));
+
+        assertMatchesEager(onlyMountIndex(actual), sourceText(source));
+        assertEagerFrames(actual, reference);
+        const indexing = actual.stageWorkCounts().indexing;
+        expect(indexing.sourceCodeUnitsInspected).toBeLessThan(32);
+        expect(indexing.linesIndexed).toBe(0);
+        expect(indexing.metadataRecordsSearched).toBeLessThan(512);
+        inspected.push(indexing.sourceCodeUnitsInspected);
+      } finally {
+        actual.unmount();
+        reference.unmount();
+      }
+    }
+
+    expect(new Set(inspected)).toHaveProperty("size", 1);
+  });
+
+  it("indexes only appended complete lines after one batched commit", () => {
+    const inspected: number[] = [];
+    const searched: number[] = [];
+    for (const size of [1_000, 100_000]) {
+      const block = "history-block-000\n";
+      const history = block.repeat(Math.ceil(size / block.length));
+      let source = createTextSource([{ id: "history", text: history }]);
+      const actual = new SemanticMount({
+        size: NON_FINAL_SIZE,
+        measureWork: true,
+      });
+      const reference = new SemanticMount({ size: NON_FINAL_SIZE });
+      actual.render(sourceNode(source));
+      reference.render(referenceNode(sourceText(source)));
+
+      try {
+        actual.clearWorkCounts();
+        source = appendTextSourceSegment(source, {
+          id: "added-a",
+          text: "added-line-a\n",
+        });
+        source = appendTextSourceSegment(source, {
+          id: "added-b",
+          text: "added-line-b\n",
+        });
+        actual.rerender(sourceNode(source));
+        reference.rerender(referenceNode(sourceText(source)));
+
+        assertMatchesEager(onlyMountIndex(actual), sourceText(source));
+        assertEagerFrames(actual, reference);
+        const indexing = actual.stageWorkCounts().indexing;
+        expect(indexing.sourceCodeUnitsInspected).toBe(24);
+        expect(indexing.linesIndexed).toBe(2);
+        // The comparison follows changed leaves and appended order nodes, so
+        // no segment search grows with the retained history.
+        expect(indexing.metadataRecordsSearched).toBeLessThan(512);
+        inspected.push(indexing.sourceCodeUnitsInspected);
+        searched.push(indexing.metadataRecordsSearched);
+      } finally {
+        actual.unmount();
+        reference.unmount();
+      }
+    }
+
+    expect(inspected).toEqual([24, 24]);
+    expect(new Set(searched)).toHaveProperty("size", 1);
+  });
+
+  it(
+    "extends a non-final growing segment across batched Unicode chunks",
+    { timeout: 30_000 },
+    () => {
+      const pairs = [
+        ["\ud83d", "\ude00"],
+        ["e", "\u0301"],
+        ["👩\u200d", "💻"],
+        ["🇺", "🇳"],
+      ] as const;
+      const inspected: number[] = [];
+
+      for (const [left, right] of pairs) {
+        for (const size of [1_000, 100_000]) {
+          let source = createTextSource([
+            { id: "growing", text: `${`a`.repeat(size)}${left}` },
+            { id: "later", text: "\nnext-line\ntail-line" },
+          ]);
+          const actual = new SemanticMount({
+            size: NON_FINAL_SIZE,
+            measureWork: true,
+          });
+          const reference = new SemanticMount({ size: NON_FINAL_SIZE });
+          actual.render(sourceNode(source));
+          reference.render(referenceNode(sourceText(source)));
+
+          try {
+            assertMatchesEager(onlyMountIndex(actual), sourceText(source));
+            actual.clearWorkCounts();
+
+            source = extendTextSourceSegment(source, "growing", right);
+            source = extendTextSourceSegment(source, "growing", left);
+            source = appendTextSourceSegment(source, {
+              id: "one",
+              text: "\nsegment-one",
+            });
+            source = appendTextSourceSegment(source, {
+              id: "two",
+              text: "\nsegment-two",
+            });
+            actual.rerender(sourceNode(source));
+            reference.rerender(referenceNode(sourceText(source)));
+
+            assertMatchesEager(onlyMountIndex(actual), sourceText(source));
+            assertEagerFrames(actual, reference);
+            const indexing = actual.stageWorkCounts().indexing;
+            expect(indexing.sourceCodeUnitsInspected).toBeLessThan(128);
+            expect(indexing.metadataRecordsSearched).toBeLessThan(512);
+            inspected.push(indexing.sourceCodeUnitsInspected);
+          } finally {
+            actual.unmount();
+            reference.unmount();
+          }
+        }
+      }
+
+      for (let index = 0; index < inspected.length; index += 2) {
+        expect(inspected[index]).toBe(inspected[index + 1]);
+      }
+    },
+  );
+
+  it("rebuilds only the suffix after a mixed replace and append commit", () => {
+    const lines = Array.from(
+      { length: 200 },
+      (_, index) => `line-${String(index).padStart(3, "0")}\n`,
+    );
+    let source = createTextSource(
+      lines.map((text, index) => ({ id: `line-${index}`, text })),
+    );
+    const actual = new SemanticMount({
+      size: NON_FINAL_SIZE,
+      measureWork: true,
+    });
+    const reference = new SemanticMount({ size: NON_FINAL_SIZE });
+    actual.render(sourceNode(source));
+    reference.render(referenceNode(sourceText(source)));
+
+    try {
+      assertMatchesEager(onlyMountIndex(actual), sourceText(source));
+      actual.clearWorkCounts();
+
+      source = replaceTextSourceSegment(source, "line-150", "changed-150\n");
+      source = appendTextSourceSegment(source, {
+        id: "tail",
+        text: "appended-tail\n",
+      });
+      actual.rerender(sourceNode(source));
+      reference.rerender(referenceNode(sourceText(source)));
+
+      assertMatchesEager(onlyMountIndex(actual), sourceText(source));
+      assertEagerFrames(actual, reference);
+      const indexing = actual.stageWorkCounts().indexing;
+      expect(indexing.linesIndexed).toBeGreaterThan(0);
+      expect(indexing.linesIndexed).toBeLessThanOrEqual(64);
+      expect(indexing.sourceCodeUnitsInspected).toBeLessThan(1_200);
+
+      actual.clearWorkCounts();
+      source = replaceTextSourceSegment(source, "line-190", "changed-190-a\n");
+      source = replaceTextSourceSegment(source, "line-190", "changed-190-b\n");
+      actual.rerender(sourceNode(source));
+      reference.rerender(referenceNode(sourceText(source)));
+
+      assertMatchesEager(onlyMountIndex(actual), sourceText(source));
+      assertEagerFrames(actual, reference);
+      const replaceIndexing = actual.stageWorkCounts().indexing;
+      expect(replaceIndexing.linesIndexed).toBeGreaterThan(0);
+      expect(replaceIndexing.linesIndexed).toBeLessThanOrEqual(32);
+      expect(replaceIndexing.sourceCodeUnitsInspected).toBeLessThan(512);
+    } finally {
+      actual.unmount();
+      reference.unmount();
+    }
+  });
+
+  it("reconciles a batched commit whose segment IDs share prefixes", () => {
+    const segmentText = (name: string) => `${name}${"x".repeat(40)}\n`;
+    let source = createTextSource([
+      { id: "a", text: segmentText("alpha") },
+      { id: "ab", text: segmentText("beta") },
+      { id: "abc", text: segmentText("gamma") },
+      { id: "abcd", text: segmentText("delta") },
+    ]);
+    const actual = new SemanticMount({
+      size: NON_FINAL_SIZE,
+      measureWork: true,
+    });
+    const reference = new SemanticMount({ size: NON_FINAL_SIZE });
+    actual.render(sourceNode(source));
+    reference.render(referenceNode(sourceText(source)));
+
+    try {
+      assertMatchesEager(onlyMountIndex(actual), sourceText(source));
+      actual.clearWorkCounts();
+
+      source = replaceTextSourceSegment(
+        source,
+        "abc",
+        segmentText("changed-gamma"),
+      );
+      source = appendTextSourceSegment(source, {
+        id: "abcde",
+        text: segmentText("epsilon"),
+      });
+      actual.rerender(sourceNode(source));
+      reference.rerender(referenceNode(sourceText(source)));
+
+      assertMatchesEager(onlyMountIndex(actual), sourceText(source));
+      assertEagerFrames(actual, reference);
+      const indexing = actual.stageWorkCounts().indexing;
+      expect(indexing.linesIndexed).toBeGreaterThan(0);
+      expect(indexing.linesIndexed).toBeLessThanOrEqual(4);
+      expect(indexing.sourceCodeUnitsInspected).toBeLessThan(180);
+    } finally {
+      actual.unmount();
+      reference.unmount();
+    }
+  });
+
+  it("releases a batched source update exactly once on unmount", () => {
+    let source = createTextSource([{ id: "growing", text: "a".repeat(1_000) }]);
+    const app = renderStatic(sourceNode(source), NON_FINAL_SIZE);
+
+    source = appendTextSourceSegment(source, {
+      id: "one",
+      text: "\nsegment-one",
+    });
+    source = appendTextSourceSegment(source, {
+      id: "two",
+      text: "\nsegment-two",
+    });
+    source = extendTextSourceSegment(source, "growing", "b");
+    source = extendTextSourceSegment(source, "growing", "c");
+    app.rerender(sourceNode(source));
+    app.clearWorkCounts();
+    app.unmount();
+
+    const disposed = app.getWorkCounts();
+    expect(disposed.entriesDisposed).toBe(1);
+    expect(disposed.cellSlotsRetained).toBe(0);
+    expect(disposed.copiedGlyphPayloadCodeUnitsRetained).toBe(0);
+    app.unmount();
+    expect(app.getWorkCounts().entriesDisposed).toBe(1);
+  });
+
+  it("commits batched functional state updates through one source commit", async () => {
+    const size = 100_000;
+    const initial = createTextSource([
+      { id: "growing", text: `${`a`.repeat(size - 2)}古` },
+      { id: "later", text: "\nnext-line\ntail-line" },
+    ]);
+    const applied: TextSource[] = [];
+    const rendered: TextSource[] = [];
+
+    function BatchedSource() {
+      const [source, setSource] = useState(initial);
+      rendered.push(source);
+      const stage = (update: (current: TextSource) => TextSource) => {
+        return (current: TextSource) => {
+          const next = update(current);
+          applied.push(next);
+          return next;
+        };
+      };
+      return (
+        <Rows tracks={[3, 1]}>
+          <ScrollView axis="y">
+            <Text source={source} />
+          </ScrollView>
+          <Button
+            label="commit"
+            padding={0}
+            onPress={() => {
+              setSource(
+                stage((current) =>
+                  appendTextSourceSegment(current, {
+                    id: "one",
+                    text: "\nsegment-one",
+                  }),
+                ),
+              );
+              setSource(
+                stage((current) =>
+                  appendTextSourceSegment(current, {
+                    id: "two",
+                    text: "\nsegment-two",
+                  }),
+                ),
+              );
+              setSource(
+                stage((current) =>
+                  extendTextSourceSegment(current, "growing", "b\u0301"),
+                ),
+              );
+              setSource(
+                stage((current) =>
+                  extendTextSourceSegment(current, "growing", "c"),
+                ),
+              );
+            }}
+          />
+        </Rows>
+      );
+    }
+
+    const app = renderStatic(<BatchedSource />, { width: 24, height: 4 });
+    try {
+      app.clearWorkCounts();
+      app.pointerDown({ x: 1, y: 3, button: 0 });
+      app.pointerUp({ x: 1, y: 3, button: 0 });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      const finalSource = applied.at(-1);
+      if (finalSource === undefined) {
+        throw new Error("Expected the batched updaters to run.");
+      }
+      expect(applied.length).toBeGreaterThanOrEqual(4);
+      expect(rendered[0]).toBe(initial);
+      expect(rendered.at(-1)).toBe(finalSource);
+      expect(
+        rendered.filter((value) => value !== initial && value !== finalSource),
+      ).toEqual([]);
+
+      const index = app.getTextIndexes().find((entry) => entry.source !== null);
+      if (index === undefined) throw new Error("Expected the source index.");
+      const text = sourceText(finalSource);
+      expect(index.source).toBe(finalSource);
+      assertMatchesEager(index, text);
+      const lines = text.split("\n");
+      expect(app.getText()).toBe(
+        [
+          (lines[0] ?? "").slice(0, 24),
+          (lines[1] ?? "").padEnd(24),
+          (lines[2] ?? "").padEnd(24),
+          "commit".padEnd(24),
+        ].join("\n"),
+      );
+      expect(
+        app.getStageWorkCounts().indexing.sourceCodeUnitsInspected,
+      ).toBeLessThan(64);
     } finally {
       app.unmount();
     }

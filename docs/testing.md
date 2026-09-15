@@ -16,12 +16,15 @@ faux-ui treats logical parity and packed-consumer behavior as primary evidence. 
 | Border, ellipsis, clipping, continuation cells                                                                                                | `vnext-kernel.test.ts`                                                               |
 | Compact text index metrics against the eager oracle                                                                                           | `vnext-text-store.test.tsx`                                                          |
 | `TextSource` contract, snapshotting, structural sharing, errors, React updates, packed types                                                  | `vnext-text-source.test.tsx`, `public-api.typecheck.tsx`, `scripts/test-package.mjs` |
+| Batched compatible source commits, mixed suffix rebuild, retained-history work bounds                                                         | `vnext-text-store.test.tsx`                                                          |
 | Prepared-window bounds, eviction, cell-slot and glyph-payload accounting, work counters                                                       | `vnext-large-text-work.test.tsx`                                                     |
 | Eager oracle for preferred trees, frames, extents, cells, ownership, offsets, event traces                                                    | `vnext-large-text-oracle.test.tsx`                                                   |
 | Long-line overflow, alignment, Unicode, CRLF, and checkpoint reuse                                                                            | `vnext-large-text-rendering.test.tsx`                                                |
 | Axis-specific `followEnd`                                                                                                                     | `vnext-scroll-follow-end.test.tsx`                                                   |
 | Replacement invalidation, source release, mount cleanup, separate mounts                                                                      | `vnext-text-lifecycle.test.tsx`                                                      |
 | Static, fake-TUI, and Chromium large-text parity                                                                                              | `vnext-large-text-host-parity.test.tsx`, `vnext-large-text-host-parity.pw.spec.ts`   |
+| Stable-frame single scene pass, corrected follow-end scene, and hit testing                                                                   | `vnext-scene-reconciliation.test.tsx`                                                |
+| Ordinary terminal row refresh without full-screen clears                                                                                      | `vnext-tui-refresh.test.ts`                                                          |
 | Versioned benchmark fixture shapes, sizes, and update counts                                                                                  | `large-text-benchmark-v1.test.ts`                                                    |
 | Benchmark inventory, counter checks, reference gate, and options                                                                              | `large-text-benchmark-v1-report.test.ts`                                             |
 | Seed event-to-host-frame stage profile                                                                                                        | `seed-large-text-profile.pw.spec.ts`                                                 |
@@ -103,7 +106,7 @@ The runner fails the reference gate and exits 1 for a narrowed protocol, a missi
 
 ### Recorded reference environment
 
-A reference run recorded on 2026-09-14 on the maintained physical machine passed every gate. The full JSON report stays outside the repository, and this table records the environment and structural results.
+A reference run recorded on 2026-09-15 on the maintained physical machine passed every gate after the post-bump review changed renderer behavior. The full JSON report stays outside the repository, and this table records the environment and structural results. An earlier 2026-09-14 run covered the pre-review renderer before batched source reconciliation, the single scene pass, the single prepared-cell store, window intersection reuse, and terminal row refresh; this rerun covers the reviewed revision.
 
 | Field                         | Value                                                                                 |
 | ----------------------------- | ------------------------------------------------------------------------------------- |
@@ -112,11 +115,11 @@ A reference run recorded on 2026-09-14 on the maintained physical machine passed
 | Operating system              | CachyOS on Linux 7.2.4-3-cachyos, x86_64                                              |
 | Virtualization                | `systemd-detect-virt` reports `none` (physical)                                       |
 | Build                         | production (`bun run build`)                                                          |
-| Lockfile                      | `bun.lock` SHA-256 `dd9b199d37473d2b5a78a740e13203791f383c55f2e58e7ca783b5dc97ba718d` |
+| Lockfile                      | `bun.lock` SHA-256 `6a28b62df6261443b3f6294ad463d784776ef48c9d28f88963d79514b0de133b` |
 | Protocol                      | three unrecorded warm-ups, five distinct fresh-process runs, all three fixture sizes  |
-| Cold medians at 667,633       | 424.871 ms many-line, 402.967 ms single-line (gate 500 ms)                            |
-| Worst pooled warm p95         | 19.657 ms (`vertical-scroll`, many-line, 2,000,000; gate 50 ms)                       |
-| Maximum warm event-loop delay | 27.985 ms (gate 100 ms)                                                               |
+| Cold medians at 667,633       | 416.497 ms many-line, 403.466 ms single-line (gate 500 ms)                            |
+| Worst pooled warm p95         | 21.190 ms (`correlated-replacement`, many-line, 2,000,000; gate 50 ms)                |
+| Maximum warm event-loop delay | 44.202 ms (gate 100 ms)                                                               |
 | Counters                      | all five deterministic checks passed across all three sizes                           |
 | Gate                          | passed; every eligibility entry true, no inventory problems                           |
 

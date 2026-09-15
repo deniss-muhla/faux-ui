@@ -83,8 +83,16 @@ export function App() {
       <Columns tracks={[24, "1fr"]} gap={1}>
         <ScrollView axis="y" border title=" Queue ">
           <Rows>
-            <Button label="First" selected={selected === 0} onPress={() => setSelected(0)} />
-            <Button label="Second" selected={selected === 1} onPress={() => setSelected(1)} />
+            <Button
+              label="First"
+              selected={selected === 0}
+              onPress={() => setSelected(0)}
+            />
+            <Button
+              label="Second"
+              selected={selected === 1}
+              onPress={() => setSelected(1)}
+            />
           </Rows>
         </ScrollView>
         <Box border title=" Detail " padding={1}>
@@ -145,7 +153,7 @@ const app = render(<App />);
 // app.unmount()
 ```
 
-The terminal host derives its logical size from columns/rows, handles keyboard and SGR mouse input, writes true-color ANSI, and restores raw mode, cursor, mouse tracking, and alternate-screen state on unmount.
+The terminal host derives its logical size from columns/rows, handles keyboard and SGR mouse input, writes true-color ANSI, and restores raw mode, cursor, mouse tracking, and alternate-screen state on unmount. Ordinary updates write only the rows whose visible cells changed instead of clearing the screen; start, resize, and palette changes redraw completely.
 
 Fake `input` and `output` streams can be passed for tests.
 
@@ -178,26 +186,28 @@ import { Grid, GridItem } from "@faux-ui/grid";
 import { Text } from "@faux-ui/ui";
 
 <Grid columns={[16, "1fr", 20]} rows={[3, "1fr"]} gap={1}>
-  <GridItem columnSpan={3}><Text>Header</Text></GridItem>
+  <GridItem columnSpan={3}>
+    <Text>Header</Text>
+  </GridItem>
   <Text>Navigation</Text>
   <Text>Main</Text>
   <Text>Inspector</Text>
-</Grid>
+</Grid>;
 ```
 
 `@faux-ui/grid` is independently packaged, depends only on public UI entrypoints, and includes its own optional skill. See [`packages/grid`](packages/grid/README.md).
 
 ## Foundation
 
-| Component | Purpose |
-| --- | --- |
-| `Text` | Explicit-line text with clip/start/middle/end ellipsis and `align={{ x, y }}` |
-| `Box` | Single-child surface with padding, border, title, style, and handlers |
-| `Rows` / `Columns` | Child rows (height tracks) / child columns (width tracks) |
-| `Fill` / `Divider` | Paint an allocated frame without guessed string lengths |
-| `ScrollView` | Shared viewport/content/offset semantics with per-axis `followEnd` |
-| `Button` | One focus, pointer, Enter, Space, and `onPress` contract |
-| `ThemeProvider` | Shared semantic palette override |
+| Component          | Purpose                                                                       |
+| ------------------ | ----------------------------------------------------------------------------- |
+| `Text`             | Explicit-line text with clip/start/middle/end ellipsis and `align={{ x, y }}` |
+| `Box`              | Single-child surface with padding, border, title, style, and handlers         |
+| `Rows` / `Columns` | Child rows (height tracks) / child columns (width tracks)                     |
+| `Fill` / `Divider` | Paint an allocated frame without guessed string lengths                       |
+| `ScrollView`       | Shared viewport/content/offset semantics with per-axis `followEnd`            |
+| `Button`           | One focus, pointer, Enter, Space, and `onPress` contract                      |
+| `ThemeProvider`    | Shared semantic palette override                                              |
 
 App shells, panels, action bars, split panes, key hints, and status states are compositions of these primitives.
 
@@ -237,6 +247,8 @@ const view = (
 `source` and string children are mutually exclusive. Segment IDs are nonempty and unique. Empty IDs or mixed children and `source` throw `TypeError`; duplicate IDs or a missing extension/replacement target throw `RangeError`, and the prior source stays unchanged.
 
 The first frame indexes the complete current source once to build exact line metrics. Later frames prepare only the visible window plus at most one viewport before and after it on each enabled scroll axis, evict visited windows, and count prepared cell slots separately from copied glyph payload. Complete long lines remain reachable through horizontal scrolling. Reset and replacement rebuild affected derived state; append and extension stay bounded by the changed segment and its unfinished Unicode boundary.
+
+React may commit several `TextSource` updates in one commit. Faux UI compares persistent source identities, applies proven appends and extensions in place, and rebuilds only the suffix after the earliest unproven change, so intermediate sources never need to be rendered. When a compatible prepared window moves, the cache keeps the old and new intersection and prepares only the entering strips.
 
 `ScrollView.followEnd` accepts `boolean | "x" | "y" | "both"`. Omission or `false` follows neither axis, `true` follows every enabled axis, and a named axis follows only that axis when it is enabled.
 

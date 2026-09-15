@@ -5,11 +5,11 @@ import {
 } from "node:process";
 import type { ReactNode } from "react";
 
-import { sceneToAnsi } from "./internal/ansi.js";
 import { SemanticMount } from "./internal/mount.js";
 import type { Palette, Size } from "./internal/model.js";
 import { mergePalette } from "./internal/palette.js";
 import type { CellScene } from "./internal/scene.js";
+import { TuiFrameWriter } from "./internal/tui-frame.js";
 import {
   consumeTerminalInput,
   type TerminalControl,
@@ -23,7 +23,6 @@ const DISABLE_AUTOWRAP = "\u001b[?7l";
 const ENABLE_AUTOWRAP = "\u001b[?7h";
 const ENABLE_MOUSE = "\u001b[?1000h\u001b[?1002h\u001b[?1006h";
 const DISABLE_MOUSE = "\u001b[?1000l\u001b[?1002l\u001b[?1006l";
-const CLEAR_SCREEN = "\u001b[2J\u001b[H";
 
 export interface TerminalInput {
   readonly isTTY?: boolean;
@@ -83,12 +82,13 @@ export function render(
   const explicitSize = options.width !== undefined;
   const alternateScreen = options.alternateScreen ?? output.isTTY !== false;
   const mouse = options.mouse ?? supportsMouse(output);
+  const writer = new TuiFrameWriter(output);
   const mount = new SemanticMount({
     size: resolveTerminalSize(options, output),
     onFrame: (frame) => {
       if (!running) return;
       const palette = mergePalette({ ...frame.palette, ...options.palette });
-      writeFrame(output, frame.scene, palette);
+      writer.write(frame.scene, palette);
     },
   });
   const decoder = new TextDecoder();
@@ -98,7 +98,9 @@ export function render(
 
   const handleData = (chunk: Uint8Array | string): void => {
     pendingInput +=
-      typeof chunk === "string" ? chunk : decoder.decode(chunk, { stream: true });
+      typeof chunk === "string"
+        ? chunk
+        : decoder.decode(chunk, { stream: true });
     const parsed = consumeTerminalInput(pendingInput);
     pendingInput = parsed.rest;
     try {
@@ -144,11 +146,13 @@ export function render(
       if (mouse) output.write(ENABLE_MOUSE);
       const frame = mount.frame();
       const palette = mergePalette({ ...frame.palette, ...options.palette });
-      writeFrame(output, frame.scene, palette);
+      writer.invalidate();
+      writer.write(frame.scene, palette);
     },
     stop(): void {
       if (!running) return;
       running = false;
+      writer.invalidate();
       unlisten(input, "data", handleData);
       unlisten(output, "resize", handleResize);
       input.setRawMode?.(false);
@@ -211,23 +215,13 @@ export function render(
   return handle;
 }
 
-function writeFrame(
-  output: TerminalOutput,
-  scene: CellScene,
-  palette: Palette,
-): void {
-  output.write(`${CLEAR_SCREEN}${sceneToAnsi(scene, palette)}`);
-}
-
 function resolveTerminalSize(
   options: Pick<TuiRenderOptions, "width" | "height">,
   output: Pick<TerminalOutput, "columns" | "rows">,
 ): Size {
   return {
-    width:
-      options.width ?? normalizeTerminalDimension(output.columns, 80),
-    height:
-      options.height ?? normalizeTerminalDimension(output.rows, 24),
+    width: options.width ?? normalizeTerminalDimension(output.columns, 80),
+    height: options.height ?? normalizeTerminalDimension(output.rows, 24),
   };
 }
 

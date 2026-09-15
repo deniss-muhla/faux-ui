@@ -58,6 +58,7 @@ packages/ui/
       scene.ts               canonical painting and row runs
       dom-scene.ts           DOM projection primitives
       ansi.ts                true-color ANSI projection
+      tui-frame.ts           changed-row terminal refresh planner
       tui-input.ts           terminal protocol parsing
       mount.ts               end-to-end semantic mount lifecycle
 packages/grid/
@@ -186,7 +187,9 @@ Each mount owns one `TextStore` keyed by text-node identity. The store keeps no 
 
 The first frame for a value scans the source once to build those metrics and retains no grapheme arrays or cell data for offscreen lines. `TextSource` identity proves which ranges stay valid. An append processes the delta, its unfinished boundary state, and required index updates. An extension of a non-final segment resumes at that segment's seam. A replacement invalidates derived data from the affected line onward.
 
-`TextWindowCache` prepares the visible viewport plus at most one viewport before and after it on each enabled scroll axis, and none on a clipped non-scroll axis. It evicts the previous window when bounds or rendering mode change, caches prepared overflow lines, and counts cell slots separately from copied glyph-payload code units. Canonical scene painting consumes only that bounded window and still writes only through the effective clip.
+React may commit a later source after intermediate immutable sources were created and skipped. The index retains the last source it rendered and compares persistent order, segment, trie, and chunk identities. `compareTextSources` returns a private plan: proven appends and extensions index only the changed chunks, a mixed update preserves the segment metadata before the earliest changed or uncertain boundary and rebuilds the affected suffix, and a reset or unrelated source rebuilds the complete value. No skipped source version is retained, and metadata-search counters bound the identity walk.
+
+`TextWindowCache` is the single authoritative prepared-cell store. It prepares the visible viewport plus at most one viewport before and after it on each enabled scroll axis, and none on a clipped non-scroll axis. When a compatible prepared window moves it retains the old and new intersection and prepares only the entering strips, counting each prepared cell once. It evicts cells and prepared overflow lines outside the retained bound, and it clears the cache on a source change, a rendering-mode change, a resize, or a non-overlapping jump. It counts cell slots separately from copied glyph-payload code units. Canonical scene painting consumes only that bounded window and still writes only through the effective clip.
 
 `RenderWorkTracker` stays mount-local. It records indexing, layout, and scene work plus retained and disposed text entries. Only the testing mount enables it; host mounts allocate nothing.
 
@@ -280,7 +283,7 @@ Scene ownership drives host-independent hit testing. `sceneRows()` groups adjace
 6. paint the canonical scene from each text node's bounded prepared window;
 7. notify host frame subscribers.
 
-React commits, controller changes, and size changes all enter the same recomputation path. Re-entrancy is coalesced. Failed initial renders, root removal, and unmount release text indexes, prepared windows, layout, scene, and controller state exactly once. The text store exists because the recorded event-to-frame profile showed retained history controlling update cost; any other cache still needs the same evidence first.
+React commits, controller changes, and size changes all enter the same recomputation path. Re-entrancy is coalesced. The mount paints one scene, reconciles the controller against it, and paints a corrective scene only when reconciliation reports a paint-relevant change; the corrected scene is the frame hosts receive and the scene later hit tests use. Interaction-only frames already perform no source indexing and no content-dependent layout work, so the mount keeps this direct recomputation path instead of an invalidation-level protocol. Failed initial renders, root removal, and unmount release text indexes, prepared windows, layout, scene, and controller state exactly once. The text store exists because the recorded event-to-frame profile showed retained history controlling update cost; any other cache still needs the same evidence first.
 
 ## DOM host
 
@@ -316,10 +319,12 @@ The terminal entry owns all Node-specific behavior:
 - SGR mouse negotiation/parsing;
 - key/CSI parsing;
 - true-color ANSI serialization;
-- full-frame redraw and resize;
+- bounded row refresh with full redraw only on start, resize, palette change, or invalidated output;
 - lifecycle restoration.
 
 Input/output are structural interfaces, enabling fake streams without a real terminal. Full-frame painting disables terminal autowrap and uses explicit CRLF row boundaries, so writing the final terminal column cannot insert or shift rows. After each non-ASCII grapheme, ANSI horizontal positioning re-anchors subsequent cells; a terminal that assigns a different width to an emoji, combining, ambiguous, or CJK sequence therefore cannot move later borders. Ctrl+C can unmount or route as a shared key. Cleanup restores autowrap and is idempotent.
+
+`TuiFrameWriter` retains the last emitted scene, resolved palette, and dimensions. The first frame, a size or palette change, and the frame after a failed write or a stop/start cycle emit a complete redraw. An ordinary frame compares visible glyphs, continuation cells, and resolved styles, ignores semantic ownership IDs, and writes one explicitly positioned, reset-terminated update per changed row inside a single `output.write` call. A frame with no visible or style changes writes nothing.
 
 ## Palette
 
@@ -335,7 +340,7 @@ The release gate combines:
 - all official Unicode 17 grapheme boundary cases;
 - deterministic work and disposal counters through `/testing`, including source-code-unit and metadata-search counts;
 - an eager oracle for preferred trees, frames, content extents, canonical cells, ownership, offsets, and event traces;
-- large-text suites for `TextSource`, incremental indexing, prepared-window bounds, eviction, overflow, follow-end, lifecycle, and static/fake-TUI/Chromium parity;
+- large-text suites for `TextSource`, batched source reconciliation, incremental indexing, prepared-window bounds, eviction, overflow, follow-end, lifecycle, and static/fake-TUI/Chromium parity;
 - `large-text-benchmark-v1` report and option tests, and the recorded reference protocol for wall-clock gates;
 - real-Chromium DOM projection/input/resize/accessibility tests;
 - serious queue/detail/metadata fixture tests;

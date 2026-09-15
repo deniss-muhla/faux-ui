@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import { sceneToAnsi } from "../src/internal/ansi.js";
 import { defaultPalette } from "../src/internal/palette.js";
 import { sceneToText } from "../src/internal/scene.js";
 import { render as renderTui } from "../src/tui.js";
@@ -16,58 +15,11 @@ import {
   extendLargeTextHostParitySegment,
   replaceLargeTextHostParitySegment,
 } from "./support/large-text-host-parity.js";
-
-class FakeInput {
-  readonly isTTY = true;
-  readonly rawModes: boolean[] = [];
-  resumed = 0;
-  paused = 0;
-  readonly listeners = new Set<(chunk: Uint8Array | string) => void>();
-
-  setRawMode(value: boolean): void {
-    this.rawModes.push(value);
-  }
-
-  resume(): void {
-    this.resumed += 1;
-  }
-
-  pause(): void {
-    this.paused += 1;
-  }
-
-  on(_event: "data", listener: (chunk: Uint8Array | string) => void): void {
-    this.listeners.add(listener);
-  }
-
-  off(_event: "data", listener: (chunk: Uint8Array | string) => void): void {
-    this.listeners.delete(listener);
-  }
-
-  emit(chunk: string): void {
-    for (const listener of this.listeners) listener(chunk);
-  }
-}
-
-class FakeOutput {
-  readonly isTTY = true;
-  readonly writes: string[] = [];
-  readonly listeners = new Set<() => void>();
-  columns = LARGE_TEXT_HOST_PARITY_SIZE.width;
-  rows = LARGE_TEXT_HOST_PARITY_SIZE.height;
-
-  write(chunk: string): void {
-    this.writes.push(chunk);
-  }
-
-  on(_event: "resize", listener: () => void): void {
-    this.listeners.add(listener);
-  }
-
-  off(_event: "resize", listener: () => void): void {
-    this.listeners.delete(listener);
-  }
-}
+import {
+  FakeTerminalInput,
+  FakeTerminalOutput,
+  expectedTerminalGrid,
+} from "./support/fake-terminal.js";
 
 describe("large text static and TUI parity", () => {
   it(
@@ -77,8 +29,11 @@ describe("large text static and TUI parity", () => {
       let source = createLargeTextHostParitySource();
       const staticRecorder = createHostParityRecorder();
       const tuiRecorder = createHostParityRecorder();
-      const input = new FakeInput();
-      const output = new FakeOutput();
+      const input = new FakeTerminalInput();
+      const output = new FakeTerminalOutput(
+        LARGE_TEXT_HOST_PARITY_SIZE.width,
+        LARGE_TEXT_HOST_PARITY_SIZE.height,
+      );
       const staticApp = renderStatic(
         createLargeTextHostParityView(source, staticRecorder),
         LARGE_TEXT_HOST_PARITY_SIZE,
@@ -94,7 +49,8 @@ describe("large text static and TUI parity", () => {
         },
       );
 
-      const assertParity = (step: string): void => {
+      let expectedClears = output.clears;
+      const assertParity = (step: string, fullRedraw = false): void => {
         const staticScene = staticApp.getScene();
         const tuiScene = tui.getScene();
         expect(canonicalHostScene(tuiScene), step).toEqual(
@@ -124,9 +80,11 @@ describe("large text static and TUI parity", () => {
               event.currentTarget.kind === "text" ? textId : rootId,
           })),
         );
-        expect(output.writes.at(-1), step).toBe(
-          `\u001b[2J\u001b[H${sceneToAnsi(tuiScene, defaultPalette)}`,
+        expect(output.snapshot(), step).toEqual(
+          expectedTerminalGrid(tuiScene, defaultPalette),
         );
+        if (fullRedraw) expectedClears += 1;
+        expect(output.clears, step).toBe(expectedClears);
       };
 
       try {
@@ -186,13 +144,21 @@ describe("large text static and TUI parity", () => {
         tui.rerender(createLargeTextHostParityView(source, tuiRecorder));
         assertParity("replace source segment");
 
+        output.setDimensions(
+          LARGE_TEXT_HOST_PARITY_RESIZED_SIZE.width,
+          LARGE_TEXT_HOST_PARITY_RESIZED_SIZE.height,
+        );
         staticApp.setSize(LARGE_TEXT_HOST_PARITY_RESIZED_SIZE);
         tui.setSize(LARGE_TEXT_HOST_PARITY_RESIZED_SIZE);
-        assertParity("resize to 100 by 24");
+        assertParity("resize to 100 by 24", true);
 
+        output.setDimensions(
+          LARGE_TEXT_HOST_PARITY_SIZE.width,
+          LARGE_TEXT_HOST_PARITY_SIZE.height,
+        );
         staticApp.setSize(LARGE_TEXT_HOST_PARITY_SIZE);
         tui.setSize(LARGE_TEXT_HOST_PARITY_SIZE);
-        assertParity("resize back to 120 by 30");
+        assertParity("resize back to 120 by 30", true);
 
         staticApp.keyDown({ key: "Home" });
         input.emit("\u001b[H");

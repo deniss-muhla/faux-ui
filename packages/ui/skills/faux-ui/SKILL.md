@@ -91,6 +91,7 @@ Call `app.unmount()` during cleanup.
 - Pass ordinary text as string children. Use `source={textSource}` only for large or streaming values, and never combine `source` with children.
 - Build sources with `createTextSource`, `appendTextSourceSegment`, `extendTextSourceSegment`, and `replaceTextSourceSegment`. Keep one segment per logical block, extend the streaming block, and replace it on authoritative updates. IDs must be nonempty and unique.
 - A new string or reset is indexed in full; append and extension work stays bounded by the changed segment and its unfinished Unicode boundary. Do not rejoin or rescan retained history on each update.
+- Several source updates can reach one React commit. Faux UI compares persistent source identities, preserves proven ranges, and rebuilds only the suffix after the earliest unproven change, so intermediate sources do not need their own render.
 
 ## Interaction and styling
 

@@ -155,7 +155,9 @@ export class EagerTextOracleSession {
   }
 
   #refresh(): void {
-    while (this.#dirty) {
+    let pending = true;
+    while (pending || this.#dirty) {
+      pending = false;
       this.#dirty = false;
       const next = renderEagerTextOracle(
         this.#root,
@@ -164,7 +166,7 @@ export class EagerTextOracleSession {
       );
       this.#layout = next.layout;
       this.#scene = next.scene;
-      this.#controller.update(this.#root, this.#layout, this.#scene);
+      pending = this.#controller.update(this.#root, this.#layout, this.#scene);
     }
   }
 }

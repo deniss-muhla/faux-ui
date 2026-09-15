@@ -58,8 +58,17 @@ export class InteractionController {
     this.#onChange = onChange;
   }
 
-  update(root: SemanticNode, layout: LayoutResult, scene: CellScene): void {
-    if (this.#disposed) return;
+  /**
+   * Reconciles controller state with the newest root, layout, and painted
+   * scene. Visibility and focusability checks use that scene, so the caller
+   * must paint one corrected scene and call this again when reconciliation
+   * reports a paint-relevant change.
+   *
+   * Returns true when offsets, focus, hover, or press state changed. State
+   * changes requested by dispatched handlers still notify `onChange`.
+   */
+  update(root: SemanticNode, layout: LayoutResult, scene: CellScene): boolean {
+    if (this.#disposed) return false;
     const oldRoot = this.#root;
     const oldLayout = this.#layout;
     const oldFocused =
@@ -139,7 +148,7 @@ export class InteractionController {
       }
     }
 
-    if (changed) this.#onChange();
+    return changed;
   }
 
   clear(): void {

@@ -339,7 +339,9 @@ The bounded-work limit differs by operation:
 - `replaceTextSourceSegment` invalidates every derived value whose source boundary is no longer proven. The next frame rebuilds the affected line and following compact line metadata, not the retained grapheme history.
 - Neither Faux UI nor callers treat string equality, length, `startsWith`, or full-prefix comparison as append identity.
 
-Scene painting prepares only the visible viewport plus at most one viewport before and after it on each enabled scroll axis. A clipped axis that is not scroll-enabled gets no overscan. Prepared cell slots stay within one viewport area without scrolling, three viewport areas for one-axis scrolling, and nine viewport areas for two-axis scrolling. Cells outside that window are evicted.
+React may commit a later source after intermediate immutable sources were created and skipped. The mounted index retains the last source it rendered and compares persistent order, segment, trie, and chunk identities. A proven append or extension processes only the changed chunks and their unfinished Unicode boundary state. A mixed update preserves every proven range before the earliest changed or uncertain boundary and rebuilds the affected suffix. A reset, an unrelated source, or a pair with no safe shared boundary rebuilds the complete source. No chain of skipped source versions is retained.
+
+Scene painting prepares only the visible viewport plus at most one viewport before and after it on each enabled scroll axis. A clipped axis that is not scroll-enabled gets no overscan. Prepared cell slots stay within one viewport area without scrolling, three viewport areas for one-axis scrolling, and nine viewport areas for two-axis scrolling. When a compatible prepared window moves, the cache retains the old and new intersection and prepares only the entering strips; cells and overflow entries outside the new window are evicted. A resize, a non-overlapping jump, a rendering-mode change, or an unproven source update clears the cache.
 
 Cell slots are not a byte bound. The store counts copied glyph-payload UTF-16 code units separately from cell slots, retains source ranges where possible, releases payload for evicted windows and obsolete source versions, and never retains a duplicate string for the complete source. An arbitrarily large visible or newly extended grapheme counts as changed or visible source data, not constant cache overhead.
 
@@ -391,6 +393,8 @@ Paint order:
 5. focus/hover style projection according to the same node style rules.
 
 All painting respects effective clips. Fully clipped content produces no scene writes.
+
+Controller reconciliation reads the freshly painted scene for visibility and focusability checks. Faux UI paints the scene once, reconciles the controller against it, and paints one corrective scene only when reconciliation reports a paint-relevant change such as a moved offset or focus. The corrected scene becomes the controller's hit-test scene and the frame hosts receive. An unchanged repaint therefore paints one canonical scene, not two.
 
 The scene is the source for:
 
@@ -479,6 +483,9 @@ The shared controller owns interaction state and dispatch.
 ## TUI host requirements
 
 - Serialize the canonical scene with the active palette.
+- After the first frame, write only changed visible rows or an equivalent bounded update instead of clearing the screen.
+- Redraw completely on the first frame after start, a resize, a palette change, or an invalidated output state; a frame with no visible or style changes writes nothing.
+- Invalidate the retained projection after a failed write so the next frame redraws completely.
 - Translate terminal input and resize into shared controller commands/root sizes.
 - Keep ANSI protocol parsing, raw mode, alternate screen, cursor, autowrap, and mouse negotiation host-local.
 - Prevent terminal right-margin autowrap from changing logical row placement.

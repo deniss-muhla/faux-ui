@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  Button,
   createTextSource,
   extendTextSourceSegment,
   replaceTextSourceSegment,
+  Rows,
   ScrollView,
   Text,
   type TextSource,
@@ -13,7 +15,19 @@ import {
   LARGE_TEXT_BENCHMARK_V1,
   generateCorrelatedReplacementFixture,
   generateManyLineFixture,
+  generateSingleLineFixture,
 } from "./support/large-text-benchmark-v1.js";
+
+const EMPTY_WORK_COUNTS = {
+  sourceCodeUnitsInspected: 0,
+  metadataRecordsSearched: 0,
+  linesIndexed: 0,
+  graphemesPrepared: 0,
+  cellSlotsRetained: 0,
+  copiedGlyphPayloadCodeUnitsRetained: 0,
+  cellsPainted: 0,
+  entriesDisposed: 0,
+} as const;
 
 describe("large text render work", () => {
   it("reports deterministic frame work and mount-local disposal", () => {
@@ -31,7 +45,7 @@ describe("large text render work", () => {
       graphemesPrepared: 22,
       cellSlotsRetained: 11,
       copiedGlyphPayloadCodeUnitsRetained: 11,
-      cellsPainted: 52,
+      cellsPainted: 26,
       entriesDisposed: 0,
     });
     expect(app.getStageDurations()).toEqual({
@@ -60,7 +74,7 @@ describe("large text render work", () => {
       graphemesPrepared: 0,
       cellSlotsRetained: 11,
       copiedGlyphPayloadCodeUnitsRetained: 11,
-      cellsPainted: 52,
+      cellsPainted: 26,
       entriesDisposed: 0,
     });
 
@@ -79,6 +93,35 @@ describe("large text render work", () => {
     expect(app.getWorkCounts()).toEqual(disposed);
     app.unmount();
     expect(app.getWorkCounts()).toEqual(disposed);
+  });
+
+  it("paints one scene pass for an unchanged 10-by-1 repaint", () => {
+    const app = renderStatic(<Text>{"x"}</Text>, { width: 10, height: 1 });
+    try {
+      app.clearWorkCounts();
+      app.repaint();
+      expect(app.getWorkCounts().cellsPainted).toBe(11);
+      expect(app.getText()).toBe("x         ");
+    } finally {
+      app.unmount();
+    }
+  });
+
+  it("counts regular and overflow cells once in one frame", () => {
+    const app = renderStatic(<Text>{"abc\ndefghijklmn"}</Text>, {
+      width: 5,
+      height: 2,
+    });
+    try {
+      expect(app.getText()).toBe("abc  \ndefgh");
+      const work = app.getWorkCounts();
+      // Three regular cells for the fitting line plus five clipped cells for
+      // the overflow line; each prepared cell is counted exactly once.
+      expect(work.cellSlotsRetained).toBe(8);
+      expect(work.copiedGlyphPayloadCodeUnitsRetained).toBe(8);
+    } finally {
+      app.unmount();
+    }
   });
 
   it(
@@ -102,6 +145,47 @@ describe("large text render work", () => {
       expect(repaint.linesIndexed).toBeLessThanOrEqual(
         LARGE_TEXT_BENCHMARK_V1.viewport.height * 3,
       );
+    },
+  );
+
+  it(
+    "keeps interaction-only frames free of indexing work on the exact fixture",
+    { timeout: 30_000 },
+    () => {
+      const source = createTextSource([
+        { id: "history", text: generateManyLineFixture(667_633) },
+      ]);
+      const app = renderStatic(
+        <Rows tracks={[3, 1]}>
+          <ScrollView axis="both" focusable accessibleLabel="transcript">
+            <Text source={source} />
+          </ScrollView>
+          <Button label="Go" padding={0} onPress={() => {}} />
+        </Rows>,
+        { width: 40, height: 4 },
+      );
+
+      try {
+        app.clearWorkCounts();
+        for (let index = 0; index < 4; index += 1) {
+          app.scroll({ x: 1, y: 1, deltaX: 0, deltaY: 1 });
+          app.keyDown({ key: "Tab" });
+          app.pointerMove({ x: 1, y: 1 });
+          app.pointerMove({ x: 1, y: 3 });
+          app.repaint();
+        }
+
+        const stages = app.getStageWorkCounts();
+        // Retained content is indexed on React commits, never on controller
+        // interactions or explicit repaints.
+        expect(stages.indexing).toEqual(EMPTY_WORK_COUNTS);
+        // Preferred sizes stay cached, so layout counts no text work either.
+        expect(stages.layout).toEqual(EMPTY_WORK_COUNTS);
+        expect(app.getWorkCounts().linesIndexed).toBe(0);
+        expect(stages.scene.cellsPainted).toBeGreaterThan(0);
+      } finally {
+        app.unmount();
+      }
     },
   );
 
@@ -287,6 +371,134 @@ describe("large text render work", () => {
     expect(app.getText()).toBe("xENDMARK");
     app.unmount();
   });
+
+  it("reuses prepared overflow entries for a one-row movement", () => {
+    const lines = Array.from(
+      { length: 120 },
+      (_, index) => `line-${String(index).padStart(3, "0")}-${"x".repeat(40)}`,
+    );
+    const lineCodeUnits = lines[0]?.length ?? 0;
+    const app = renderStatic(
+      <ScrollView axis="y">
+        <Text>{lines.join("\n")}</Text>
+      </ScrollView>,
+      { width: 10, height: 2 },
+    );
+    const root = app.getLayout().root;
+    try {
+      app.setScrollOffset(root.nodeId, { x: 0, y: 60 });
+      app.clearWorkCounts();
+      expect(app.setScrollOffset(root.nodeId, { x: 0, y: 61 })).toBe(true);
+      const work = app.getWorkCounts();
+      // Only the line entering the bounded window is prepared; a
+      // clear-and-prepare window would inspect all six retained lines.
+      expect(work.sourceCodeUnitsInspected).toBe(lineCodeUnits);
+      expect(work.graphemesPrepared).toBe(lineCodeUnits);
+      expect(work.metadataRecordsSearched).toBeLessThanOrEqual(8);
+      expect(work.cellSlotsRetained).toBeLessThanOrEqual(10 * 2 * 3);
+      expect(work.copiedGlyphPayloadCodeUnitsRetained).toBeLessThanOrEqual(
+        10 * 2 * 3,
+      );
+    } finally {
+      app.unmount();
+    }
+  });
+
+  it("reuses the prepared window intersection for a one-column movement", () => {
+    const text = "x".repeat(4_096);
+    const source = createTextSource([{ id: "line", text }]);
+    const app = renderStatic(
+      <ScrollView axis="x">
+        <Text source={source} />
+      </ScrollView>,
+      { width: 10, height: 1 },
+    );
+    const root = app.getLayout().root;
+    try {
+      app.clearWorkCounts();
+      app.setScrollOffset(root.nodeId, { x: 1_029, y: 0 });
+      const fromScratch = app.getWorkCounts().sourceCodeUnitsInspected;
+      expect(fromScratch).toBeGreaterThan(0);
+
+      app.clearWorkCounts();
+      expect(app.setScrollOffset(root.nodeId, { x: 1_030, y: 0 })).toBe(true);
+      const reused = app.getWorkCounts();
+      // The retained intersection keeps every prepared cell except the
+      // entering strip; clearing the window would re-read the complete range.
+      expect(reused.sourceCodeUnitsInspected).toBeGreaterThan(0);
+      expect(reused.sourceCodeUnitsInspected).toBeLessThan(fromScratch);
+      expect(reused.cellSlotsRetained).toBeLessThanOrEqual(10 * 1 * 3);
+      expect(reused.copiedGlyphPayloadCodeUnitsRetained).toBeLessThanOrEqual(
+        10 * 1 * 3,
+      );
+    } finally {
+      app.unmount();
+    }
+  });
+
+  it(
+    "keeps one-row and one-column movement work bounded by the entering strip on the exact fixture",
+    { timeout: 30_000 },
+    () => {
+      const manyLine = generateManyLineFixture(667_633);
+      expect(manyLine.length).toBe(667_633);
+      const rows = renderStatic(
+        <ScrollView axis="y">
+          <Text>{manyLine}</Text>
+        </ScrollView>,
+        LARGE_TEXT_BENCHMARK_V1.viewport,
+      );
+      const rowsRoot = rows.getLayout().root;
+      try {
+        rows.setScrollOffset(rowsRoot.nodeId, { x: 0, y: 1_600 });
+        rows.clearWorkCounts();
+        expect(rows.setScrollOffset(rowsRoot.nodeId, { x: 0, y: 1_601 })).toBe(
+          true,
+        );
+        const rowWork = rows.getWorkCounts();
+        expect(rowWork.sourceCodeUnitsInspected).toBeGreaterThan(0);
+        expect(rowWork.sourceCodeUnitsInspected).toBeLessThanOrEqual(1_024);
+        expect(rowWork.cellSlotsRetained).toBeLessThanOrEqual(
+          LARGE_TEXT_BENCHMARK_V1.viewport.width *
+            LARGE_TEXT_BENCHMARK_V1.viewport.height *
+            3,
+        );
+      } finally {
+        rows.unmount();
+      }
+
+      const singleLine = generateSingleLineFixture(667_633);
+      expect(singleLine.length).toBe(667_633);
+      const source = createTextSource([{ id: "line", text: singleLine }]);
+      const columns = renderStatic(
+        <ScrollView axis="x">
+          <Text source={source} />
+        </ScrollView>,
+        LARGE_TEXT_BENCHMARK_V1.viewport,
+      );
+      const columnsRoot = columns.getLayout().root;
+      try {
+        columns.clearWorkCounts();
+        columns.setScrollOffset(columnsRoot.nodeId, { x: 400_000, y: 0 });
+        const fromScratch = columns.getWorkCounts().sourceCodeUnitsInspected;
+        expect(fromScratch).toBeGreaterThan(0);
+        columns.clearWorkCounts();
+        expect(
+          columns.setScrollOffset(columnsRoot.nodeId, { x: 400_001, y: 0 }),
+        ).toBe(true);
+        const columnWork = columns.getWorkCounts();
+        expect(columnWork.sourceCodeUnitsInspected).toBeGreaterThan(0);
+        expect(columnWork.sourceCodeUnitsInspected).toBeLessThan(fromScratch);
+        expect(columnWork.cellSlotsRetained).toBeLessThanOrEqual(
+          LARGE_TEXT_BENCHMARK_V1.viewport.width *
+            LARGE_TEXT_BENCHMARK_V1.viewport.height *
+            3,
+        );
+      } finally {
+        columns.unmount();
+      }
+    },
+  );
 
   it(
     "bounds a fixed correlated replacement independently of retained history",

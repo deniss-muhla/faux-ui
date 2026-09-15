@@ -248,6 +248,51 @@ describe("vNext shared interaction controller", () => {
     expect(controller.snapshot().offsets.get(1)).toEqual({ x: 0, y: 3 });
   });
 
+  it("returns reconciliation changes without notifying the mount", () => {
+    const onChange = vi.fn();
+    const controller = new InteractionController(onChange);
+    const root = append(
+      createBoxNode(1, { scroll: "y", followEnd: true }),
+      createTextNode(2, { text: "one\ntwo\nthree" }),
+    );
+    const update = (): boolean => {
+      const layout = computeLayout(root, { width: 8, height: 2 });
+      return controller.update(
+        root,
+        layout,
+        paintScene(root, layout, controller.snapshot()),
+      );
+    };
+
+    expect(update()).toBe(true);
+    expect(controller.snapshot().offsets.get(1)).toEqual({ x: 0, y: 1 });
+    expect(update()).toBe(false);
+
+    const focusable = append(
+      createBoxNode(1, {}),
+      createBoxNode(2, { focusable: true }),
+    );
+    const focusLayout = computeLayout(focusable, { width: 4, height: 1 });
+    controller.update(
+      focusable,
+      focusLayout,
+      paintScene(focusable, focusLayout),
+    );
+    expect(controller.focus(2)).toBe(true);
+
+    const removed = createBoxNode(1, {});
+    const removedLayout = computeLayout(removed, { width: 4, height: 1 });
+    expect(
+      controller.update(
+        removed,
+        removedLayout,
+        paintScene(removed, removedLayout),
+      ),
+    ).toBe(true);
+    expect(controller.snapshot().focusedId).toBeNull();
+    expect(onChange).toHaveBeenCalledTimes(1);
+  });
+
   it("clamps one shared scroll offset and emits a trace", () => {
     const onScroll = vi.fn();
     const root = append(

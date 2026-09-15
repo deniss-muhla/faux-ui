@@ -6,6 +6,8 @@ import {
   Text,
   createTextSource,
   extendTextSourceSegment,
+  replaceTextSourceSegment,
+  type TextSource,
 } from "../src/index.js";
 import { SemanticMount } from "../src/internal/mount.js";
 import { renderStatic } from "../src/testing.js";
@@ -230,6 +232,90 @@ describe("large text line rendering", () => {
       });
     } finally {
       app.unmount();
+    }
+  });
+
+  it("matches eager output through sequential reuse, resize, and replacement", () => {
+    const initial = [
+      "wide-0123456789abcdefghij-古-👩‍💻-klmnopqrstuvwxyz",
+      "bravo-🇺🇳-界界",
+      "charlie-\t-\u0001",
+      "delta-0123456789",
+      "echo-abcdefghij",
+      "foxtrot-古古古古古",
+      "golf-e\u0301-e\u0301",
+      "hotel-界界界",
+    ].join("\n");
+    const replaced = "replaced-界界界\nsecond-👩‍💻\nthird-🇺🇳\nfourth-0123";
+    let source = createTextSource([{ id: "history", text: initial }]);
+    const node = (updated: TextSource) => (
+      <ScrollView axis="both">
+        <Text source={updated} />
+      </ScrollView>
+    );
+    const actual = new SemanticMount({ size: { width: 9, height: 2 } });
+    actual.render(node(source));
+    try {
+      const root = actual.frame().root;
+      if (root.kind !== "box") throw new Error("Expected a scroll root.");
+      const compare = (
+        text: string,
+        size: { readonly width: number; readonly height: number },
+        offsets: readonly { readonly x: number; readonly y: number }[],
+      ): void => {
+        const reference = new SemanticMount({ size });
+        reference.render(
+          <ScrollView axis="both">
+            <Text>{text}</Text>
+          </ScrollView>,
+        );
+        try {
+          for (const offset of offsets) {
+            expect(actual.setScrollOffset(root.id, offset)).toBe(true);
+            const expected = renderEagerTextOracle(
+              reference.frame().root,
+              size,
+              actual.controller().snapshot().offsets,
+            );
+            expect(actual.frame().layout).toEqual(expected.layout);
+            expect(actual.frame().scene.cells).toEqual(expected.scene.cells);
+          }
+        } finally {
+          reference.unmount();
+        }
+      };
+
+      // One-column and one-row movements, a deep jump, and a return.
+      compare(initial, { width: 9, height: 2 }, [
+        { x: 1, y: 0 },
+        { x: 2, y: 0 },
+        { x: 3, y: 1 },
+        { x: 4, y: 2 },
+        { x: 12, y: 3 },
+        { x: 13, y: 4 },
+        { x: 0, y: 0 },
+      ]);
+
+      // A resize invalidates the old frame before the next movements.
+      actual.setSize({ width: 7, height: 3 });
+      compare(initial, { width: 7, height: 3 }, [
+        { x: 1, y: 1 },
+        { x: 2, y: 2 },
+      ]);
+
+      // A replacement source invalidates every retained cell.
+      source = replaceTextSourceSegment(source, "history", replaced);
+      actual.rerender(node(source));
+      compare(replaced, { width: 7, height: 3 }, [
+        { x: 1, y: 1 },
+        { x: 2, y: 0 },
+      ]);
+
+      // An empty clip clears prepared state and paints no cells.
+      actual.setSize({ width: 0, height: 0 });
+      expect(actual.frame().scene.cells).toEqual([]);
+    } finally {
+      actual.unmount();
     }
   });
 });

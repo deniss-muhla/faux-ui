@@ -280,42 +280,14 @@ export class SemanticMount {
           work.measure("indexing", () => this.#textStore.sync(root, work));
         }
         const layout = computeLayout(root, this.#size, this.#textStore, work);
-        let scene =
-          this.#work?.measure("scene", () =>
-            paintScene(
-              root,
-              layout,
-              this.#controller.snapshot(),
-              this.#work,
-              this.#textStore,
-            ),
-          ) ??
-          paintScene(
-            root,
-            layout,
-            this.#controller.snapshot(),
-            undefined,
-            this.#textStore,
-          );
-        this.#controller.update(root, layout, scene);
-        scene =
-          this.#work?.measure("scene", () =>
-            paintScene(
-              root,
-              layout,
-              this.#controller.snapshot(),
-              this.#work,
-              this.#textStore,
-            ),
-          ) ??
-          paintScene(
-            root,
-            layout,
-            this.#controller.snapshot(),
-            undefined,
-            this.#textStore,
-          );
-        this.#controller.update(root, layout, scene);
+        // The controller checks visibility and focusability against the first
+        // scene. Repaint only when reconciliation reports a paint-relevant
+        // change, and attach the corrected scene for later hit testing.
+        let scene = this.#paintScene(root, layout);
+        if (this.#controller.update(root, layout, scene)) {
+          scene = this.#paintScene(root, layout);
+          this.#controller.update(root, layout, scene);
+        }
         const frame: RenderFrame = {
           root,
           layout,
@@ -328,6 +300,29 @@ export class SemanticMount {
     } finally {
       this.#computing = false;
     }
+  }
+
+  /** Paints the current controller snapshot and records one scene stage. */
+  #paintScene(root: SemanticNode, layout: LayoutResult): CellScene {
+    const work = this.#work;
+    if (work === undefined) {
+      return paintScene(
+        root,
+        layout,
+        this.#controller.snapshot(),
+        undefined,
+        this.#textStore,
+      );
+    }
+    return work.measure("scene", () =>
+      paintScene(
+        root,
+        layout,
+        this.#controller.snapshot(),
+        work,
+        this.#textStore,
+      ),
+    );
   }
 
   #assertRunning(): void {

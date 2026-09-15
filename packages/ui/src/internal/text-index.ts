@@ -1,10 +1,14 @@
 import type { Rect, ScrollAxis, Size, TextNode } from "./model.js";
 import type { RenderWorkTracker } from "./render-work.js";
 import {
+  compareTextSources,
   textSourceChange,
   textSourceIdentity,
   textSourceSegments,
   type TextSource,
+  type TextSourceExtensionUpdate,
+  type TextSourceSegmentUpdate,
+  type TextSourceUpdate,
 } from "./text-source.js";
 import {
   TextWindowCache,
@@ -488,17 +492,35 @@ export class CompactTextIndex implements TextPreparationSource {
   private updateSource(source: TextSource, work?: RenderWorkTracker): void {
     if (this.#inputKind === "source" && this.#source === source) return;
 
-    const change = textSourceChange(source);
-    const canApplyChange =
-      this.#inputKind === "source" &&
-      change.previousIdentity === this.#sourceIdentity;
-    if (canApplyChange) {
-      this.#source = source;
-      this.#sourceIdentity = textSourceIdentity(source);
-      this.#stringValue = null;
-      if (this.applySourceChange(change, work)) return;
+    if (this.#inputKind === "source" && this.#source !== null) {
+      const previous = this.#source;
+      const change = textSourceChange(source);
+      if (
+        change.previousIdentity === this.#sourceIdentity &&
+        this.applySourceChange(change, work)
+      ) {
+        this.adoptSource(source);
+        return;
+      }
+      if (
+        this.applySourceUpdate(compareTextSources(previous, source, work), work)
+      ) {
+        this.adoptSource(source);
+        return;
+      }
     }
 
+    this.rebuildSource(source, work);
+  }
+
+  private adoptSource(source: TextSource): void {
+    this.#inputKind = "source";
+    this.#source = source;
+    this.#sourceIdentity = textSourceIdentity(source);
+    this.#stringValue = null;
+  }
+
+  private rebuildSource(source: TextSource, work?: RenderWorkTracker): void {
     this.invalidateInput();
     this.#inputKind = "source";
     this.#source = source;
@@ -507,6 +529,111 @@ export class CompactTextIndex implements TextPreparationSource {
     this.#segments = sourceSegments(source);
     this.rebuildSegmentIndexes();
     this.rebuildAll(work);
+  }
+
+  /**
+   * Applies a private structural update plan. It returns false before any
+   * mutation when the plan does not fit the retained index, in which case the
+   * caller rebuilds the complete source. Every plan is derived from persistent
+   * source identities, so proven updates never rescan the retained prefix.
+   */
+  private applySourceUpdate(
+    update: TextSourceUpdate,
+    work?: RenderWorkTracker,
+  ): boolean {
+    if (update.kind === "unchanged") return true;
+    if (update.kind === "rebuild") return false;
+    if (update.kind === "append") {
+      return this.appendSegments(update.appended, work);
+    }
+    if (update.kind === "extend") {
+      if (!this.applyExtensions(update.extensions, work)) return false;
+      return this.appendSegments(update.appended, work);
+    }
+    return this.rebuildMixedSuffix(update.changed, update.appended, work);
+  }
+
+  private applyExtensions(
+    extensions: readonly TextSourceExtensionUpdate[],
+    work?: RenderWorkTracker,
+  ): boolean {
+    const ordered = extensions
+      .map((extension) => ({
+        extension,
+        index: this.#segmentIndexes.get(extension.id),
+      }))
+      .sort((left, right) => (left.index ?? -1) - (right.index ?? -1));
+    if (ordered.some(({ index }) => index === undefined)) return false;
+    for (const { extension, index } of ordered) {
+      if (index === undefined) return false;
+      for (const chunk of extension.chunks) {
+        this.extendSegment(
+          index,
+          chunk.text,
+          extension.identity,
+          chunk.identity,
+          work,
+        );
+      }
+    }
+    return true;
+  }
+
+  private appendSegments(
+    segments: readonly TextSourceSegmentUpdate[],
+    work?: RenderWorkTracker,
+  ): boolean {
+    for (const segment of segments) {
+      if (this.#segmentIndexes.has(segment.id)) return false;
+    }
+    for (const segment of segments) this.appendSegment(segment, work);
+    return true;
+  }
+
+  /**
+   * Preserves the line ranges before the earliest changed or uncertain
+   * segment, replaces the remaining segment metadata, and rebuilds only the
+   * affected suffix.
+   */
+  private rebuildMixedSuffix(
+    changed: readonly TextSourceSegmentUpdate[],
+    appended: readonly TextSourceSegmentUpdate[],
+    work?: RenderWorkTracker,
+  ): boolean {
+    let preserveCount = this.#segments.length;
+    const changedById = new Map<string, TextSourceSegmentUpdate>();
+    for (const segment of changed) {
+      const index = this.#segmentIndexes.get(segment.id);
+      if (index === undefined) return false;
+      changedById.set(segment.id, segment);
+      if (index < preserveCount) preserveCount = index;
+    }
+    for (const segment of appended) {
+      if (this.#segmentIndexes.has(segment.id)) return false;
+    }
+
+    const next = this.#segments.slice(0, preserveCount);
+    for (let index = preserveCount; index < this.#segments.length; index += 1) {
+      const segment = this.#segments[index];
+      if (segment === undefined) continue;
+      const replacement =
+        segment.id === null ? undefined : changedById.get(segment.id);
+      next.push(
+        replacement === undefined ? segment : createIndexedSegment(replacement),
+      );
+    }
+    for (const segment of appended) {
+      next.push(createIndexedSegment(segment));
+    }
+
+    this.#segments = next;
+    this.rebuildSegmentIndexes();
+    this.reindexSegmentsFrom(preserveCount);
+    this.rebuildFromOffset(
+      this.#segments[preserveCount]?.start ?? this.#length,
+      work,
+    );
+    return true;
   }
 
   private applySourceChange(
@@ -523,10 +650,16 @@ export class CompactTextIndex implements TextPreparationSource {
         return false;
       }
       this.appendSegment(
-        change.id,
-        change.text,
-        change.segmentIdentity,
-        change.chunkIdentity,
+        {
+          id: change.id,
+          identity: change.segmentIdentity,
+          chunks: Object.freeze([
+            Object.freeze({
+              text: change.text,
+              identity: change.chunkIdentity,
+            }),
+          ]),
+        },
         work,
       );
       return true;
@@ -560,33 +693,36 @@ export class CompactTextIndex implements TextPreparationSource {
   }
 
   private appendSegment(
-    id: string,
-    text: string,
-    segmentIdentity: object,
-    chunkIdentity: object,
+    segment: TextSourceSegmentUpdate,
     work?: RenderWorkTracker,
   ): void {
     this.#window.clear();
     const start = this.#length;
-    const chunk: IndexedChunk = {
-      text,
+    const chunks: IndexedChunk[] = [];
+    let cursor = start;
+    for (const chunk of segment.chunks) {
+      chunks.push({
+        text: chunk.text,
+        start: cursor,
+        end: cursor + chunk.text.length,
+        identity: chunk.identity,
+        seam: null,
+      });
+      cursor += chunk.text.length;
+    }
+    this.#segments.push({
+      id: segment.id,
+      identity: segment.identity,
+      chunks,
       start,
-      end: start + text.length,
-      identity: chunkIdentity,
-      seam: null,
-    };
-    const segment: IndexedSegment = {
-      id,
-      identity: segmentIdentity,
-      chunks: [chunk],
-      start,
-      end: start + text.length,
-    };
-    this.#segments.push(segment);
-    this.#segmentIndexes.set(id, this.#segments.length - 1);
-    this.#length = segment.end;
-    this.processText(text, start, work);
-    this.recordSeam(chunk);
+      end: cursor,
+    });
+    this.#segmentIndexes.set(segment.id, this.#segments.length - 1);
+    this.#length = cursor;
+    for (const chunk of chunks) {
+      this.processText(chunk.text, chunk.start, work);
+      this.recordSeam(chunk);
+    }
     this.updateCurrentLineEnd();
     this.#maxWidth = Math.max(this.#maxWidth, this.currentLineWidth());
   }
@@ -1137,6 +1273,28 @@ function sourceSegments(source: TextSource): IndexedSegment[] {
 }
 
 const HORIZONTAL_CHECKPOINT_INTERVAL = 256;
+
+/**
+ * Builds index metadata for one changed or appended segment. Chunk starts and
+ * ends are placeholders because reindexing rewrites them from the retained
+ * prefix.
+ */
+function createIndexedSegment(update: TextSourceSegmentUpdate): IndexedSegment {
+  const chunks: IndexedChunk[] = update.chunks.map((chunk) => ({
+    text: chunk.text,
+    start: 0,
+    end: chunk.text.length,
+    identity: chunk.identity,
+    seam: null,
+  }));
+  return {
+    id: update.id,
+    identity: update.identity,
+    chunks,
+    start: 0,
+    end: 0,
+  };
+}
 
 function createLine(start: number): MutableLine {
   return {
