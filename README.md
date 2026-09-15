@@ -338,7 +338,10 @@ Examples:
 ```bash
 bun run example:dom
 bun run example:tui
+bun run example:system-events
 ```
+
+`example:system-events` is an opt-in Linux-only manual TUI. It reads CPU, journal, and USB events, keeps the retained log in memory, and exercises large `TextSource` updates, two-axis scrolling, vertical-only `followEnd`, and ordinary row refreshes. The workspace typecheck includes it, but browser, packed-consumer, and automated TUI behavior gates do not start it.
 
 Further documentation:
 
@@ -348,6 +351,7 @@ Further documentation:
 - [Strategy](docs/strategy.md)
 - [Roadmap](docs/roadmap.md)
 - [Testing and release gates](docs/testing.md)
+- [Live Linux event monitor](apps/system-event-monitor/README.md)
 - [Composition recipes](docs/recipes.md)
 - [Standalone Grid package](packages/grid/README.md)
 - [Changelog](CHANGELOG.md)

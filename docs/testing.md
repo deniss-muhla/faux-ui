@@ -36,6 +36,7 @@ faux-ui treats logical parity and packed-consumer behavior as primary evidence. 
 | DOM wheel-notch/trackpad normalization                                                                                                        | `vnext-dom-spike.pw.spec.ts` in Chromium                                             |
 | Grouped DOM projection, terminal-graphics font runs, exact fitting/background seams, and accessibility                                        | `vnext-dom-spike.pw.spec.ts` in Chromium                                             |
 | Serious browser authoring/input/resize path                                                                                                   | `apps/example/test/example-dom.pw.spec.ts`                                           |
+| Linux system-event monitor manual path, cleanup, and large-text interaction                                                                   | `apps/system-event-monitor/README.md` (manual)                                       |
 | Standalone Grid through the public DOM host                                                                                                   | `packages/grid/test/grid.pw.spec.ts`                                                 |
 | Terminal input, ANSI, Unicode cursor anchoring, right-margin/autowrap safety, fake IO, cleanup                                                | `vnext-tui.test.ts`                                                                  |
 | Public JSX exposes `Rows` / `Columns` and rejects HTML, named tracks, removed singular layouts, old style/hint props, and inert Box alignment | `public-api.typecheck.tsx` through `tsconfig.test.json`                              |
@@ -126,6 +127,8 @@ A reference run recorded on 2026-09-15 on the maintained physical machine passed
 The fixture and report suites run in `bun run test`. Elapsed-time assertions stay out of ordinary tests; the reference protocol owns wall-clock gates.
 
 CI installs the pinned Bun version and matching Playwright Chromium before running `bun run check`.
+
+The Linux system-event monitor is an opt-in manual diagnostic. It is typechecked through the workspace project references, but it is not started by CI because its journal, udev, and terminal behavior depends on the host machine.
 
 ## Packed-consumer gate
 

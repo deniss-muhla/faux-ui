@@ -29,6 +29,7 @@
     "example:dom": "bun run --cwd apps/example dev:dom",
     "example:build": "bun run --cwd apps/example build",
     "example:tui": "bun run --cwd apps/example dev:tui",
+    "example:system-events": "bun run --cwd apps/system-event-monitor dev:tui",
     "unicode:generate": "node scripts/generate-unicode-data.mjs",
     "benchmark": "bun scripts/benchmark.ts"
   },

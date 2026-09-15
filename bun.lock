@@ -28,6 +28,14 @@
         "vite": "^8.2.0",
       },
     },
+    "apps/system-event-monitor": {
+      "name": "@faux-ui/system-event-monitor",
+      "version": "0.10.0",
+      "dependencies": {
+        "@faux-ui/ui": "workspace:*",
+        "react": "^19.2.8",
+      },
+    },
     "packages/grid": {
       "name": "@faux-ui/grid",
       "version": "0.1.0",
@@ -114,6 +122,8 @@
     "@faux-ui/example": ["@faux-ui/example@workspace:apps/example"],
 
     "@faux-ui/grid": ["@faux-ui/grid@workspace:packages/grid"],
+
+    "@faux-ui/system-event-monitor": ["@faux-ui/system-event-monitor@workspace:apps/system-event-monitor"],
 
     "@faux-ui/ui": ["@faux-ui/ui@workspace:packages/ui"],
 

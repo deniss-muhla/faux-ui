@@ -25,6 +25,7 @@ Pre-1.0 evidence candidate for gathering more real-use data before the stable co
 - Deterministic text work counters, an eager rendering oracle, static/fake-TUI/Chromium large-text parity coverage, and the versioned `large-text-benchmark-v1` benchmark runner.
 - Prepared text windows retain their intersection when a compatible window moves and prepare only the entering strips; each prepared cell lives in one authoritative store.
 - Serious dual-host fixture, official Unicode conformance tests, property tests, Chromium tests, packed-consumer tests, and CI.
+- Opt-in Linux-only system-event monitor example for large `TextSource` updates, two-axis scrolling, vertical-only `followEnd`, and ordinary TUI row refreshes; the workspace typecheck includes it, but automated browser, package-consumer, and TUI behavior gates do not start it.
 
 ### Fixed
 

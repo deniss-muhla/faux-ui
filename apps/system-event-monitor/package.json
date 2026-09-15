@@ -1,0 +1,15 @@
+{
+  "name": "@faux-ui/system-event-monitor",
+  "private": true,
+  "version": "0.10.0",
+  "type": "module",
+  "description": "Linux-only manual monitor for large-text TUI rendering",
+  "dependencies": {
+    "@faux-ui/ui": "workspace:*",
+    "react": "^19.2.8"
+  },
+  "scripts": {
+    "dev:tui": "bun --conditions=development src/main.tsx",
+    "check": "tsc --noEmit"
+  }
+}

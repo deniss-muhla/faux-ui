@@ -68,6 +68,7 @@ packages/grid/
   skills/faux-ui-grid/       packaged Grid Agent Skill
   test/                      unit/property/type/browser coverage
 apps/example/                serious queue/detail/metadata fixture
+apps/system-event-monitor/   Linux-only manual large-text TUI
 scripts/
   generate-unicode-data.mjs  reproducible Unicode table generator
   test-package.mjs           packed foundation consumer gate

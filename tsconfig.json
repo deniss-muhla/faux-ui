@@ -3,6 +3,7 @@
   "references": [
     { "path": "./packages/ui" },
     { "path": "./packages/grid" },
-    { "path": "./apps/example" }
+    { "path": "./apps/example" },
+    { "path": "./apps/system-event-monitor" }
   ]
 }
