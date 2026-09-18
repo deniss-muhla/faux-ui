@@ -262,7 +262,7 @@ The testing entry exposes compact text index snapshots and deterministic work co
 - Enter, Space, and completed primary clicks synthesize one `onPress`.
 - `Button.keyHint` only displays a hint; shortcut behavior remains explicit in `useInput`.
 - events bubble target-to-root and support `preventDefault()` and `stopPropagation()`.
-- wheel, terminal mouse, arrows, Page Up/Down, Home, and End use shared scroll offsets when a scroll viewport is targeted.
+- wheel, terminal mouse, arrows, Page Up/Down, Home, and End use shared scroll offsets when a scroll viewport is targeted. Home and End scroll the vertical axis when it can scroll and return the horizontal offset to 0; otherwise they scroll the horizontal axis.
 
 ## Theme
 

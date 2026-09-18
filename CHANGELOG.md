@@ -29,6 +29,7 @@ Pre-1.0 evidence candidate for gathering more real-use data before the stable co
 
 ### Fixed
 
+- `Home` and `End` in a scroll viewport with a scrollable vertical axis now move only the vertical offset and return to the left edge. Previously they moved both axes to their maximum, so a two-axis chat jumped to an empty right edge and the newest rows disappeared from view until `Home` was pressed.
 - Compatible `TextSource` updates batched into one React commit now reconcile proven ranges and rebuild only the suffix after the earliest unproven change instead of reindexing retained history.
 - A stable repaint paints one canonical scene pass instead of an unconditional second pass, and a corrected follow-end scene stays attached for hit testing.
 - Ordinary terminal updates write only changed rows instead of clearing the screen before every frame; start, resize, palette changes, and failed writes redraw completely.

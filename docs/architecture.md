@@ -245,7 +245,7 @@ Key behavior:
 - Tab/Shift+Tab traverse visible focusable nodes;
 - one physical activation emits one `press`;
 - pointer points are already logical cells;
-- wheel, SGR mouse, arrows, Page Up/Down, Home, and End share offsets;
+- wheel, SGR mouse, arrows, Page Up/Down, Home, and End share offsets; Home and End prefer the scrollable vertical axis and return to the left edge, otherwise they scroll the horizontal axis;
 - disappearing focused/hovered nodes are reconciled on the next commit;
 - handlers can prevent default behavior or stop propagation.
 

@@ -585,14 +585,33 @@ export class InteractionController {
         y: previous.y + layout.contentFrame.height,
       });
     }
-    if (key === "Home") {
-      return this.setScrollOffset(scrollTarget.id, { x: 0, y: 0 });
-    }
-    if (key === "End") {
-      return this.setScrollOffset(scrollTarget.id, {
-        x: Number.MAX_SAFE_INTEGER,
-        y: Number.MAX_SAFE_INTEGER,
-      });
+    if (key === "Home" || key === "End") {
+      // Home and End scroll the primary axis. When the vertical axis can
+      // scroll, they move the vertical offset and return to the left edge, so
+      // a horizontal offset left over from inspecting a long line cannot hide
+      // the newest or oldest rows. A viewport whose vertical axis cannot
+      // scroll keeps the horizontal behavior.
+      const toEnd = key === "End";
+      const requested = toEnd ? Number.MAX_SAFE_INTEGER : 0;
+      const verticalScrolls =
+        hasScrollAxis(scrollTarget.scroll, "y") &&
+        layout.contentSize.height > layout.contentFrame.height;
+      if (verticalScrolls) {
+        return this.setScrollOffset(scrollTarget.id, { x: 0, y: requested });
+      }
+      if (hasScrollAxis(scrollTarget.scroll, "x")) {
+        return this.setScrollOffset(scrollTarget.id, {
+          ...previous,
+          x: requested,
+        });
+      }
+      if (hasScrollAxis(scrollTarget.scroll, "y")) {
+        return this.setScrollOffset(scrollTarget.id, {
+          ...previous,
+          y: requested,
+        });
+      }
+      return false;
     }
     return false;
   }

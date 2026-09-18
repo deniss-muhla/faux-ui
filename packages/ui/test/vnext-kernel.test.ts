@@ -218,6 +218,64 @@ describe("vNext shared interaction controller", () => {
     expect(controller.snapshot().offsets.get(1)).toEqual({ x: 0, y: 2 });
   });
 
+  it("returns to the left edge when Home and End scroll a vertical log", () => {
+    const root = append(
+      createBoxNode(1, { scroll: "both", focusable: true }),
+      createTextNode(2, {
+        text: "abcdefghijkl\nmnopqrstuvwx\nyz0123456789\nABCDEFGHIJKL",
+      }),
+    );
+    const layout = computeLayout(root, { width: 8, height: 2 });
+    const scene = paintScene(root, layout);
+    const controller = new InteractionController();
+    controller.update(root, layout, scene);
+    controller.focusNext();
+    expect(controller.setScrollOffset(1, { x: 1, y: 0 })).toBe(true);
+
+    controller.keyDown({ key: "End" });
+    expect(controller.snapshot().offsets.get(1)).toEqual({ x: 0, y: 2 });
+
+    expect(controller.setScrollOffset(1, { x: 1, y: 2 })).toBe(true);
+    controller.keyDown({ key: "Home" });
+    expect(controller.snapshot().offsets.get(1)).toEqual({ x: 0, y: 0 });
+  });
+
+  it("scrolls Home and End horizontally without a vertical scroll axis", () => {
+    const root = append(
+      createBoxNode(1, { scroll: "x", focusable: true }),
+      createTextNode(2, { text: "abcdefghijkl\nmnopqrstuvwx" }),
+    );
+    const layout = computeLayout(root, { width: 8, height: 2 });
+    const scene = paintScene(root, layout);
+    const controller = new InteractionController();
+    controller.update(root, layout, scene);
+    controller.focusNext();
+
+    controller.keyDown({ key: "End" });
+    expect(controller.snapshot().offsets.get(1)).toEqual({ x: 4, y: 0 });
+
+    controller.keyDown({ key: "Home" });
+    expect(controller.snapshot().offsets.get(1)).toEqual({ x: 0, y: 0 });
+  });
+
+  it("scrolls Home and End horizontally when a two-axis viewport has no vertical overflow", () => {
+    const root = append(
+      createBoxNode(1, { scroll: "both", focusable: true }),
+      createTextNode(2, { text: "abcdefghijkl\nmnopqrstuvwx" }),
+    );
+    const layout = computeLayout(root, { width: 8, height: 4 });
+    const scene = paintScene(root, layout);
+    const controller = new InteractionController();
+    controller.update(root, layout, scene);
+    controller.focusNext();
+
+    controller.keyDown({ key: "End" });
+    expect(controller.snapshot().offsets.get(1)).toEqual({ x: 4, y: 0 });
+
+    controller.keyDown({ key: "Home" });
+    expect(controller.snapshot().offsets.get(1)).toEqual({ x: 0, y: 0 });
+  });
+
   it("follows growing content only while already at the end", () => {
     const child = createTextNode(2, { text: "one\ntwo\nthree" });
     const root = append(

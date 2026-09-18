@@ -362,6 +362,7 @@ At an unchanged viewport, a repaint inspects no source line outside the prepared
 - Following is per axis: the initial viewport starts at the end of each selected enabled axis, and an axis keeps following only while its own prior effective offset was at its end.
 - Manual scrolling away from an end suspends following for that axis; returning to the end resumes it there on the next content growth.
 - Effective offset is clamped to `0...max(0, content - viewport)` per enabled axis.
+- `Home` and `End` scroll the primary axis: the vertical axis when its content exceeds its viewport, otherwise the horizontal axis. A vertical scroll also returns the horizontal offset to 0, so a retained horizontal offset cannot hide the target rows.
 - Changing offset does not change the layout tree.
 - Wheel, terminal mouse, keyboard commands, and testing controls all update the same controller state.
 - Optional scrollbar chrome is painted from viewport/content/offset data into the shared scene; it requires no React runtime bridge.

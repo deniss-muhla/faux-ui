@@ -180,6 +180,14 @@ describe("large text static and TUI parity", () => {
         input.emit("\u001b[A");
         assertParity("final Unicode line");
 
+        // End returns a vertical log to the left edge, so reach the wide glyph
+        // run at the end of the long lines with the horizontal key.
+        for (let index = 0; index < 70; index += 1) {
+          staticApp.keyDown({ key: "ArrowRight" });
+          input.emit("\u001b[C");
+        }
+        assertParity("wide glyph column");
+
         const textNodeId = staticApp.getTextIndexes()[0]?.nodeId;
         if (textNodeId === undefined)
           throw new Error("Expected one text index.");
