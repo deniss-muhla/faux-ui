@@ -363,6 +363,8 @@ At an unchanged viewport, a repaint inspects no source line outside the prepared
 - Manual scrolling away from an end suspends following for that axis; returning to the end resumes it there on the next content growth.
 - Effective offset is clamped to `0...max(0, content - viewport)` per enabled axis.
 - `Home` and `End` scroll the primary axis: the vertical axis when its content exceeds its viewport, otherwise the horizontal axis. A vertical scroll also returns the horizontal offset to 0, so a retained horizontal offset cannot hide the target rows.
+- Focusing a control scrolls the smallest offset into each of its scrolling ancestors, innermost first, so the focused control is painted. A reveal moves the offset like manual scrolling and dispatches one scroll event per ancestor it moves, carrying the delta that reveal consumed, so a consumer that paints a position indicator from `onScroll` reports the position the scene shows. A reveal that moves nothing dispatches nothing. Following on that axis resumes only when the offset returns to the end.
+- A pointer scroll starts at the innermost scrolling region and consumes the part of the delta its clamped offset allows, then passes the remainder to the next scrolling ancestor. A region that can move only part of the delta, such as an inner list one cell from its end, does not swallow the rest. A region that cannot move at all, such as a fixed summary region that is not scrollable or already at an end, passes the whole delta on. Each region that moves dispatches one scroll event carrying the delta it consumed, and a delta that no scrolling ancestor can consume is reported as unhandled.
 - Changing offset does not change the layout tree.
 - Wheel, terminal mouse, keyboard commands, and testing controls all update the same controller state.
 - Optional scrollbar chrome is painted from viewport/content/offset data into the shared scene; it requires no React runtime bridge.
@@ -431,7 +433,7 @@ The shared controller owns interaction state and dispatch.
 ### Focus
 
 - Only explicitly focusable nodes enter focus order.
-- Focus order is semantic tree preorder among currently mounted/visible eligible nodes.
+- Focus order is semantic tree preorder among currently mounted eligible nodes. A node is eligible when it has a painted cell, when its painted area is inside every clip for the current offsets, or when scrolling one of its scrolling ancestors would paint it. A node clipped only by fixed non-scrolling ancestors stays ineligible.
 - Next/previous traversal is shared and deterministic.
 - Removing/invalidating the focused node emits blur and resolves focus according to the controller rule.
 - DOM native focus is an adapter mechanism, never semantic truth.

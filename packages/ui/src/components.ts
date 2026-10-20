@@ -301,6 +301,7 @@ export function Button({
       padding,
       focusable: !disabled && onPress !== undefined,
       disabled,
+      selected,
       accessibleLabel: accessibleLabel ?? label ?? plainText(children),
       style: { ...base, ...style },
       hoverStyle: disabled

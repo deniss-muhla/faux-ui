@@ -14,6 +14,7 @@ import {
   type PointerInput,
   type PointerUiEvent,
   type PressUiEvent,
+  type Rect,
   type ScrollInput,
   type ScrollUiEvent,
   type SemanticNode,
@@ -50,6 +51,7 @@ export class InteractionController {
   #hoverPath: NodeId[] = [];
   #activePressId: NodeId | null = null;
   #offsets = new Map<NodeId, Point>();
+  #selectedIds = new Set<NodeId>();
   #trace: EventTraceEntry[] = [];
   #disposed = false;
   readonly #onChange: () => void;
@@ -89,7 +91,8 @@ export class InteractionController {
       changed = true;
     }
 
-    const validIds = new Set(walkTree(root).map((node) => node.id));
+    const nodes = walkTree(root);
+    const validIds = new Set(nodes.map((node) => node.id));
     const nextHoverPath = this.#hoverPath.filter((id) => validIds.has(id));
     if (nextHoverPath.length !== this.#hoverPath.length) {
       this.#hoverPath = nextHoverPath;
@@ -99,7 +102,7 @@ export class InteractionController {
       this.#activePressId = null;
     }
 
-    for (const node of walkTree(root)) {
+    for (const node of nodes) {
       if (
         node.kind !== "box" ||
         node.scroll === null ||
@@ -148,6 +151,39 @@ export class InteractionController {
       }
     }
 
+    // A control that becomes the single selected control in each of its
+    // scrolling ancestors is revealed the way a focused one is, so a list whose
+    // selection moves without focus still paints it. Ids are remembered instead
+    // of read from the previous tree because the reconciler updates node objects
+    // in place, and a node revealed once is not revealed again, so scrolling
+    // away from a selection holds until the selection itself moves. A region
+    // holding several selected controls has no single selection to reveal and
+    // keeps the offset the caller scrolled it to. Reveal never moves focus.
+    const selectedNodes = nodes.filter(
+      (node): node is BoxNode => node.kind === "box" && node.selected,
+    );
+    const selectedPerRegion = new Map<NodeId, number>();
+    for (const node of selectedNodes) {
+      for (const ancestor of nodePath(node)) {
+        if (ancestor.kind !== "box" || ancestor.scroll === null) continue;
+        selectedPerRegion.set(
+          ancestor.id,
+          (selectedPerRegion.get(ancestor.id) ?? 0) + 1,
+        );
+      }
+    }
+    for (const node of selectedNodes) {
+      if (this.#selectedIds.has(node.id)) continue;
+      const exclusive = nodePath(node).every(
+        (ancestor) =>
+          ancestor.kind !== "box" ||
+          ancestor.scroll === null ||
+          selectedPerRegion.get(ancestor.id) === 1,
+      );
+      if (exclusive && this.#applyReveal(node)) changed = true;
+    }
+    this.#selectedIds = new Set(selectedNodes.map((node) => node.id));
+
     return changed;
   }
 
@@ -159,6 +195,7 @@ export class InteractionController {
     this.#hoverPath = [];
     this.#activePressId = null;
     this.#offsets.clear();
+    this.#selectedIds.clear();
   }
 
   dispose(): void {
@@ -190,6 +227,9 @@ export class InteractionController {
     const previous = this.#node(this.#focusedId);
     const next = this.#node(nodeId);
     this.#focusedId = nodeId;
+    // Focus may reach a control that no viewport currently shows, so reveal it
+    // before handlers and the next paint observe the focused control.
+    if (next !== null) this.#applyReveal(next);
 
     if (previous !== null) this.#dispatchFocus(previous, "blur", next);
     if (next !== null) this.#dispatchFocus(next, "focus", previous);
@@ -305,45 +345,76 @@ export class InteractionController {
   scroll(input: ScrollInput): DispatchResult {
     const target = this.#pointTarget(input) ?? this.#node(this.#focusedId);
     if (target === null) return { handled: false, defaultPrevented: false };
-    const scrollTarget = nodePath(target).find(
+    const candidates = nodePath(target).filter(
       (node): node is BoxNode => node.kind === "box" && node.scroll !== null,
     );
-    if (scrollTarget === undefined) {
+    const first = candidates[0];
+    if (first === undefined) {
       return { handled: false, defaultPrevented: false };
     }
 
-    const previous = this.#offsets.get(scrollTarget.id) ?? { x: 0, y: 0 };
-    const changed = this.setScrollOffset(scrollTarget.id, {
-      x: previous.x + input.deltaX,
-      y: previous.y + input.deltaY,
-    });
-    const next = this.#offsets.get(scrollTarget.id) ?? { x: 0, y: 0 };
+    // Wheel chaining. Each region consumes the part of the delta its clamped
+    // offset allows and passes the remainder to the next scrollable ancestor,
+    // so a region that moves only part of the delta, such as an inner list one
+    // cell from its end, does not swallow the rest. A region that cannot move
+    // passes the whole delta on.
+    let remaining = { x: input.deltaX, y: input.deltaY };
+    let moved = false;
+    for (const candidate of candidates) {
+      if (remaining.x === 0 && remaining.y === 0) break;
+      const previous = this.#offsets.get(candidate.id) ?? { x: 0, y: 0 };
+      const next = this.#clampedScrollOffset(candidate.id, {
+        x: previous.x + remaining.x,
+        y: previous.y + remaining.y,
+      });
+      if (next === null || pointsEqual(previous, next)) continue;
+      const consumed = { x: next.x - previous.x, y: next.y - previous.y };
+      this.setScrollOffset(candidate.id, next);
+      remaining = {
+        x: remaining.x - consumed.x,
+        y: remaining.y - consumed.y,
+      };
+      moved = true;
+      this.#dispatchScroll(candidate, previous, next, consumed.x, consumed.y);
+    }
+
+    if (moved) {
+      return { handled: true, defaultPrevented: true };
+    }
+
+    const firstOffset = this.#offsets.get(first.id) ?? { x: 0, y: 0 };
     const dispatched = this.#dispatchScroll(
-      scrollTarget,
-      previous,
-      next,
+      first,
+      firstOffset,
+      firstOffset,
       input.deltaX,
       input.deltaY,
     );
     return {
-      handled: changed || dispatched.handled,
-      defaultPrevented: changed || dispatched.defaultPrevented,
+      handled: dispatched.handled,
+      defaultPrevented: dispatched.defaultPrevented,
     };
   }
 
   setScrollOffset(nodeId: NodeId, requested: Point): boolean {
-    const node = this.#node(nodeId);
-    const layout =
-      this.#layout === null ? null : findLayoutNode(this.#layout.root, nodeId);
-    if (node?.kind !== "box" || node.scroll === null || layout === null) {
-      return false;
-    }
+    const next = this.#clampedScrollOffset(nodeId, requested);
+    if (next === null) return false;
     const previous = this.#offsets.get(nodeId) ?? { x: 0, y: 0 };
-    const next = clampScrollOffset(node, layout, requested);
     if (pointsEqual(previous, next)) return false;
     this.#offsets.set(nodeId, next);
     this.#onChange();
     return true;
+  }
+
+  /** The offset a scrolling box clamps `requested` to, or null when it cannot scroll. */
+  #clampedScrollOffset(nodeId: NodeId, requested: Point): Point | null {
+    const node = this.#node(nodeId);
+    const layout =
+      this.#layout === null ? null : findLayoutNode(this.#layout.root, nodeId);
+    if (node?.kind !== "box" || node.scroll === null || layout === null) {
+      return null;
+    }
+    return clampScrollOffset(node, layout, requested);
   }
 
   #setHoverTarget(target: SemanticNode | null, input: PointerInput): void {
@@ -527,10 +598,21 @@ export class InteractionController {
     const node = this.#node(id);
     if (node?.kind !== "box" || !node.focusable || node.disabled) return false;
     if (this.#scene === null) return false;
+    if (this.#hasPaintedCell(node.id)) return true;
+    // Layout and offsets stay current between paints, so a control outside the
+    // freshest scene is still visible or reachable when geometry says so. A
+    // control clipped by a fixed non-scrolling ancestor stays unreachable.
+    return (
+      this.#paintedClip(node, this.#offsets) !== null ||
+      this.#isReachableAfterScroll(node)
+    );
+  }
+
+  #hasPaintedCell(id: NodeId): boolean {
     const owners = new Set(
-      this.#scene.cells.flatMap((cell) =>
+      this.#scene?.cells.flatMap((cell) =>
         cell.ownerId === null ? [] : [cell.ownerId],
-      ),
+      ) ?? [],
     );
     for (const ownerId of owners) {
       const owner = this.#node(ownerId);
@@ -539,6 +621,152 @@ export class InteractionController {
       }
     }
     return false;
+  }
+
+  #isReachableAfterScroll(node: SemanticNode): boolean {
+    if (this.#layout === null) return false;
+    const revealed = this.#revealOffsets(node, new Map(this.#offsets));
+    if (revealed.size === 0) return false;
+    return (
+      this.#paintedClip(node, new Map([...this.#offsets, ...revealed])) !== null
+    );
+  }
+
+  /** Applies a reveal and reports whether any ancestor offset moved. */
+  #applyReveal(node: SemanticNode): boolean {
+    const revealed = this.#revealOffsets(node, new Map(this.#offsets));
+    for (const [id, offset] of revealed) {
+      const ancestor = this.#node(id);
+      const previous = this.#offsets.get(id) ?? { x: 0, y: 0 };
+      this.#offsets.set(id, offset);
+      // A reveal moves a scrolling region exactly as a wheel would, so it emits
+      // the same scroll event with the delta it consumed. A consumer that paints
+      // a position indicator from `onScroll` would otherwise keep reporting the
+      // offset the scene no longer shows.
+      if (ancestor !== null) {
+        this.#dispatchScroll(
+          ancestor,
+          previous,
+          offset,
+          offset.x - previous.x,
+          offset.y - previous.y,
+        );
+      }
+    }
+    return revealed.size > 0;
+  }
+
+  /**
+   * Smallest per-ancestor offset change that shows `node` inside every
+   * scrolling ancestor, innermost first. Returns only the changed entries so
+   * a caller can simulate the result before applying it.
+   */
+  #revealOffsets(
+    node: SemanticNode,
+    start: ReadonlyMap<NodeId, Point>,
+  ): Map<NodeId, Point> {
+    const revealed = new Map<NodeId, Point>();
+    if (this.#layout === null) return revealed;
+    let offsets = start;
+    const path = nodePath(node);
+    for (let index = path.length - 1; index >= 1; index -= 1) {
+      const ancestor = path[index];
+      if (ancestor?.kind !== "box" || ancestor.scroll === null) continue;
+      const layout = findLayoutNode(this.#layout.root, ancestor.id);
+      const frame = this.#revealedFrame(node, ancestor.id, offsets);
+      if (layout === null || frame === null) continue;
+      const previous = offsets.get(ancestor.id) ?? { x: 0, y: 0 };
+      const next = revealOffset(ancestor, layout, frame, previous);
+      if (pointsEqual(previous, next)) continue;
+      revealed.set(ancestor.id, next);
+      offsets = new Map([...offsets, [ancestor.id, next]]);
+    }
+    return revealed;
+  }
+
+  /**
+   * Frame `node` occupies inside one ancestor's content coordinates, meaning
+   * its layout frame translated by the offsets of the scrolling nodes strictly
+   * between it and that ancestor.
+   */
+  #revealedFrame(
+    node: SemanticNode,
+    ancestorId: NodeId,
+    offsets: ReadonlyMap<NodeId, Point>,
+  ): Rect | null {
+    const frame = this.#frameOf(node.id);
+    if (frame === null) return null;
+    let x = frame.x;
+    let y = frame.y;
+    for (const current of nodePath(node)) {
+      if (current.id === ancestorId) break;
+      if (current.id === node.id || current.kind !== "box") continue;
+      if (current.scroll === null) continue;
+      const offset = offsets.get(current.id) ?? { x: 0, y: 0 };
+      x -= offset.x;
+      y -= offset.y;
+    }
+    return { x, y, width: frame.width, height: frame.height };
+  }
+
+  /**
+   * Clip `node` would paint inside for a given offset state, following the same
+   * frame, content-frame, and ancestor clipping order as scene painting.
+   * Returns null when the node paints no cell.
+   */
+  #paintedClip(
+    node: SemanticNode,
+    offsets: ReadonlyMap<NodeId, Point>,
+  ): Rect | null {
+    if (this.#layout === null) return null;
+    let clip: Rect = {
+      x: 0,
+      y: 0,
+      width: this.#layout.size.width,
+      height: this.#layout.size.height,
+    };
+    let translateX = 0;
+    let translateY = 0;
+    for (const current of nodePath(node).toReversed()) {
+      const frame = this.#frameOf(current.id);
+      if (frame === null) return null;
+      clip = intersectRects(clip, translateRect(frame, translateX, translateY));
+      if (clip.width === 0 || clip.height === 0) return null;
+      if (current.kind === "box") {
+        const content = this.#contentFrameOf(current.id);
+        if (content !== null) {
+          clip = intersectRects(
+            clip,
+            translateRect(content, translateX, translateY),
+          );
+          if (clip.width === 0 || clip.height === 0) return null;
+        }
+      }
+      if (current.id === node.id) return clip;
+      if (current.kind === "box" && current.scroll !== null) {
+        const requested = offsets.get(current.id) ?? { x: 0, y: 0 };
+        const layout = findLayoutNode(this.#layout.root, current.id);
+        const offset =
+          layout === null
+            ? { x: 0, y: 0 }
+            : clampScrollOffset(current, layout, requested);
+        translateX -= offset.x;
+        translateY -= offset.y;
+      }
+    }
+    return null;
+  }
+
+  #frameOf(id: NodeId): Rect | null {
+    if (this.#layout === null) return null;
+    const layout = findLayoutNode(this.#layout.root, id);
+    return layout === null ? null : layout.frame;
+  }
+
+  #contentFrameOf(id: NodeId): Rect | null {
+    if (this.#layout === null) return null;
+    const layout = findLayoutNode(this.#layout.root, id);
+    return layout === null ? null : layout.contentFrame;
   }
 
   #scrollFromKey(target: SemanticNode, key: string): boolean {
@@ -727,6 +955,66 @@ function scrollEndOffset(node: BoxNode, layout: LayoutNode): Point {
     x: Number.MAX_SAFE_INTEGER,
     y: Number.MAX_SAFE_INTEGER,
   });
+}
+
+/**
+ * Smallest clamped offset that brings `frame` fully inside the viewport of
+ * `node`, keeping the other axis where it is.
+ */
+function revealOffset(
+  node: BoxNode,
+  layout: LayoutNode,
+  frame: Rect,
+  current: Point,
+): Point {
+  const requested = { ...current };
+  if (hasScrollAxis(node.scroll, "x")) {
+    const viewport = layout.contentFrame;
+    if (frame.x < viewport.x + current.x) {
+      requested.x = frame.x - viewport.x;
+    } else if (
+      frame.x + frame.width >
+      viewport.x + current.x + viewport.width
+    ) {
+      requested.x = frame.x + frame.width - viewport.x - viewport.width;
+    }
+  }
+  if (hasScrollAxis(node.scroll, "y")) {
+    const viewport = layout.contentFrame;
+    if (frame.y < viewport.y + current.y) {
+      requested.y = frame.y - viewport.y;
+    } else if (
+      frame.y + frame.height >
+      viewport.y + current.y + viewport.height
+    ) {
+      requested.y = frame.y + frame.height - viewport.y - viewport.height;
+    }
+  }
+  return clampScrollOffset(node, layout, requested);
+}
+
+function translateRect(
+  rect: Rect,
+  translateX: number,
+  translateY: number,
+): Rect {
+  return {
+    x: rect.x + translateX,
+    y: rect.y + translateY,
+    width: rect.width,
+    height: rect.height,
+  };
+}
+
+function intersectRects(a: Rect, b: Rect): Rect {
+  const x = Math.max(a.x, b.x);
+  const y = Math.max(a.y, b.y);
+  return {
+    x,
+    y,
+    width: Math.max(0, Math.min(a.x + a.width, b.x + b.width) - x),
+    height: Math.max(0, Math.min(a.y + a.height, b.y + b.height) - y),
+  };
 }
 
 function pointsEqual(a: Point, b: Point): boolean {

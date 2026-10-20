@@ -242,10 +242,10 @@ Hosts send normalized commands. The controller performs target-to-root dispatch,
 Key behavior:
 
 - app-level `useInput` handlers run before semantic key dispatch;
-- Tab/Shift+Tab traverse visible focusable nodes;
+- Tab/Shift+Tab traverse focusable nodes, including controls scrolled out of view; focusing one scrolls it into view;
 - one physical activation emits one `press`;
 - pointer points are already logical cells;
-- wheel, SGR mouse, arrows, Page Up/Down, Home, and End share offsets; Home and End prefer the scrollable vertical axis and return to the left edge, otherwise they scroll the horizontal axis;
+- wheel, SGR mouse, arrows, Page Up/Down, Home, and End share offsets; a scroll region that can move only part of a pointer delta passes the remainder to the next scrollable ancestor, and a region that cannot move passes the whole delta on; Home and End prefer the scrollable vertical axis and return to the left edge, otherwise they scroll the horizontal axis;
 - disappearing focused/hovered nodes are reconciled on the next commit;
 - handlers can prevent default behavior or stop propagation.
 

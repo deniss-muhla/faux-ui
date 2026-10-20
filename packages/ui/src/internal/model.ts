@@ -207,6 +207,8 @@ export interface BoxNode extends SemanticNodeBase {
   followEnd: ScrollAxis | null;
   focusable: boolean;
   disabled: boolean;
+  /** Selection state a scrolling viewport reveals, set by `Button selected`. */
+  selected: boolean;
 }
 
 export type SemanticNode = TextNode | BoxNode;
@@ -241,6 +243,7 @@ export interface BoxSpec extends EventHandlers {
   readonly followEnd?: boolean | ScrollAxis;
   readonly focusable?: boolean;
   readonly disabled?: boolean;
+  readonly selected?: boolean;
   readonly accessibleLabel?: string;
   /** Internal value populated by ThemeProvider-aware public components. */
   readonly palette?: Palette;
@@ -290,6 +293,7 @@ export function createBoxNode(id: NodeId, spec: BoxSpec = {}): BoxNode {
     followEnd: normalizeFollowEnd(scroll, spec.followEnd),
     focusable: spec.focusable === true,
     disabled: spec.disabled === true,
+    selected: spec.selected === true,
     accessibleLabel: normalizeLabel(spec.accessibleLabel),
     palette: normalizePalette(spec.palette),
   };
@@ -326,6 +330,7 @@ export function updateBoxNode(node: BoxNode, spec: BoxSpec): void {
   node.followEnd = normalizeFollowEnd(node.scroll, spec.followEnd);
   node.focusable = spec.focusable === true;
   node.disabled = spec.disabled === true;
+  node.selected = spec.selected === true;
   node.accessibleLabel = normalizeLabel(spec.accessibleLabel);
   node.palette = normalizePalette(spec.palette);
 }

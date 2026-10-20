@@ -30,6 +30,11 @@ Pre-1.0 evidence candidate for gathering more real-use data before the stable co
 ### Fixed
 
 - `Home` and `End` in a scroll viewport with a scrollable vertical axis now move only the vertical offset and return to the left edge. Previously they moved both axes to their maximum, so a two-axis chat jumped to an empty right edge and the newest rows disappeared from view until `Home` was pressed.
+- Focusing a control now scrolls the smallest offset that paints it into each of its scrolling ancestors, and controls scrolled out of view stay in focus order. Previously a control below a viewport could not receive focus at all, so `Tab` could not reach it and the focused row could stay hidden behind a short list window.
+- The scroll a focus reveal makes now dispatches a scroll event carrying the offset change, one per moved ancestor, so a consumer that reads `onScroll` to paint a position indicator shows where the list really is. Previously the reveal moved the offset silently, so the indicator kept reporting the position before the reveal while the scene painted the revealed rows.
+
+- A wheel or pointer scroll whose innermost scrollable region cannot move now passes the same delta to the next scrollable ancestor. Previously a wheel over a non-scrollable region nested inside a longer list, such as a fixed summary block, moved nothing.
+- A wheel or pointer scroll whose innermost scrollable region moves only part of the delta now passes the remainder to the next scrollable ancestor, and each moved region reports the delta it consumed. Previously an inner list one cell from its end consumed the whole wheel and the outer list stayed still, which read as a stuck list in a short viewport.
 - Compatible `TextSource` updates batched into one React commit now reconcile proven ranges and rebuild only the suffix after the earliest unproven change instead of reindexing retained history.
 - A stable repaint paints one canonical scene pass instead of an unconditional second pass, and a corrected follow-end scene stays attached for hit testing.
 - Ordinary terminal updates write only changed rows instead of clearing the screen before every frame; start, resize, palette changes, and failed writes redraw completely.
