@@ -102,6 +102,7 @@ Call `app.unmount()` during cleanup.
 - Use `style`, `focusStyle`, and `hoverStyle` with semantic colors.
 - Use `ThemeProvider` or host palette options to map semantic colors to `#RRGGBB` values.
 - Use `ScrollView.followEnd` (`boolean | "x" | "y" | "both"`) to follow each enabled axis independently. Use `followEnd="y"` for a two-axis log viewport that must keep the Architect's horizontal offset.
+- Use `onScroll` for position state. Keyboard movement, wheel movement, focus reveal, and geometry-driven offset changes report their effective previous and resulting offsets; a geometry update that does not move the offset emits no motion event.
 - Do not add action registries, manual rerenders, public node IDs, or host bridges.
 
 ## Test through the public scene

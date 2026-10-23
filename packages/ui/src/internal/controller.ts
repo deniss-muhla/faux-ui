@@ -83,6 +83,7 @@ export class InteractionController {
     this.#scene = scene;
 
     let changed = false;
+    const previousOffsets = new Map(this.#offsets);
     if (this.#focusedId !== null && !this.#isFocusable(this.#focusedId)) {
       if (oldFocused !== null) {
         this.#dispatchFocus(oldFocused, "blur", null);
@@ -149,6 +150,39 @@ export class InteractionController {
         this.#offsets.set(id, clamped);
         changed = true;
       }
+    }
+
+    const retainedFocus = this.#node(this.#focusedId);
+    if (
+      oldLayout !== null &&
+      oldFocused !== null &&
+      retainedFocus !== null &&
+      layoutGeometryChanged(retainedFocus, oldLayout, layout)
+    ) {
+      for (const [id, offset] of this.#revealOffsets(
+        retainedFocus,
+        new Map(this.#offsets),
+      )) {
+        this.#offsets.set(id, offset);
+        changed = true;
+      }
+    }
+
+    for (const node of nodes) {
+      if (node.kind !== "box" || node.scroll === null) continue;
+      const oldNodeLayout =
+        oldLayout === null ? null : findLayoutNode(oldLayout.root, node.id);
+      if (oldNodeLayout === null) continue;
+      const previous = previousOffsets.get(node.id) ?? { x: 0, y: 0 };
+      const offset = this.#offsets.get(node.id) ?? { x: 0, y: 0 };
+      if (pointsEqual(previous, offset)) continue;
+      this.#dispatchScroll(
+        node,
+        previous,
+        offset,
+        offset.x - previous.x,
+        offset.y - previous.y,
+      );
     }
 
     // A control that becomes the single selected control in each of its
@@ -777,38 +811,40 @@ export class InteractionController {
     const layout = findLayoutNode(this.#layout.root, scrollTarget.id);
     if (layout === null) return false;
     const previous = this.#offsets.get(scrollTarget.id) ?? { x: 0, y: 0 };
+    const scrollTo = (requested: Point): boolean => {
+      if (!this.setScrollOffset(scrollTarget.id, requested)) return false;
+      const offset = this.#offsets.get(scrollTarget.id);
+      if (offset !== undefined && !pointsEqual(previous, offset)) {
+        this.#dispatchScroll(
+          scrollTarget,
+          previous,
+          offset,
+          offset.x - previous.x,
+          offset.y - previous.y,
+        );
+      }
+      return true;
+    };
     if (key === "ArrowUp") {
-      return this.setScrollOffset(scrollTarget.id, {
-        ...previous,
-        y: previous.y - 1,
-      });
+      return scrollTo({ ...previous, y: previous.y - 1 });
     }
     if (key === "ArrowDown") {
-      return this.setScrollOffset(scrollTarget.id, {
-        ...previous,
-        y: previous.y + 1,
-      });
+      return scrollTo({ ...previous, y: previous.y + 1 });
     }
     if (key === "ArrowLeft") {
-      return this.setScrollOffset(scrollTarget.id, {
-        ...previous,
-        x: previous.x - 1,
-      });
+      return scrollTo({ ...previous, x: previous.x - 1 });
     }
     if (key === "ArrowRight") {
-      return this.setScrollOffset(scrollTarget.id, {
-        ...previous,
-        x: previous.x + 1,
-      });
+      return scrollTo({ ...previous, x: previous.x + 1 });
     }
     if (key === "PageUp") {
-      return this.setScrollOffset(scrollTarget.id, {
+      return scrollTo({
         ...previous,
         y: previous.y - layout.contentFrame.height,
       });
     }
     if (key === "PageDown") {
-      return this.setScrollOffset(scrollTarget.id, {
+      return scrollTo({
         ...previous,
         y: previous.y + layout.contentFrame.height,
       });
@@ -825,19 +861,13 @@ export class InteractionController {
         hasScrollAxis(scrollTarget.scroll, "y") &&
         layout.contentSize.height > layout.contentFrame.height;
       if (verticalScrolls) {
-        return this.setScrollOffset(scrollTarget.id, { x: 0, y: requested });
+        return scrollTo({ x: 0, y: requested });
       }
       if (hasScrollAxis(scrollTarget.scroll, "x")) {
-        return this.setScrollOffset(scrollTarget.id, {
-          ...previous,
-          x: requested,
-        });
+        return scrollTo({ ...previous, x: requested });
       }
       if (hasScrollAxis(scrollTarget.scroll, "y")) {
-        return this.setScrollOffset(scrollTarget.id, {
-          ...previous,
-          y: requested,
-        });
+        return scrollTo({ ...previous, y: requested });
       }
       return false;
     }
@@ -1015,6 +1045,35 @@ function intersectRects(a: Rect, b: Rect): Rect {
     width: Math.max(0, Math.min(a.x + a.width, b.x + b.width) - x),
     height: Math.max(0, Math.min(a.y + a.height, b.y + b.height) - y),
   };
+}
+
+function layoutGeometryChanged(
+  focused: SemanticNode,
+  previous: LayoutResult,
+  next: LayoutResult,
+): boolean {
+  return nodePath(focused).some((node) => {
+    const oldNode = findLayoutNode(previous.root, node.id);
+    const newNode = findLayoutNode(next.root, node.id);
+    return (
+      oldNode === null ||
+      newNode === null ||
+      !rectsEqual(oldNode.frame, newNode.frame) ||
+      !rectsEqual(oldNode.clip, newNode.clip) ||
+      !rectsEqual(oldNode.contentFrame, newNode.contentFrame) ||
+      oldNode.contentSize.width !== newNode.contentSize.width ||
+      oldNode.contentSize.height !== newNode.contentSize.height
+    );
+  });
+}
+
+function rectsEqual(a: Rect, b: Rect): boolean {
+  return (
+    a.x === b.x &&
+    a.y === b.y &&
+    a.width === b.width &&
+    a.height === b.height
+  );
 }
 
 function pointsEqual(a: Point, b: Point): boolean {

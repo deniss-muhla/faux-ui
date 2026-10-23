@@ -162,17 +162,40 @@ describe("axis-specific follow-end", () => {
         defaultPrevented: true,
       });
       expect(app.getText()).toBe("klmn\nqrst");
+      expect(onScroll).toHaveBeenCalledTimes(1);
 
       expect(app.scroll({ x: 1, y: 1, deltaX: 1, deltaY: 0 })).toEqual({
         handled: true,
         defaultPrevented: true,
       });
       expect(app.getText()).toBe("lmno\nrstu");
-      expect(onScroll).toHaveBeenCalledTimes(1);
+      expect(onScroll).toHaveBeenCalledTimes(2);
+      expect(
+        onScroll.mock.calls.map(([event]) => ({
+          previousOffset: event.previousOffset,
+          offset: event.offset,
+          deltaX: event.deltaX,
+          deltaY: event.deltaY,
+        })),
+      ).toEqual([
+        {
+          previousOffset: { x: 0, y: 2 },
+          offset: { x: 1, y: 2 },
+          deltaX: 1,
+          deltaY: 0,
+        },
+        {
+          previousOffset: { x: 1, y: 2 },
+          offset: { x: 2, y: 2 },
+          deltaX: 1,
+          deltaY: 0,
+        },
+      ]);
       expect(app.getEventTrace()).toEqual([
         { type: "keyDown", targetId: scrollId, currentTargetId: scrollId },
         { type: "focus", targetId: scrollId, currentTargetId: scrollId },
         { type: "keyDown", targetId: scrollId, currentTargetId: scrollId },
+        { type: "scroll", targetId: scrollId, currentTargetId: scrollId },
         { type: "scroll", targetId: scrollId, currentTargetId: scrollId },
       ]);
     } finally {
